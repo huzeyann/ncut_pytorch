@@ -1,0 +1,7 @@
+einops
+scikit-learn
+openTSNE
+umap-learn
+fpsample
+pycolormap-2d
+tqdm
