@@ -18,5 +18,5 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pypa/sampleproject"
-Issues = "https://github.com/pypa/sampleproject/issues"
+Documentation = "https://ncut-pytorch.readthedocs.io/"
+Github = "https://github.com/huzeyann/ncut_pytorch/"

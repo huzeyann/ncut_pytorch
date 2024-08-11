@@ -12,8 +12,8 @@ class NCUT:
 
     def __init__(
         self,
-        num_eig=20,
-        knn=3,
+        num_eig=50,
+        knn=10,
         t=1.0,
         num_sample=30000,
         sample_method="farthest",
@@ -301,13 +301,13 @@ def nystrom_ncut(
 
     # check if features dimension greater than num_eig
     if eig_solver in ["svd_lowrank", "lobpcg"]:
-        assert features.shape[1] > (
+        assert features.shape[0] > (
             num_eig * 2
-        ), "features dimension should be greater than 2*num_eig"
+        ), "number of nodes should be greater than 2*num_eig"
     if eig_solver in ["svd", "eigh"]:
         assert (
-            features.shape[1] > num_eig
-        ), "features dimension should be greater than num_eig"
+            features.shape[0] > num_eig
+        ), "number of nodes should be greater than num_eig"
 
     features = features.clone()
     if normalize_features:

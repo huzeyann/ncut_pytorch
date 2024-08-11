@@ -13,7 +13,7 @@
 PyPI install, our package is based on [PyTorch](https://pytorch.org/get-started/locally/), presuming you already have PyTorch installed
 
 ```shell
-pip install ncut_pytorch
+pip install ncut-pytorch
 ```
 
 [Install PyTorch](https://pytorch.org/get-started/locally/) if you haven't
