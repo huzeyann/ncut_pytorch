@@ -18,3 +18,5 @@ mkdocs:
 python:
   install:
   - requirements: ncut_pytorch/requirements.txt
+  - method: pip
+    path: mkdocs-material
