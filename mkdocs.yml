@@ -1,0 +1,47 @@
+site_name: ncut_pytorch Docs
+
+theme:
+  name: "material"
+  features:
+    - content.code.copy
+    - content.code.select
+    
+
+plugins:
+- search
+- autorefs
+- mkdocstrings:
+    enabled: !ENV [ENABLE_MKDOCSTRINGS, true]
+    default_handler: python
+    handlers:
+      python:
+        options:
+          show_source: true
+          show_root_heading: true
+
+
+nav:
+  - Overview: index.md
+  - Tutorial 1 - Toy Examples: tutorials.md
+  - Tutorial 2 - How NCUT Works: how_ncut_works.md 
+  - NCUT and t-SNE/UMAP: compare.md
+  - Gallery - Model Features: model_feature_gallery.md
+  - Gallery - Application: application_gallery.md
+  - Tutorial 3 - Parameters: parameters.md
+  - Tutorial - Coloring: coloring.md
+  - API Reference: api_reference.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
