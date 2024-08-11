@@ -76,7 +76,7 @@ image = Image.open(requests.get(url, stream=True).raw)
 image
 ```
 <div style="text-align: center;">
-<img src="/images/prof_pic_old.jpg" alt="prof_pic_old.jpg" style="width:50%;">
+<img src="../images/prof_pic_old.jpg" alt="prof_pic_old.jpg" style="width:50%;">
 </div>
 
 ``` py linenums="1"
@@ -146,7 +146,7 @@ plt.show()
 </details>
 
 <div style="text-align: center;">
-<img src="/images/image_eig_single.png" alt="image_eig_single.png" style="width:100%;">
+<img src="../images/image_eig_single.png" alt="image_eig_single.png" style="width:100%;">
 </div>
 
 ### Plotting: Advanced
@@ -209,7 +209,7 @@ plot_3d(X_3d, rgb, "spectral-tSNE of top 10 Ncut eigenvectors")
 ```
 
 <div style="text-align: center;">
-<img src="/images/tsne_single.png" alt="tsne_single.png" style="width:100%;">
+<img src="../images/tsne_single.png" alt="tsne_single.png" style="width:100%;">
 </div>
 
 ``` py linenums="1"
@@ -220,7 +220,7 @@ plot_3d(X_3d, rgb, "spectral-UMAP of top 10 Ncut eigenvectors")
 ```
 
 <div style="text-align: center;">
-<img src="/images/umap_single.png" alt="umap_single.png" style="width:100%;">
+<img src="../images/umap_single.png" alt="umap_single.png" style="width:100%;">
 </div>
 
 
@@ -339,11 +339,11 @@ plot_images(images, image_rgb, "NCUT top 50 eigenvectors, UMAP color, DiNOv2 lay
 ```
 
 <div style="text-align: center;">
-<img src="/images/multiple_images_tsne.png" alt="multiple_images_tsne.png" style="width:100%;">
+<img src="../images/multiple_images_tsne.png" alt="multiple_images_tsne.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/multiple_images_umap.png" alt="multiple_images_umap.png" style="width:100%;">
+<img src="../images/multiple_images_umap.png" alt="multiple_images_umap.png" style="width:100%;">
 </div>
 
 ## Tutorial: Video
@@ -527,7 +527,7 @@ for i in range(100, 1600, 200):
 <div style="text-align: center;">
     <!-- <video width="100%" controls preload="none"> -->
     <video width="100%" controls preload="metadata">
-        <source src="/images/videomae_ncut_short.mp4" type="video/mp4">
+        <source src="../images/videomae_ncut_short.mp4" type="video/mp4">
         Your browser does not support the video tag.
     </video>
 </div>
@@ -627,5 +627,5 @@ plt.show()
 </details>
 
 <div style="text-align: center;">
-<img src="/images/gpt2_text.png" alt="gpt2_text.png" style="width:100%;">
+<img src="../images/gpt2_text.png" alt="gpt2_text.png" style="width:100%;">
 </div>

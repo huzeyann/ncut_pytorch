@@ -10,10 +10,10 @@
       show_source: false
       heading_level: 3
 <div style="text-align: center;">
-<img src="/images/spectral_tsne_3d.png" style="width:100%;">
+<img src="../images/spectral_tsne_3d.png" style="width:100%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_tsne_3d_images.png" style="width:100%;">
+<img src="../images/spectral_tsne_3d_images.png" style="width:100%;">
 </div>
 
 ::: ncut_pytorch.rgb_from_umap_sphere
@@ -21,10 +21,10 @@
       show_source: false
       heading_level: 3
 <div style="text-align: center;">
-<img src="/images/spectral_umap_sphere.png" style="width:100%;">
+<img src="../images/spectral_umap_sphere.png" style="width:100%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_umap_sphere_images.png" style="width:100%;">
+<img src="../images/spectral_umap_sphere_images.png" style="width:100%;">
 </div>
 
 ::: ncut_pytorch.rgb_from_umap_3d
@@ -32,10 +32,10 @@
       show_source: false
       heading_level: 3
 <div style="text-align: center;">
-<img src="/images/spectral_umap_3d.png" style="width:100%;">
+<img src="../images/spectral_umap_3d.png" style="width:100%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_umap_3d_images.png" style="width:100%;">
+<img src="../images/spectral_umap_3d_images.png" style="width:100%;">
 </div>
 
 
@@ -44,10 +44,10 @@
       show_source: false
       heading_level: 3
 <div style="text-align: center;">
-<img src="/images/spectral_tsne_2d.png" style="width:40%;">
+<img src="../images/spectral_tsne_2d.png" style="width:40%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_tsne_2d_images.png" style="width:100%;">
+<img src="../images/spectral_tsne_2d_images.png" style="width:100%;">
 </div>
 
 ::: ncut_pytorch.rgb_from_umap_2d
@@ -55,10 +55,10 @@
       show_source: false
       heading_level: 3
 <div style="text-align: center;">
-<img src="/images/spectral_umap_2d.png" style="width:40%;">
+<img src="../images/spectral_umap_2d.png" style="width:40%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_umap_2d_images.png" style="width:100%;">
+<img src="../images/spectral_umap_2d_images.png" style="width:100%;">
 </div>
 
 

@@ -18,38 +18,38 @@ high dimensional eigenvectors (>3D) is reduced to 3D RGB cube by t-SNE or UMAP.
 </div>
 
 <div style="text-align: center;">
-<img src="/images/spectral_tsne_3d.png" style="width:100%;">
+<img src="../images/spectral_tsne_3d.png" style="width:100%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_tsne_3d_images.png" style="width:100%;">
-</div>
-
-<div style="text-align: center;">
-<img src="/images/spectral_umap_sphere.png" style="width:100%;">
-</div>
-<div style="text-align: center;">
-<img src="/images/spectral_umap_sphere_images.png" style="width:100%;">
+<img src="../images/spectral_tsne_3d_images.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/spectral_umap_3d.png" style="width:100%;">
+<img src="../images/spectral_umap_sphere.png" style="width:100%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_umap_3d_images.png" style="width:100%;">
-</div>
-
-<div style="text-align: center;">
-<img src="/images/spectral_tsne_2d.png" style="width:40%;">
-</div>
-<div style="text-align: center;">
-<img src="/images/spectral_tsne_2d_images.png" style="width:100%;">
+<img src="../images/spectral_umap_sphere_images.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/spectral_umap_2d.png" style="width:40%;">
+<img src="../images/spectral_umap_3d.png" style="width:100%;">
 </div>
 <div style="text-align: center;">
-<img src="/images/spectral_umap_2d_images.png" style="width:100%;">
+<img src="../images/spectral_umap_3d_images.png" style="width:100%;">
+</div>
+
+<div style="text-align: center;">
+<img src="../images/spectral_tsne_2d.png" style="width:40%;">
+</div>
+<div style="text-align: center;">
+<img src="../images/spectral_tsne_2d_images.png" style="width:100%;">
+</div>
+
+<div style="text-align: center;">
+<img src="../images/spectral_umap_2d.png" style="width:40%;">
+</div>
+<div style="text-align: center;">
+<img src="../images/spectral_umap_2d_images.png" style="width:100%;">
 </div>
 
 ## RGB cube rotation
@@ -86,5 +86,5 @@ plt.show()
 ```
 
 <div style="text-align: center;">
-<img src="/images/color_rotation.png" style="width:100%;">
+<img src="../images/color_rotation.png" style="width:100%;">
 </div>

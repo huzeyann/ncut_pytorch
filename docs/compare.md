@@ -23,40 +23,40 @@
 </div>
 
 <div style="text-align: center;">
-<img src="/images/pca/tsne_n_eig=20.png" style="width:100%;">
+<img src="../images/pca/tsne_n_eig=20.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/pca/tsne_n_pca=20.png" style="width:100%;">
+<img src="../images/pca/tsne_n_pca=20.png" style="width:100%;">
 </div>
 <hr>
 
 <div style="text-align: center;">
-<img src="/images/pca/tsne_n_eig=50.png" style="width:100%;">
+<img src="../images/pca/tsne_n_eig=50.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/pca/tsne_n_pca=50.png" style="width:100%;">
+<img src="../images/pca/tsne_n_pca=50.png" style="width:100%;">
 </div>
 <hr>
 
 #### NCUT+UMAP vs. PCA+UMAP
 
 <div style="text-align: center;">
-<img src="/images/pca/umap_n_eig=20.png" style="width:100%;">
+<img src="../images/pca/umap_n_eig=20.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/pca/umap_n_pca=20.png" style="width:100%;">
+<img src="../images/pca/umap_n_pca=20.png" style="width:100%;">
 </div>
 <hr>
 
 <div style="text-align: center;">
-<img src="/images/pca/umap_n_eig=50.png" style="width:100%;">
+<img src="../images/pca/umap_n_eig=50.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/pca/umap_n_pca=50.png" style="width:100%;">
+<img src="../images/pca/umap_n_pca=50.png" style="width:100%;">
 </div>
 <hr>
 
@@ -64,9 +64,9 @@
 
 
 <div style="text-align: center;">
-<img src="/images/raw_ncut_24.png" style="width:100%;">
+<img src="../images/raw_ncut_24.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/raw_pca_24.png" style="width:100%;">
+<img src="../images/raw_pca_24.png" style="width:100%;">
 </div>
