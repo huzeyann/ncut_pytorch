@@ -17,6 +17,4 @@ mkdocs:
 # Optionally declare the Python requirements required to build your docs
 python:
   install:
-  - requirements: ncut_pytorch/requirements.txt
-  - method: pip
-    path: mkdocs-material
+    requirements: mkdocs.txt
