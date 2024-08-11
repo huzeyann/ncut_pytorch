@@ -18,7 +18,7 @@ plugins:
         options:
           show_source: true
           show_root_heading: true
-
+          path: [ncut_pytorch]
 
 nav:
   - Overview: index.md
