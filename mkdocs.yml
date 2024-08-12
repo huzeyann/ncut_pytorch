@@ -1,11 +1,24 @@
-site_name: ncut_pytorch Docs
+site_name: Nyström Normalized Cuts
+
+repo_url: https://github.com/huzeyann/ncut_pytorch
+repo_name: ncut_pytorch
 
 theme:
   name: "material"
   features:
     - content.code.copy
     - content.code.select
-    
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - navigation.expand
+    - navigation.indexes
+    - toc.integrate
+  icon:
+    repo: fontawesome/brands/github
+  logo: images/ncut.svg
+
 
 plugins:
 - search
@@ -21,7 +34,7 @@ plugins:
           path: [ncut_pytorch]
 
 nav:
-  - Overview: index.md
+  - Overview & Install: index.md
   - Tutorial 1 - Toy Examples: tutorials.md
   - Tutorial 2 - How NCUT Works: how_ncut_works.md 
   - NCUT and t-SNE/UMAP: compare.md
@@ -45,3 +58,9 @@ markdown_extensions:
 extra_javascript:
   - javascripts/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+
+extra:
+  analytics:
+    provider: google
+    property: G-8CPZDV5GR1
