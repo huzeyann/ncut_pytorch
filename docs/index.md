@@ -1,5 +1,5 @@
 
-## NCUT: Nystrom Normalized Cut
+## NCUT: Nyström Normalized Cut
 
 **Normalized Cut**, aka. spectral clustering, is a graphical method to analyze data grouping in the affinity eigenvector space. It has been widely used for unsupervised segmentation, before the deep learning era.
 
