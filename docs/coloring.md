@@ -59,27 +59,14 @@ Human perception is nor uniform on the RGB space -- green vs. yellow color is le
 ```py linenums="1"
 # 9-way rotation of the rgb
 import matplotlib.pyplot as plt
+from ncut_pytorch import rotate_rgb_cube
 
-rotated_rgb = rgb.reshape(feats.shape[:3] + (3,))
 fig, axs = plt.subplots(2, 3, figsize=(6, 4))
-for i in range(3):
-    rotation_matrix = torch.tensor(
-        [
-            [0, 1, 0],
-            [0, 0, 1],
-            [1, 0, 0],
-        ]
-    ).float()
-    rotated_rgb = torch.matmul(rotated_rgb, rotation_matrix)
-    rotated_rgb = rotated_rgb.reshape(feats.shape[:3] + (3,))
-    for j in range(2):
-        if j == 0:
-            _rgb = rotated_rgb[4]
-        else:
-            _rgb = 1 - rotated_rgb[4]
-        ax = axs[j, i]
-        ax.imshow(_rgb)
-        ax.axis("off")
+axs = axs.flatten()
+for i in range(6):
+    _rgb = rotate_rgb_cube(rgb[4], position=i+1)
+    ax[i].imshow(_rgb)
+    ax[i].axis("off")
 plt.suptitle("Rotation of the RGB cube")
 plt.tight_layout()
 plt.show()

@@ -6,15 +6,13 @@ import numpy as np
 
 
 class NCUT:
-    """Nystrom Normalized Cut for large scale graph.
-
-    """
+    """Nystrom Normalized Cut for large scale graph."""
 
     def __init__(
         self,
         num_eig=50,
         knn=10,
-        t=1.0,
+        affinity_focal_gamma=1.0,
         num_sample=30000,
         sample_method="farthest",
         distance="cosine",
@@ -33,7 +31,7 @@ class NCUT:
             num_eig (int): number of top eigenvectors to return
             knn (int): number of KNN for propagating eigenvectors from subgraph to full graph,
                 smaller knn result in more sharp eigenvectors.
-            t (float): affinity matrix temperature, lower t reduce the not-so-connected edge weights,
+            affinity_focal_gamma (float): affinity matrix temperature, lower t reduce the not-so-connected edge weights,
                 smaller t result in more sharp eigenvectors.
             num_sample (int): number of samples for Nystrom-like approximation,
                 reduce only if memory is not enough.
@@ -77,7 +75,7 @@ class NCUT:
         self.knn = knn
         self.sample_method = sample_method
         self.distance = distance
-        self.t = t
+        self.affinity_focal_gamma = affinity_focal_gamma
         self.indirect_connection = indirect_connection
         self.indirect_pca_dim = indirect_pca_dim
         self.device = device
@@ -104,7 +102,7 @@ class NCUT:
                 num_sample=self.num_sample,
                 sample_method=self.sample_method,
                 distance=self.distance,
-                t=self.t,
+                affinity_focal_gamma=self.affinity_focal_gamma,
                 indirect_connection=self.indirect_connection,
                 indirect_pca_dim=self.indirect_pca_dim,
                 device=self.device,
@@ -164,6 +162,7 @@ def eigenvector_to_rgb(
     metric="euclidean",
     device=None,
     q=0.95,
+    knn=1,
     seed=0,
 ):
     """Use t-SNE or UMAP to convert eigenvectors (more than 3) to RGB color (3D RGB CUBE).
@@ -178,13 +177,16 @@ def eigenvector_to_rgb(
         metric (str): distance metric, default 'euclidean'
         device (str): device to use for computation, if None, will not change device
         q (float): quantile for RGB normalization, default 0.95. lower q results in more sharp colors
+        knn (int): number of KNN for propagating eigenvectors from subgraph to full graph,
+            smaller knn result in more sharp colors, default 1. knn>1 will smooth-out the embedding
+            in the t-SNE or UMAP space.
         seed (int): random seed for t-SNE or UMAP
 
     Examples:
         >>> from ncut_pytorch import eigenvector_to_rgb
         >>> X_3d, rgb = eigenvector_to_rgb(eigenvectors, method='tsne_3d')
         >>> print(X_3d.shape, rgb.shape)
-        >>> # (10000, 3) (10000, 3) 
+        >>> # (10000, 3) (10000, 3)
 
     Returns:
         (torch.Tensor): t-SNE or UMAP embedding, shape (n_samples, 2) or (n_samples, 3)
@@ -198,6 +200,7 @@ def eigenvector_to_rgb(
             seed=seed,
             device=device,
             metric=metric,
+            knn=knn,
         )
     elif method == "tsne_3d":
         embed, rgb = rgb_from_tsne_3d(
@@ -207,6 +210,7 @@ def eigenvector_to_rgb(
             seed=seed,
             device=device,
             metric=metric,
+            knn=knn,
         )
     elif method == "umap_sphere":
         embed, rgb = rgb_from_umap_sphere(
@@ -217,6 +221,7 @@ def eigenvector_to_rgb(
             seed=seed,
             device=device,
             metric=metric,
+            knn=knn,
         )
     elif method == "umap_2d":
         embed, rgb = rgb_from_umap_2d(
@@ -227,6 +232,7 @@ def eigenvector_to_rgb(
             seed=seed,
             device=device,
             metric=metric,
+            knn=knn,
         )
     elif method == "umap_3d":
         embed, rgb = rgb_from_umap_3d(
@@ -237,6 +243,7 @@ def eigenvector_to_rgb(
             seed=seed,
             device=device,
             metric=metric,
+            knn=knn,
         )
     else:
         raise ValueError("method should be 'tsne_2d', 'tsne_3d' or 'umap_sphere'")
@@ -251,7 +258,7 @@ def nystrom_ncut(
     knn=3,
     sample_method="farthest",
     distance="cosine",
-    t=1.0,
+    affinity_focal_gamma=1.0,
     indirect_connection=True,
     indirect_pca_dim=100,
     device=None,
@@ -273,7 +280,7 @@ def nystrom_ncut(
         sample_method (str): sample method, 'farthest' (default) or 'random'
             'farthest' is recommended for better approximation
         distance (str): distance metric, 'cosine' (default) or 'euclidean'
-        t (float): affinity matrix parameter, lower t reduce the weak edge weights,
+        affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the weak edge weights,
             resulting in more sharp eigenvectors, default 1.0
         indirect_connection (bool): include indirect connection in the subgraph, default True
         indirect_pca_dim (int): default 100, PCA dimension to reduce the node dimension, only applied to
@@ -327,7 +334,9 @@ def nystrom_ncut(
     sampled_features = sampled_features.to(device)
 
     # compute affinity matrix on subgraph
-    A = affinity_from_features(sampled_features, t=t, distance=distance)
+    A = affinity_from_features(
+        sampled_features, affinity_focal_gamma=affinity_focal_gamma, distance=distance
+    )
 
     not_sampled = torch.tensor(
         list(set(range(features.shape[0])) - set(sampled_indices))
@@ -346,7 +355,11 @@ def nystrom_ncut(
         feature_B = (features[not_sampled].T @ V).T  # project to PCA space
         feature_B = feature_B.to(device)
         B = affinity_from_features(
-            sampled_features, feature_B, t=t, distance=distance, fill_diagonal=False
+            sampled_features,
+            feature_B,
+            affinity_focal_gamma=affinity_focal_gamma,
+            distance=distance,
+            fill_diagonal=False,
         )
         # P is 1-hop random walk matrix
         B_row = B / B.sum(axis=1, keepdim=True)
@@ -386,7 +399,7 @@ def nystrom_ncut(
 def affinity_from_features(
     features,
     features_B=None,
-    t=1.0,
+    affinity_focal_gamma=1.0,
     distance="cosine",
     normalize_features=True,
     fill_diagonal=True,
@@ -396,7 +409,7 @@ def affinity_from_features(
     Args:
         features (torch.Tensor): input features, shape (n_samples, n_features)
         feature_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
-        t (float): affinity matrix parameter, lower t reduce the edge weights
+        affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the edge weights
             on weak connections, default 1.0
         distance (str): distance metric, 'cosine' (default) or 'euclidean'.
         apply_normalize (bool): normalize input features before computing affinity matrix,
@@ -435,15 +448,15 @@ def affinity_from_features(
         A[torch.arange(A.shape[0]), torch.arange(A.shape[0])] = 0
 
     # torch.exp make affinity matrix positive definite,
-    # t (float) is the temperature, lower t reduce the weak edge weights
-    A = torch.exp(-((A / t)))
+    # lower affinity_focal_gamma reduce the weak edge weights
+    A = torch.exp(-((A / affinity_focal_gamma)))
     return A
 
 
 def ncut(
     A,
     num_eig=20,
-    eig_solver="svd_lowrank", 
+    eig_solver="svd_lowrank",
 ):
     """PyTorch implementation of Normalized cut without Nystrom-like approximation.
 
@@ -508,6 +521,7 @@ def rgb_from_tsne_3d(
     metric="euclidean",
     device=None,
     seed=0,
+    knn=1,
 ):
     """
 
@@ -536,16 +550,16 @@ def rgb_from_tsne_3d(
     ).fit_transform(_inp)
 
     _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
-    embedding = propagate_nearest(
+    embedding = propagate_knn(
         _subgraph_embed,
         features,
         features[subgraph_indices],
-        chunk_size=8096,
+        knn=knn,
         device=device,
     )
 
     X_3d = embedding.cpu().numpy()
-    rgb = rgb_from_3d(torch.tensor(X_3d))
+    rgb = rgb_from_3d_rgb_cube(torch.tensor(X_3d))
 
     return X_3d, rgb
 
@@ -558,6 +572,7 @@ def rgb_from_tsne_2d(
     device=None,
     seed=0,
     q=0.95,
+    knn=1,
 ):
     """
 
@@ -586,18 +601,19 @@ def rgb_from_tsne_2d(
     ).fit_transform(_inp)
 
     _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
-    embedding = propagate_nearest(
+    embedding = propagate_knn(
         _subgraph_embed,
         features,
         features[subgraph_indices],
-        chunk_size=8096,
+        knn=knn,
         device=device,
     )
 
     X_2d = embedding.cpu().numpy()
-    rgb = rgb_from_2d(torch.tensor(X_2d), q=q)
+    rgb = rgb_from_2d_colormap(torch.tensor(X_2d), q=q)
 
     return X_2d, rgb
+
 
 def rgb_from_umap_2d(
     features,
@@ -608,6 +624,7 @@ def rgb_from_umap_2d(
     device=None,
     seed=0,
     q=0.95,
+    knn=1,
 ):
     """
 
@@ -635,16 +652,16 @@ def rgb_from_umap_2d(
     ).fit_transform(_inp)
 
     _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
-    embedding = propagate_nearest(
+    embedding = propagate_knn(
         _subgraph_embed,
         features,
         features[subgraph_indices],
-        chunk_size=8096,
+        knn=knn,
         device=device,
     )
 
     X_2d = embedding.cpu().numpy()
-    rgb = rgb_from_2d(torch.tensor(X_2d), q=q)
+    rgb = rgb_from_2d_colormap(torch.tensor(X_2d), q=q)
 
     return X_2d, rgb
 
@@ -658,6 +675,7 @@ def rgb_from_umap_sphere(
     device=None,
     seed=0,
     q=0.95,
+    knn=1,
 ):
     """
 
@@ -686,11 +704,11 @@ def rgb_from_umap_sphere(
     ).fit_transform(_inp)
 
     _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
-    embedding = propagate_nearest(
+    embedding = propagate_knn(
         _subgraph_embed,
         features,
         features[subgraph_indices],
-        chunk_size=8096,
+        knn=knn,
         device=device,
     )
 
@@ -699,7 +717,7 @@ def rgb_from_umap_sphere(
     z = np.cos(embedding[:, 0])
 
     X_3d = np.stack([x, y, z], axis=1)
-    rgb = rgb_from_3d(torch.tensor(X_3d), q=q)
+    rgb = rgb_from_3d_rgb_cube(torch.tensor(X_3d), q=q)
 
     return X_3d, rgb
 
@@ -713,6 +731,7 @@ def rgb_from_umap_3d(
     device=None,
     seed=0,
     q=0.95,
+    knn=1,
 ):
     """
 
@@ -740,15 +759,15 @@ def rgb_from_umap_3d(
     ).fit_transform(_inp)
 
     _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
-    X_3d = propagate_nearest(
+    X_3d = propagate_knn(
         _subgraph_embed,
         features,
         features[subgraph_indices],
-        chunk_size=8096,
+        knn=knn,
         device=device,
     )
 
-    rgb = rgb_from_3d(torch.tensor(X_3d), q=q)
+    rgb = rgb_from_3d_rgb_cube(torch.tensor(X_3d), q=q)
 
     return X_3d, rgb
 
@@ -758,6 +777,32 @@ def flatten_sphere(X_3d):
     y = -np.arccos(X_3d[:, 2])
     X_2d = np.stack([x, y], axis=1)
     return X_2d
+
+
+def rotate_rgb_cube(rgb, position=1):
+    """rotate RGB cube to different position
+
+    Args:
+        rgb (torch.Tensor): RGB color space [0, 1], shape (*, 3)
+        position (int): position to rotate, 0, 1, 2, 3, 4, 5, 6
+
+    Returns:
+        torch.Tensor: RGB color space, shape (n_samples, 3)
+    """
+    assert position in range(0, 7), "position should be 0, 1, 2, 3, 4, 5, 6"
+    rotation_matrix = torch.tensor(
+        [
+            [0, 1, 0],
+            [0, 0, 1],
+            [1, 0, 0],
+        ]
+    ).float()
+    n_mul = position % 3
+    rotation_matrix = torch.matrix_power(rotation_matrix, n_mul)
+    rgb = rgb @ rotation_matrix
+    if position > 3:
+        rgb = 1 - rgb
+    return rgb
 
 
 def farthest_point_sampling(
@@ -865,7 +910,7 @@ def check_if_normalized(x, n=1000):
 
 
 def quantile_normalize(x, q=0.95):
-    """normalize each dimension of x to [0, 1]
+    """normalize each dimension of x to [0, 1], take 95-th percentage, this robust to outliers
         </br> 1. sort x
         </br> 2. take q-th quantile
         </br>     min_value -> (1-q)-th quantile
@@ -895,7 +940,7 @@ def quantile_normalize(x, q=0.95):
     return x
 
 
-def rgb_from_3d(X_3d, q=0.95):
+def rgb_from_3d_rgb_cube(X_3d, q=0.95):
     """convert 3D t-SNE to RGB color space
 
     Args:
@@ -914,7 +959,7 @@ def rgb_from_3d(X_3d, q=0.95):
     return rgb
 
 
-def rgb_from_2d(X_2d, q=0.95):
+def rgb_from_2d_colormap(X_2d, q=0.95):
     xy = X_2d.clone()
     for i in range(2):
         xy[:, i] = quantile_normalize(xy[:, i], q=q)
@@ -952,17 +997,41 @@ def correct_rotation(eigen_vector):
 
 
 def propagate_knn(
-    subgraph_eigen_vector,
+    subgraph_output,
     inp_features,
     subgraph_features,
-    knn,
+    knn=3,
     chunk_size=8096,
-    device="cuda:0",
+    device=None,
     use_tqdm=True,
 ):
+    """A generic function to propagate new nodes using KNN.
+    
+    Args:
+        subgraph_output (torch.Tensor): output from subgraph, shape (num_sample, D)
+        inp_features (torch.Tensor): features from existing nodes, shape (new_num_samples, n_features)
+        subgraph_features (torch.Tensor): features from subgraph, shape (num_sample, n_features)
+        knn (int): number of KNN to propagate eigenvectors
+        chunk_size (int): chunk size for matrix multiplication
+        device (str): device to use for computation, if None, will not change device
+        use_tqdm (bool): show progress bar when propagating eigenvectors from subgraph to full graph
+        
+    Returns:
+        torch.Tensor: propagated eigenvectors, shape (new_num_samples, D)
+        
+    Examples:
+        >>> old_eigenvectors = torch.randn(3000, 20)
+        >>> old_features = torch.randn(3000, 100)
+        >>> new_features = torch.randn(200, 100)
+        >>> new_eigenvectors = propagate_knn(old_eigenvectors, new_features, old_features, knn=3)
+        >>> # new_eigenvectors.shape = (200, 20)
+        
+    """
+    device = subgraph_output.device if device is None else device
+
     if knn == 1:
         return propagate_nearest(
-            subgraph_eigen_vector,
+            subgraph_output,
             inp_features,
             subgraph_features,
             chunk_size=chunk_size,
@@ -971,7 +1040,7 @@ def propagate_knn(
 
     # used in nystrom_ncut
     # propagate eigen_vector from subgraph to full graph
-    subgraph_eigen_vector = subgraph_eigen_vector.to(device)
+    subgraph_output = subgraph_output.to(device)
     V_list = []
     if use_tqdm:
         try:
@@ -1000,28 +1069,30 @@ def propagate_knn(
             size=(_A.shape[0], _A.shape[1]),
             device=_A.device,
         )
-        _A = _A.to_dense().to(dtype=subgraph_eigen_vector.dtype)
+        _A = _A.to_dense().to(dtype=subgraph_output.dtype)
         # _A is KNN graph
 
         _D = _A.sum(-1)
         _A /= _D[:, None]
 
-        _V = _A @ subgraph_eigen_vector
+        _V = _A @ subgraph_output
 
         V_list.append(_V.cpu())
 
-    subgraph_eigen_vector = torch.cat(V_list, dim=0)
+    subgraph_output = torch.cat(V_list, dim=0)
 
-    return subgraph_eigen_vector
+    return subgraph_output
 
 
 def propagate_nearest(
-    subgraph_eigen_vectors,
+    subgraph_output,
     inp_features,
     subgraph_features,
     chunk_size=8096,
-    device="cuda:0",
+    device=None,
 ):
+    device = subgraph_output.device if device is None else device
+
     # used in nystrom_tsne, equivalent to propagate_by_knn with knn=1
     # propagate tSNE from subgraph to full graph
     V_list = []
@@ -1032,12 +1103,132 @@ def propagate_nearest(
         _A = _v @ subgraph_features.T
         # keep top1 for each row
         top_idx = _A.argmax(dim=-1).cpu()
-        _V = subgraph_eigen_vectors[top_idx]
+        _V = subgraph_output[top_idx]
         V_list.append(_V)
 
-    subgraph_eigen_vectors = torch.cat(V_list, dim=0)
+    subgraph_output = torch.cat(V_list, dim=0)
 
-    return subgraph_eigen_vectors
+    return subgraph_output
 
 
-# %%
+def propagate_eigenvectors(
+    eigenvectors,
+    features,
+    new_features,
+    knn=3,
+    num_sample=30000,
+    sample_method="farthest",
+    chunk_size=8096,
+    device=None,
+    use_tqdm=True,
+):
+    """Propagate eigenvectors to new nodes using KNN. Note: this is equivalent to the class API `NCUT.tranform(new_features)`, expect for the sampling is re-done in this function.
+
+    Args:
+        eigenvectors (torch.Tensor): eigenvectors from existing nodes, shape (num_sample, num_eig)
+        features (torch.Tensor): features from existing nodes, shape (n_samples, n_features)
+        new_features (torch.Tensor): features from new nodes, shape (n_new_samples, n_features)
+        knn (int): number of KNN to propagate eigenvectors, default 3
+        num_sample (int): number of samples for subgraph sampling, default 50000
+        sample_method (str): sample method, 'farthest' (default) or 'random'
+        chunk_size (int): chunk size for matrix multiplication, default 8096
+        device (str): device to use for computation, if None, will not change device
+        use_tqdm (bool): show progress bar when propagating eigenvectors from subgraph to full graph
+
+    Returns:
+        torch.Tensor: propagated eigenvectors, shape (n_new_samples, num_eig)
+        
+    Examples:
+        >>> old_eigenvectors = torch.randn(3000, 20)
+        >>> old_features = torch.randn(3000, 100)
+        >>> new_features = torch.randn(200, 100)
+        >>> new_eigenvectors = propagate_eigenvectors(old_eigenvectors, new_features, old_features, knn=3)
+        >>> # new_eigenvectors.shape = (200, 20)
+    """
+
+    device = eigenvectors.device if device is None else device
+
+    # sample subgraph
+    subgraph_indices = run_subgraph_sampling(
+        features,
+        num_sample=num_sample,
+        sample_method=sample_method,
+    )
+
+    subgraph_eigenvectors = eigenvectors[subgraph_indices].to(device)
+    subgraph_features = features[subgraph_indices].to(device)
+    new_features = new_features.to(device)
+
+    # propagate eigenvectors from subgraph to new nodes
+    new_eigenvectors = propagate_knn(
+        subgraph_eigenvectors,
+        new_features,
+        subgraph_features,
+        knn=knn,
+        chunk_size=chunk_size,
+        device=device,
+        use_tqdm=use_tqdm,
+    )
+
+    return new_eigenvectors
+
+
+def propagate_rgb_color(
+    rgb,
+    eigenvectors,
+    new_eigenvectors,
+    knn=1,
+    num_sample=30000,
+    sample_method="farthest",
+    chunk_size=8096,
+    device=None,
+    use_tqdm=True,
+):
+    """Propagate RGB color to new nodes using KNN.
+
+    Args:
+        rgb (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
+        features (torch.Tensor): features from existing nodes, shape (n_samples, n_features)
+        new_features (torch.Tensor): features from new nodes, shape (n_new_samples, n_features)
+        knn (int): number of KNN to propagate RGB color, default 1
+        num_sample (int): number of samples for subgraph sampling, default 50000
+        sample_method (str): sample method, 'farthest' (default) or 'random'
+        chunk_size (int): chunk size for matrix multiplication, default 8096
+        device (str): device to use for computation, if None, will not change device
+        use_tqdm (bool): show progress bar when propagating RGB color from subgraph to full graph
+
+    Returns:
+        torch.Tensor: propagated RGB color for each data sample, shape (n_new_samples, 3)
+
+    Examples:
+        >>> old_rgb = torch.randn(3000, 3)
+        >>> old_eigenvectors = torch.randn(3000, 20)
+        >>> new_eigenvectors = torch.randn(200, 20)
+        >>> new_rgb = propagate_rgb_color(old_rgb, new_eigenvectors, old_eigenvectors)
+        >>> # new_eigenvectors.shape = (200, 3)
+    """
+    device = rgb.device if device is None else device
+
+    # sample subgraph
+    subgraph_indices = run_subgraph_sampling(
+        eigenvectors,
+        num_sample=num_sample,
+        sample_method=sample_method,
+    )
+
+    subgraph_rgb = rgb[subgraph_indices].to(device)
+    subgraph_eigenvectors = eigenvectors[subgraph_indices].to(device)
+    new_eigenvectors = new_eigenvectors.to(device)
+
+    # propagate RGB color from subgraph to new nodes
+    new_rgb = propagate_knn(
+        subgraph_rgb,
+        new_eigenvectors,
+        subgraph_eigenvectors,
+        knn=knn,
+        chunk_size=chunk_size,
+        device=device,
+        use_tqdm=use_tqdm,
+    )
+
+    return new_rgb

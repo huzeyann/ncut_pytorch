@@ -201,7 +201,7 @@ def video_mae_feature(video_path):
     videomae = VideoMAE()
     videomae = videomae.cuda()
     frames = frames.cuda()
-    frames = rearrange(frames, "(b t) c h w -> b t c h w", t=16)
+    frames = rearrange(frames, "(b t) c h w -> b t c h w", affinity_focal_gamma=16)
     feats = videomae(frames)
     return feats
 

@@ -257,8 +257,6 @@ dataset_voc = torchvision.datasets.VOCSegmentation(
 )
 print("number of images in the dataset:", len(dataset_voc))
 
-from ncut_feature_extractors import image_dinov2_feature as feature_extractor
-
 image = dataset_voc[0][0]
 feat = feature_extractor(image, resolution=(448, 448), layer=9)
 print("Feature shape per-image:", feat.shape)
@@ -286,7 +284,7 @@ from ncut_pytorch import NCUT
 
 input_feats = feats.flatten(0, 2)
 eigenvectors, eigenvalues = NCUT(
-    num_eig=50, num_sample=30000, knn=10, t=0.3, device='cpu'
+    num_eig=50, num_sample=30000, knn=10, affinity_focal_gamma=0.3, device='cpu'
 ).fit_transform(input_feats)
 ```
 
@@ -443,7 +441,7 @@ def video_mae_feature(video_path, layer=11):
     videomae = VideoMAE(layer=layer)
     videomae = videomae.cuda()
     frames = frames.cuda()
-    frames = rearrange(frames, "(b t) c h w -> b t c h w", t=16)
+    frames = rearrange(frames, "(b t) c h w -> b t c h w", affinity_focal_gamma=16)
     feats = videomae(frames)
     return feats  # (t/2, (h*w), c)
 

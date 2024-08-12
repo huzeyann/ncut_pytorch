@@ -33,9 +33,9 @@ number of eigenvectors
 <img src="../images/parameters/n_eig=1000_n_images=100.png" style="width:100%;">
 </div>
 
-## knn (propagation smoothness)
+## knn
 
-higher knn means smoother propagation
+propagation smoothness: higher knn means smoother propagation
 
 <div style="text-align: center;">
 <img src="../images/parameters/knn=1.png" style="width:100%;">
@@ -53,9 +53,11 @@ higher knn means smoother propagation
 <img src="../images/parameters/knn=100.png" style="width:100%;">
 </div>
 
-## t (sharpness for affinity)
+## affinity_focal_gamma
 
-lower t means shaper affinity
+sharpness for affinity: lower affinity_focal_gamma means shaper affinity
+
+TODO: add focal loss description
 
 <div style="text-align: center;">
 <img src="../images/parameters/t=0.1.png" style="width:100%;">

@@ -41,6 +41,8 @@ nav:
   - Gallery - Model Features: model_feature_gallery.md
   - Gallery - Application: application_gallery.md
   - Tutorial 3 - Parameters: parameters.md
+  - Tutorial 4 - Add Nodes: add_nodes.md
+  - Tutorial 5 - Mixing Data: mixing_data.md
   - Tutorial - Coloring: coloring.md
   - API Reference: api_reference.md
 
