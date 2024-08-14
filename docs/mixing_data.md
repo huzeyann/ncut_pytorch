@@ -148,3 +148,18 @@ plt.show()
 <img src="../images/mix_resolution_image.png" style="width:100%;">
 </div>
 
+<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
+        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
+            <div>
+                <h2 style="margin: 0;">The complete code for this tutorial</h2>
+                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
+            </div>
+        </div>
+        <div style="padding: 15px; background-color: #fff;">
+            <p style="margin: 0; color: #333;"></p>
+        </div>
+    </a>
+</div>
+

@@ -1,6 +1,5 @@
 # NCUT Tutorial
 
-
 ## Tutorial: Single Image
 
 ### Feature extraction
@@ -224,6 +223,22 @@ plot_3d(X_3d, rgb, "spectral-UMAP of top 10 Ncut eigenvectors")
 </div>
 
 
+<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
+        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
+            <div>
+                <h2 style="margin: 0;">The complete code for this tutorial</h2>
+                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
+            </div>
+        </div>
+        <div style="padding: 15px; background-color: #fff;">
+            <p style="margin: 0; color: #333;"></p>
+        </div>
+    </a>
+</div>
+
+
 ## Tutorial: Multiple Images
 
 **Feature extraction**
@@ -342,6 +357,22 @@ plot_images(images, image_rgb, "NCUT top 50 eigenvectors, UMAP color, DiNOv2 lay
 
 <div style="text-align: center;">
 <img src="../images/multiple_images_umap.png" alt="multiple_images_umap.png" style="width:100%;">
+</div>
+
+
+<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
+        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
+            <div>
+                <h2 style="margin: 0;">The complete code for this tutorial</h2>
+                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
+            </div>
+        </div>
+        <div style="padding: 15px; background-color: #fff;">
+            <p style="margin: 0; color: #333;"></p>
+        </div>
+    </a>
 </div>
 
 ## Tutorial: Video
@@ -530,6 +561,21 @@ for i in range(100, 1600, 200):
     </video>
 </div>
 
+<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
+        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
+            <div>
+                <h2 style="margin: 0;">The complete code for this tutorial</h2>
+                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
+            </div>
+        </div>
+        <div style="padding: 15px; background-color: #fff;">
+            <p style="margin: 0; color: #333;"></p>
+        </div>
+    </a>
+</div>
+
 ## Tutorial: Language Model
 
 
@@ -626,4 +672,19 @@ plt.show()
 
 <div style="text-align: center;">
 <img src="../images/gpt2_text.png" alt="gpt2_text.png" style="width:100%;">
+</div>
+
+<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
+        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
+            <div>
+                <h2 style="margin: 0;">The complete code for this tutorial</h2>
+                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
+            </div>
+        </div>
+        <div style="padding: 15px; background-color: #fff;">
+            <p style="margin: 0; color: #333;"></p>
+        </div>
+    </a>
 </div>
