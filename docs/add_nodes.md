@@ -1,6 +1,6 @@
 # Tutorial: Adding New Nodes to Existing Graph
 
-New nodes are assigned with eigenvectors/color by KNN Propagation.
+Once NCUT is computed, it is possible to add nodes to the existing graph. New nodes are assigned with eigenvectors/color by KNN Propagation, in other words, the new nodes are treated as they were not sampled in the nystrom approximation, they only join the propagation step. This is a good approach when the original sampled nodes have good cover of the newly added nodes.
 
 ### Feature Extraction
 
@@ -140,6 +140,8 @@ plot_images(
 
 ### Comparison: Recompute Eigenvectors vs. Propagate Eigenvectors
 
+Recomputing the eigenvectors results in better segmentation, but the color is not consistent with previous images.
+
 ``` py linenums="1"
 
 recomputed_eigenvectors, _ = NCUT(
@@ -162,5 +164,3 @@ plot_images(
 <div style="text-align: center;">
 <img src="../images/add_nodes_recompute.png" style="width:100%;">
 </div>
-
-Recomputing the eigenvectors results in better segmentation, but the color is not consistent with previous images.

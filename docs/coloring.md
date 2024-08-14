@@ -1,17 +1,16 @@
 
 ## RGB cube from t-SNE and UMAP 
 
-high dimensional eigenvectors (>3D) is reduced to 3D RGB cube by t-SNE or UMAP.
-
+NCUT eigenvectors are high dimensional, we need a bigger screen to see them all. Or we could use t-SNE/UMAP to reduce the dimension of eigenvectors to 3D, and use a 3D colormap (RGB cube) to show eigenvectors as an RGB image. 
 
 <div class="warning" style='padding:0.1em; background-color:#E9D8FD; color:#69337A'>
 <span>
 <p style='margin-top:1em; text-align:center'>
 <b>PROCEDURE - Coloring</b></p>
 <p style='margin-left:1em;'>
-1. extract features from DiNOv2 layer9, 20 images, feature shape [20, 32, 32, 768] </br>
-2. compute NCUT eigenvectors, 30 eigenvectors, eigenvector shape [20, 32, 32, 30] </br>
-3. use t-SNE or UMAP to reduce 30 eigenvectors to 3D, shape [20, 32, 32, 3] </br>
+1. extract features from DiNOv2 layer9, 20 images, feature shape [20, h, w, 768] </br>
+2. compute NCUT eigenvectors, 30 eigenvectors, eigenvector shape [20, h, w, 30] </br>
+3. use t-SNE or UMAP to reduce 30 eigenvectors to 3D, shape [20, h, w, 3] </br>
 4. color each pixel by 3D colormap (RGB cube)
 </p>
 </p></span>
@@ -54,7 +53,7 @@ high dimensional eigenvectors (>3D) is reduced to 3D RGB cube by t-SNE or UMAP.
 
 ## RGB cube rotation
 
-Human perception is nor uniform on the RGB space -- green vs. yellow color is less perceptionally different than red vs. blue. Therefore, it's a good idea to rotation the RGB cube and try a different color.
+Human perception is not uniform on the RGB color space -- green vs. yellow is less perceptionally different than red vs. blue. Therefore, it's a good idea to rotate the RGB cube and try a different color.
 
 ```py linenums="1"
 # 9-way rotation of the rgb

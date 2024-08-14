@@ -6,7 +6,13 @@
 **Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
 
 ## Gallery
-TODO
+
+Model features visualized by NCUT
+
+<a href="../gallery/">
+    <img src="../images/ncut_gallery_cover.jpg" alt="Description of the image" style="width: 100%; height: auto;">
+</a>
+
 
 ## Installation
 
@@ -16,9 +22,10 @@ PyPI install, our package is based on [PyTorch](https://pytorch.org/get-started/
 pip install ncut-pytorch
 ```
 
-[Install PyTorch](https://pytorch.org/get-started/locally/) if you haven't
+[Install PyTorch](https://pytorch.org/get-started/locally/) by `pip` (for CPU only) or `conda` (recommended for GPU)
 ```shell
 pip install torch
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 ```
 ## Why NCUT
 
@@ -28,7 +35,7 @@ Normalized cut offers two advantages:
 
 2. hierarchical clustering by varying the number of eigenvectors
 
-Please see [NCUT and t-SNE/UMAP](compare.md) for a full comparison.
+Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t-SNE, UMAP.
 
 
 > paper in prep, Yang 2024
@@ -60,10 +67,11 @@ Please see [NCUT and t-SNE/UMAP](compare.md) for a full comparison.
 - [Tutorial 1 - Toy Examples](tutorials.md)
 - [Tutorial 2 - How NCUT Works](how_ncut_works.md)
 - [NCUT and t-SNE/UMAP](compare.md)
-- [Gallery - Model Features](model_feature_gallery.md)
-- [Gallery - Application](application_gallery.md)
+- [Gallery](gallery.md)
 - [Tutorial 3 - Parameters](parameters.md)
 - [Tutorial 4 - Add Nodes](add_nodes.md)
 - [Tutorial 5 - Mixing Data](mixing_data.md)
 - [Tutorial - Coloring](coloring.md)
+- [Speed and Performance](speed_and_performance.md)
+- [Gradient of NCUT](gradient_of_ncut.md)
 - [API Reference](api_reference.md)

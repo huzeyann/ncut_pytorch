@@ -1,5 +1,8 @@
-### Comparison
+### Comparison of NCUT vs. PCA 
 
+NCUT and PCA could both be used as dimension reduction before feeding into t-SNE or UMAP, it's a standard practice and recommended by the original t-SME/UMAP authors to use PCA as pre-processing. However, PCA by definition does not explore the segmentation properties, NCUT gives better segmentation.
+
+We use the following procedure to compare NCUT and PCA, t-SNE/UMAP is applied after NCUT or PCA.
 
 #### NCUT+t-SNE vs. PCA+t-SNE
 
@@ -9,14 +12,14 @@
 <b>PROCEDURE - Comparison</b></p>
 <p style='margin-left:1em;'>
 <b>For NCUT+t-SNE:</b> </br>
-1. extract features from DiNOv2 layer9, 20 images, feature shape [20, 32, 32, 768] </br>
-2. compute NCUT eigenvectors, 20 eigenvectors, eigenvector shape [20, 32, 32, 20] </br>
-3. use t-SNE or UMAP to reduce 20 eigenvectors to 3D, shape [20, 32, 32, 3] </br>
+1. extract features from DiNOv2 layer9, 20 images, feature shape [20, h, w, 768] </br>
+2. compute NCUT eigenvectors, 20 eigenvectors, eigenvector shape [20, h, w, 20] </br>
+3. use t-SNE or UMAP to reduce 20 eigenvectors to 3D, shape [20, h, w, 3] </br>
 4. color each pixel by 3D colormap (RGB cube) </br>
 <b>For PCA+t-SNE:</b> </br>
-1. extract features from DiNOv2 layer9, 20 images, feature shape [20, 32, 32, 768] </br>
-2. compute PCA embeddings, 20 PCs, PC shape [20, 32, 32, 20] </br>
-3. use t-SNE or UMAP to reduce 20 PCs to 3D, shape [20, 32, 32, 3] </br>
+1. extract features from DiNOv2 layer9, 20 images, feature shape [20, h, w, 768] </br>
+2. compute PCA embeddings, 20 PCs, PC shape [20, h, w, 20] </br>
+3. use t-SNE or UMAP to reduce 20 PCs to 3D, shape [20, h, w, 3] </br>
 4. color each pixel by 3D colormap (RGB cube) </br>
 </p>
 </p></span>

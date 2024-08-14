@@ -14,3 +14,5 @@
 ### Indirect Connection
 
 ### KNN Propagation 
+
+> note on orthogonality

@@ -22,7 +22,7 @@ class NCUT:
         eig_solver="svd_lowrank",
         normalize_features=True,
         matmul_chunk_size=8096,
-        make_orthogonal=True,
+        make_orthogonal=False,
         verbose=False,
     ):
         """
@@ -265,7 +265,7 @@ def nystrom_ncut(
     eig_solver="svd_lowrank",
     normalize_features=True,
     matmul_chunk_size=8096,
-    make_orthogonal=True,
+    make_orthogonal=False,
     verbose=False,
     no_propagation=False,
 ):
@@ -873,10 +873,10 @@ def gram_schmidt(matrix):
     Args:
         matrix (torch.Tensor): A matrix to be orthogonalized (m x n).
             the second dimension is orthogonalized
-
     Returns:
         torch.Tensor: Orthogonalized matrix (m x n).
     """
+    
     # Get the number of rows (m) and columns (n) of the input matrix
     m, n = matrix.shape
 
