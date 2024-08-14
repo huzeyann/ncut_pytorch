@@ -9,9 +9,11 @@
 
 Model features visualized by NCUT
 
+<div style="text-align: center;">
 <a href="../gallery/">
-    <img src="../images/ncut_gallery_cover.jpg" alt="Description of the image" style="width: 100%; height: auto;">
+<img src="../images/ncut_gallery_cover.jpg" style="width:100%;">
 </a>
+</div>
 
 
 ## Installation
