@@ -5,10 +5,25 @@
 Spectral clustering is a powerful technique for clustering data based on the eigenvectors (spectrum) of a similarity matrix derived from the data. The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value.
 
 ### 1.1 The Basic Idea
-Spectral clustering works by embedding the data points into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph. The data is then clustered in this new space.
+Spectral clustering works by embedding the data points $F \in \mathbb{R}^{N \times D}$ into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph $W \in \mathbb{R}^{N \times N}$. The data is then clustered in this new space embedded by $k$ eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$.
 
 ### 1.2 The Graph Laplacian
 Given a set of data points, spectral clustering first constructs a similarity graph. Each node represents a data point, and edges represent the similarity between data points. The similarity graph can be represented by an adjacency matrix \( W \), where each element \( W_{ij} \) represents the similarity between data points \( i \) and \( j \).
+
+
+Take cosine distance for example, let $F \in \mathbb{R}^{N \times D}$ be the input features (from a backbone image model), $N$ is number of pixels, $D$ is feature dimension. Feature vectors $f_i, f_j \in \mathbb{R}^D$, the cosine similarity between $f_i$ and $f_j$ is defined as:
+
+$$W_{ij} = \text{cosine}(f_i, f_j) = \frac{f_i \cdot f_j}{|f_i| |f_j|}$$
+
+where $|f|$ denotes the Euclidean norm of a vector $f$.
+
+In matrix form, this can be written as:
+
+$$W = \text{cosine}(F, F) = \frac{F F^\top}{\text{diag}(F F^\top)^{1/2} , \text{diag}(F F^\top)^{1/2}}$$
+
+where $F F^\top \in \mathbb{R}^{N \times N}$ is the matrix of pairwise dot products between the feature vectors, and $\text{diag}(\cdot)$ extracts the diagonal elements of a square matrix.
+The resulting matrix $W = \text{cosine}(F, F)$ is an $\mathbb{R}^{N \times N}$ matrix, where each element $(i, j)$ represents the cosine similarity between the $i$-th and $j$-th feature vectors.
+
 
 The degree matrix \( D \) is a diagonal matrix where each element \( D_{ii} \) is the sum of the similarities of node \( i \) to all other nodes.
 
@@ -104,37 +119,15 @@ Minimizing this directly is NP-hard. However, it can be relaxed into a generaliz
 L \mathbf{y} = \lambda D \mathbf{y}
 \]
 
-This is equivalent to finding the eigenvectors of the normalized Laplacian:
+To make it a simple eigenvalue solving, that can be solved by most eigenvector solvers. 
+Move $D$ to the left side of the equation. this is equivalent to finding the eigenvectors of the normalized Laplacian:
 
 \[
-L_{\text{sym}} \mathbf{y} = \lambda \mathbf{y}
+D^{-1/2} L D^{-1/2} \mathbf{y} = \lambda \mathbf{y}
 \]
 
-Where \( L_{\text{sym}} = D^{-1/2} L D^{-1/2} \) is the symmetric normalized Laplacian.
 
-
-Since \(Y Y^T = I \), Normalized Cuts can also be solved by eigenvectors of \(D^{-1/2} W D^{-1/2} \).
-
-\[
-I - D^{-1/2} W D^{-1/2} = Y \Lambda Y^T
-\]
-
-\[
-D^{-1/2} W D^{-1/2} = Y (I - \Lambda) Y^T
-\]
-
-#### Eigenvectors and Clustering
-
-The eigenvector corresponding to the second smallest eigenvalue (also called the Fiedler vector) provides a real-valued solution to the relaxed Ncut problem. Sorting the nodes based on the values in this eigenvector and choosing a threshold to split them yields an approximate solution to the Ncut problem.
-
-Each subsequent eigenvector can be used to further partition the graph into subclusters. The process is as follows:
-
-1. Compute the symmetric normalized Laplacian \( L_{\text{sym}} \).
-2. Compute the eigenvectors \( \mathbf{y}_1, \mathbf{y}_2, \dots, \mathbf{y}_k \) corresponding to the smallest \( k \) eigenvalues.
-3. Use \( \mathbf{y}_2 \) (the Fiedler vector) to divide the graph into two clusters.
-4. For multi-way clustering, use the next eigenvectors \( \mathbf{y}_3, \mathbf{y}_4, \dots \) to further subdivide these clusters.
-
-##### Proof of Minimization
+#### Proof of Minimization
 
 The eigenvector approach is derived from the relaxation of the original NP-hard problem. By solving the generalized eigenvalue problem:
 
@@ -145,10 +138,52 @@ L \mathbf{y} = \lambda D \mathbf{y}
 We are effectively minimizing the Rayleigh quotient:
 
 \[
-\frac{\mathbf{y}^\top L \mathbf{y}}{\mathbf{y}^\top D \mathbf{y}}
+\frac{\mathbf{y}^\top L \mathbf{y}}{\mathbf{y}^\top D \mathbf{y}} = \frac{\mathbf{y}^\top D^{-1/2} L D^{-1/2} \mathbf{y}}{\mathbf{y}^\top  \mathbf{y}}
 \]
 
-This quotient represents a trade-off between minimizing the cut (numerator) and balancing the partition (denominator), directly reflecting the Ncut objective.
+The Rayleigh quotient directly reflecting the Ncut objective.
+
+\[
+\text{Ncut}(A, B) = \frac{\mathbf{x}^\top L \mathbf{x}}{\mathbf{x}^\top D \mathbf{x}} = \frac{\mathbf{x}^\top D^{-1/2} L D^{-1/2} \mathbf{x}}{\mathbf{x}^\top \mathbf{x}}
+\]
+
+thus, solving eigenvector $\mathbf{y}$ of $D^{-1/2} L D^{-1/2} = \lambda \mathbf{y}$ is equal to solving the graph cut solution $\mathbf{x}$:
+
+\[ 
+    \mathbf{x} = \mathbf{y} 
+\]
+
+
+#### Laplacian vs Affinity
+
+Since \(Y Y^T = I \), Normalized Cuts can also be solved by eigenvectors of \(D^{-1/2} W D^{-1/2} \), instead of \(D^{-1/2} L D^{-1/2} \), where $L = D - W$.
+
+$$\begin{aligned}
+D^{-1/2} (D - W) D^{-1/2} &= Y \Lambda Y^T \\
+I - D^{-1/2} W D^{-1/2} &= Y \Lambda Y^T \\
+D^{-1/2} W D^{-1/2} &= Y (I - \Lambda) Y^T
+\end{aligned}$$
+
+#### Eigenvectors and Clustering
+
+The eigenvector corresponding to the second smallest eigenvalue (also called the Fiedler vector) provides a real-valued solution to the relaxed Ncut problem. Sorting the nodes based on the values in this eigenvector and choosing a threshold to split them yields an approximate solution to the Ncut problem.
+
+Each subsequent eigenvector can be used to further partition the graph into subclusters. The process is as follows:
+
+1. Compute the symmetric normalized Laplacian \( L_{\text{sym}} \).
+2. Compute the eigenvectors \( \mathbf{x}_1, \mathbf{x}_2, \dots, \mathbf{x}_k \) corresponding to the smallest \( k \) eigenvalues.
+3. Use \( \mathbf{x}_2 \) (the Fiedler vector) to divide the graph into two clusters.
+4. For multi-way clustering, use the next eigenvectors \( \mathbf{x}_3, \mathbf{x}_4, \dots \) to further hierarchically subdivide these clusters.
+
+##### Eigenvector Solver
+
+Solving the full eigenvector $\mathbf{x} \in \mathbb{R}^{N \times N}$ is computational expensive, methods has been developed to solve top k eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$ in linearly complexity scaling. In particular, we use [svd_lowrank](https://pytorch.org/docs/stable/generated/torch.svd_lowrank.html).
+
+- Reference: 
+
+    Nathan Halko, Per-Gunnar Martinsson, and Joel Tropp, Finding structure with randomness: probabilistic algorithms for constructing approximate matrix decompositions, 2009.
+
+
 
 ##### Example: Eigenvector Visualization
 
@@ -211,15 +246,17 @@ plt.show()
 <img src="../images/dots_eig.jpg.png" style="width:100%;">
 </div>
 
-- Each eigenvector reveals different partitions of the graph, showing how the spectral clustering process divides the dataset into meaningful subclusters.
+- The 1-st eigenvector generally corresponds to the global structure (often related to the connected components of the graph).
 
-- The first eigenvector generally corresponds to the global structure (often related to the connected components of the graph).
+- The 2-nd eigenvector splits the graph into 2 clusters.
+
+- Subsequent eigenvectors further hierarchically splits the data into more detailed sub-clusters.
+
 
 <div style="text-align: center;">
 <img src="../images/dots_kmeans.png" style="width:60%;">
 </div>
 
-- Subsequent eigenvectors further refine the clustering by splitting the data into more detailed subclusters.
 
 ### Summary
 The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value. It embeds the data points into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph.
@@ -232,62 +269,17 @@ Eigenvectors are:
 
 ------
 
-<!-- ## Nystrom-like Approximation
-
-Nystrom approximation aims to solve large-scale graph cuts. 
-
-it 1) sub-sample a set of nodes. 2) Compute Ncut on the sampled nodes. 3) propagate the eigenvectors from sampled nodes to un-sampled nodes
-
-Partition the affinity matrix W as
-
-W =[ A B
-B^T C]
-
-with A in R(nxn), B \in R(N-n)xn, and C \in R(N-n)x(N-n). Here,
-A represents the subblock of weights among the random
-samples, B contains the weights from the random samples
-to the rest of the pixels, and C contains the weights between
-all of the remaining pixels. In the case of interest, n << N, so
-C is huge. 
-
-### Sub-sampling
-
-A good sampling strategy is critical for a good approximation. 
-
-Farthest point sampling is used, it ensure...
-
-In practice FPS is expensive for high-dimensional input (model features), we use PCA to reduce the feature dimension.
-
-### Indirect Connection
-
-Not sampled nodes could be connecting two clusters, ignoring them will alter the cluster assignments
-
-The original Nystrom Methods use \( S = A + A(-0.5) B B^T A^(-0.5) \) and solve eigenvector on S, this way B B^T will adds the indirect connection
-
-we solve eigenvector on \( S = A + (1/D_row B) (1/D_col B'^T)  \), where D_row and D_col is row and column sum on B, (1/D_row B) (1/D_col B'^T) adds the indirect random walk probability
-
-In practice, B in R(N-n)xn, storing and computing could be overwhelmingly expensive, we use PCA to reduce input number of nodes before computing B. Given feature size D, n sampled nodes F_A \in R(nxD), N-n un-sampled nodes F_B \in R((N-n)xD), F_B' \in R(mxD) is the PCA-ed version of F_B, where m << N-n, resulting B in R(m)xn greatly reduce the computation bottleneck.
-
-
-
-### KNN Propagation 
-
-Our Nystrom-like Approximation first solves the eigenvector $\bm{X}' \in \mathbb{R}^{m \times C}$ on a sub-sampled graph $\bm{A}' \in \mathbb{R}^{m \times m}$ using \Cref{eq:ncut}, then propagates the eigenvector from the sub-graph $m$ nodes to the full-graph $M$ nodes. Let $\bm{\Tilde{X}} \in \mathbb{R}^{M \times C}$ be the approximation $\bm{\Tilde{X}} \approx \bm{X}$. The eigenvector approximation $\bm{\Tilde{X}}_i$ of full-graph node $i \leq M$ is assigned by averaging the top K-nearest neighbors' eigenvector $\bm{X}'_k$ from the sub-graph nodes $k \leq m$:
-\begin{equation}
-\begin{aligned}
-    \mathcal{K}_i &= KNN(\bm{A}_{*i}; m, K) = \argmax_{k \leq m} \sum_{k=1}^{K} \bm{A}_{ki}  \\
-    % \bm{X}_i &= \frac{1}{|\mathcal{K}_i|} \sum_{k\in \mathcal{K}_i} \bm{A}_{ki} \bm{X}'_k 
-    \bm{\Tilde{X}}_i &= \frac{1}{\sum_{k\in \mathcal{K}_i} \bm{A}_{ki}} \sum_{k\in \mathcal{K}_i} \bm{A}_{ki} \bm{X}'_k 
-\end{aligned}
-\end{equation}
-where $KNN(\bm{A}_{*i}; m, K)$ denotes KNN from full-graph node $i \leq M$ to sub-graph nodes $k \leq m$.  -->
 
 
 ## Nystrom-like Approximation
 
-The Nystrom-like approximation is our new technique designed to address the computational challenges of solving large-scale graph cuts. The approach involves three main steps: (1) sub-sampling a subset of nodes, (2) computing the Normalized Cut (Ncut) on the sampled nodes, and (3) propagating the eigenvectors from the sampled nodes to the unsampled nodes.
+The Nystrom-like approximation is our new technique designed to address the computational challenges of solving large-scale graph cuts. 
 
-### Partitioning the Affinity Matrix
+**An intuition**: Nystrom approximation solve the large-scale problem on a small sub-sampled set, then propagate the solution from the small set to the large set.
+
+The approach involves three main steps: (1) sub-sampling a subset of nodes, (2) computing the Normalized Cut (Ncut) on the sampled nodes, and (3) propagating the eigenvectors from the sampled nodes to the unsampled nodes.
+
+### Sub-sampling the Affinity Matrix
 
 The affinity matrix \( W \) is partitioned as follows:
 
@@ -300,19 +292,24 @@ B^\top & C
 
 where:
 
-- \( A \in \mathbb{R}^{n \times n} \) represents the submatrix of weights among the sampled nodes,
+- \( A \in \mathbb{R}^{n \times n} \) is the submatrix of weights among the sampled nodes,
 
-- \( B \in \mathbb{R}^{(N-n) \times n} \) contains the weights between the sampled nodes and the remaining unsampled nodes,
+- \( B \in \mathbb{R}^{(N-n) \times n} \) is the weights between the sampled nodes and the remaining unsampled nodes,
 
-- \( C \in \mathbb{R}^{(N-n) \times (N-n)} \) represents the weights between the unsampled nodes.
+- \( C \in \mathbb{R}^{(N-n) \times (N-n)} \) is the weights between the unsampled nodes.
 
-In practical scenarios, \( n \) (the number of sampled nodes) is much smaller than \( N \) (the total number of nodes), making \( C \) a very large matrix that is computationally expensive to handle. \( B \) is also expensive to store and compute once sampled nodes \( n \) gets large.
+**Computation loads**: \( C \) is a very large matrix that is computationally expensive to handle. \( B \) is also expensive to store and compute once sampled nodes \( n \) gets large, although \( n \) (the number of sampled nodes) is much smaller than \( N \) (the total number of nodes), a better quality of  Nystrom approximation requires \( n \) to be larger, thus makes \( B \) a large matrix.
  
-### Sub-sampling
+### A Good Sampling Strategy: FPS
 
-An effective sampling strategy is crucial for obtaining a good approximation of the Ncut. Farthest Point Sampling (FPS) is used because it ensures that the sampled nodes are well-distributed across the graph. However, FPS can be computationally expensive, especially for high-dimensional input data (e.g., model features). To mitigate this, Principal Component Analysis (PCA) is used to reduce the dimensionality of the features before applying FPS. We use a QuickFPS algorithm developed by 
+An effective sampling strategy is crucial for obtaining a good approximation of the Ncut. Farthest Point Sampling (FPS) is used because it ensures that the sampled nodes are well-distributed across the graph. 
+We use a tree-based QuickFPS algorithm developed in 
 
-- Reference: QuickFPS: Architecture and Algorithm Co-Design for Farthest Point Sampling in Large-Scale Point Cloud, Han, Meng and Wang, Liang and Xiao, Limin and Zhang, Hao and Zhang, Chenhao and Xu, Xiangrong and Zhu, Jianfeng, 2023
+- Reference: 
+
+    QuickFPS: Architecture and Algorithm Co-Design for Farthest Point Sampling in Large-Scale Point Cloud, Han, Meng and Wang, Liang and Xiao, Limin and Zhang, Hao and Zhang, Chenhao and Xu, Xiangrong and Zhu, Jianfeng, 2023
+
+As a side note, for high-dimensional input model features $F \in \mathbb{R}^{N \times D}$ where $D$ is feature dimension, FPS can be computationally expensive for large $D$. To mitigate this, Principal Component Analysis (PCA) is used to reduce the dimensionality of the features to $F' \in \mathbb{R}^{N \times 5}$. PCA is only applied in the FPS sampling step, but not to the affinity graph $W$.
 
 ### Accounting for Indirect Connections
 
@@ -322,31 +319,40 @@ Unsampled nodes can act as bridges between clusters, and ignoring these connecti
 S = A + A^{-1/2} B B^\top A^{-1/2}
 \]
 
-Here, the term \( B B^\top \) accounts for indirect connections between the sampled nodes by considering the influence of the unsampled nodes.
+Here, the term \( A^{-1/2} B B^\top A^{-1/2} \in \mathbb{R}^{n \times n} \) accounts for indirect connections between the sampled nodes by considering the influence of the unsampled nodes.
 
-In our method, we refine this approximation by solving for eigenvectors on the matrix \( S \) given by:
+In our method, we solve for eigenvectors on the matrix \( S \) given by:
 
 \[
 S = A + \left({D_{\text{r}}}^{-1} B\right) \left(B {D_{\text{c}}}^{-1}\right)^\top
 \]
 
-where \( D_{\text{r}} \) and \( D_{\text{c}} \) are the row and column sums of matrix \( B \), respectively. \( \left({D_{\text{r}}}^{-1} B\right) \left(B {D_{\text{c}}}^{-1}\right)^\top \) is the indirect random walk probabilities.
+where \( D_{\text{r}} \) and \( D_{\text{c}} \) are the row and column sums of matrix \( B \), respectively. 
 
-Given that \( B \) has dimensions \( (N-n) \times n \), directly storing and computing with \( B \) can be prohibitively expensive. To overcome this, we reduce the number of unsampled nodes by applying PCA. If the feature size is \( D \), let \( F_A \in \mathbb{R}^{n \times D} \) be the feature matrix for the sampled nodes, and \( F_B \in \mathbb{R}^{(N-n) \times D} \) be the feature matrix for the unsampled nodes. After applying PCA, the reduced feature matrix \( F_B' \in \mathbb{R}^{m \times D} \) represents the unsampled nodes, where \( m \ll (N-n) \). Thus, \( B \) becomes a matrix of size \( m \times n \), significantly reducing computational overhead.
+the term \( \left({D_{\text{r}}}^{-1} B\right) \left(B {D_{\text{c}}}^{-1}\right)^\top \in \mathbb{R}^{n \times n}\) is the indirect random walk probabilities.
+
+Given that \( B \) has dimensions \( (N-n) \times n \), directly storing and computing with \( B \) can be prohibitively expensive. To overcome this, we reduce the number of unsampled nodes by applying PCA. If the feature size is \( D \), let \( F_A \in \mathbb{R}^{n \times D} \) be the feature matrix for the sampled nodes, and \( F_B \in \mathbb{R}^{(N-n) \times D} \) be the feature matrix for the unsampled nodes. After applying PCA, $m$ is the PCA-ed dimension, the reduced feature matrix \( F_B' \in \mathbb{R}^{m \times D} \) represents the unsampled nodes, where \( m \ll (N-n) \). Thus, \( B' = d(F_A, F_{B'}) \) becomes a matrix of size \( m \times n \), thus significantly reduce computation loads.
 
 ### K-Nearest Neighbors (KNN) Propagation
 
-After computing the eigenvectors \( \mathbf{X}' \in \mathbb{R}^{n \times C} \) on the sub-sampled graph \( \mathbf{S} \in \mathbb{R}^{n \times n} \) using the Ncut formulation, the next step is to propagate these eigenvectors to the full graph. Let \( \mathbf{\tilde{X}} \in \mathbb{R}^{N \times C} \) be the approximated eigenvectors for the full graph, where \( N \) is the total number of nodes. The eigenvector approximation \( \mathbf{\tilde{X}}_i \) for each node \( i \leq N \) in the full graph is obtained by averaging the eigenvectors \( \mathbf{X}'_k \) of the top K-nearest neighbors from the subgraph:
+After computing the eigenvectors \( \mathbf{X}' \in \mathbb{R}^{n \times C} \) on the sub-sampled graph \( S = A + \left({D_{\text{r}}}^{-1} B'\right) \left(B' {D_{\text{c}}}^{-1}\right)^\top \in \mathbb{R}^{n \times n} \) using the Ncut formulation, the next step is to propagate these eigenvectors to the full graph. Let \( \mathbf{\tilde{X}} \in \mathbb{R}^{N \times C} \) be the approximated eigenvectors for the full graph, where \( N \) is the total number of nodes. The eigenvector approximation \( \mathbf{\tilde{X}}_i \) for each node \( i \leq N \) in the full graph is obtained by averaging the eigenvectors \( \mathbf{X}'_k \) of the top K-nearest neighbors from the subgraph:
 
 \[
-\mathcal{K}_i = \text{KNN}(\mathbf{A}_{*i}; n, K) = argmax_{k \leq n} \sum_{k=1}^{K} \mathbf{A}_{ki}
+\mathcal{K}_i = \text{KNN}(\mathbf{A}_{*i}; n, K) = argmax_{k \leq n} \sum_{k=1}^{K} \mathbf{B}_{ki}
 \]
 
 \[
-\mathbf{\tilde{X}}_i = \frac{1}{\sum_{k \in \mathcal{K}_i} \mathbf{A}_{ki}} \sum_{k \in \mathcal{K}_i} \mathbf{A}_{ki} \mathbf{X}'_k 
+\mathbf{\tilde{X}}_i = \frac{1}{\sum_{k \in \mathcal{K}_i} \mathbf{B}_{ki}} \sum_{k \in \mathcal{K}_i} \mathbf{B}_{ki} \mathbf{X}'_k 
 \]
 
 Here, \( \text{KNN}(\mathbf{A}_{*i}; n, K) \) denotes the set of K-nearest neighbors from the full-graph node \( i \leq N \) to the sub-graph nodes \( k \leq n \). In other words, the eigenvectors of un-sampled nodes are assigned by weighted averaging top KNN eigenvectors from sampled nodes.
+
+The propagation step is only when \(B \in \mathbb{R}^{n \times (N-n)} \) is computed (but not stored), recall that the full \( B \) is too large to store, our implementation divide the propagation into chunks, where each $q$ size chunk \(B_i \in \mathbb{R}^{n \times (q)} \) is feasible to store, each chunk \(B_i\) is discarded after the propagation. In practice, the KNN propagation is the major speed bottle-neck for NCUT on large-scale graph, but it's easy to parallelize on GPU. 
+
+```py
+# GPU speeds up the KNN propagation
+eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(data)
+```
 
 ---
 
