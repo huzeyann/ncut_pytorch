@@ -44,15 +44,13 @@ In practice, it's recommended to reduce the value of `affinity_focal_gamma` (def
 
 ## Increase Sampling Size
 
+It's recommended to use as large sample size as it fits into memory (default `num_sample=30000`).
+
 Nystrom approximation made it possible to compute on large-scale graph (see [How NCUT Works](how_ncut_works.md)). A decent sampling size of Nystrom approximation is critical for a good approximation. 
 In general, as the graph gets larger, the sampling size need to be increased. In fact, the increased need for larger sampling size is due to the increased complexity of the graph but not more number of nodes.
 E.g., 100 images of different cats will be more complex than 100 views of the same cats, hence larger sample size is recommended.
+Thank's to [svd_lowrank](https://pytorch.org/docs/stable/generated/torch.svd_lowrank.html), the time complexity of NCUT scales **linearly** w.r.t. sample size, the bottleneck is memory scales quadratically. 
 
-Thank's to `svd_lowrank`, the time complexity of NCUT scales **linearly** w.r.t. sample size, the bottleneck is memory usage scales quadratically. 
-
-In summary, it's recommended to use as large sample size as it fits into memory (default `num_sample=30000`).
-
-- Reference: Nathan Halko, Per-Gunnar Martinsson, and Joel Tropp, Finding structure with randomness: probabilistic algorithms for constructing approximate matrix decompositions, arXiv:0909.4061 [math.NA; math.PR], 2009
 
 ## Rotate the RGB Cube
 
@@ -77,7 +75,7 @@ eigenvectors3, eigenvalues3 = NCUT(num_eig=20, affinity_focal_gamma=0.3).fit_tra
 
 **Recursive NCUT amplifies small object parts** because:
 
-1. Eigenvectors with small eigenvalues are amplified -- we didn't take eigenvalue but only took eigenvectors in each iteration. This could be beneficial if we picked the good eigenvector number, if too much eigenvectors are picked, the noise will gets amplified. Less or no recursion is better for whole-object segmentation.
+1. Eigenvectors with small eigenvalues are amplified -- we didn't take eigenvalue but only took eigenvectors in each iteration. This could be beneficial if we picked a good eigenvector number, if too much eigenvectors are picked, the noise will gets amplified. Less or no recursion is better for whole-object segmentation.
 2. Affinity is amplified in each iteration. When used recursive NCUT with `affinity_focal_gamma < 1`, each iteration will clean up the affinity graph and amplify the strong connections.
 
 The following example applied NCUT to 300 images, recursion 1 take 100 eigenvectors, recursion 2 take 50 eigenvectors, recursion 3 take 20 eigenvectors. 

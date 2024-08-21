@@ -1,6 +1,14 @@
 ### Comparison of NCUT vs. PCA 
 
-NCUT and PCA could both be used as dimension reduction before feeding into t-SNE or UMAP, it's a standard practice and recommended by the original t-SME/UMAP authors to use PCA as pre-processing. However, PCA by definition does not explore the segmentation properties, NCUT gives better segmentation.
+NCUT and PCA could both be used as dimension reduction before feeding into t-SNE or UMAP, it's a standard practice and recommended by the original t-SME/UMAP authors to use PCA as pre-processing. However, PCA by definition does not give good segmentation, NCUT gives better segmentation because:
+
+1. the use of nonlinear pair-wise similarity space
+
+2. symmetrical normalization and graph cut objective
+
+3. clean up of the affinity matrix by focal gamma
+
+------
 
 We use the following procedure to compare NCUT and PCA, t-SNE/UMAP is applied after NCUT or PCA.
 

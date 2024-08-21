@@ -1,13 +1,21 @@
 # How NCUT works
 
-## Normalized Cut and Spectral Clustering
+## Normalized Cuts and Spectral Clustering
 
 Spectral clustering is a powerful technique for clustering data based on the eigenvectors (spectrum) of a similarity matrix derived from the data. The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value.
 
-### 1.1 The Basic Idea
+<div style="text-align: center;">
+<img src="../images/graph_cut.png" style="width:100%;">
+</div>
+Image taken from [Spectral Clustering: Step-by-step derivation of the spectral clustering algorithm including an implementation in Python](https://medium.com/@roiyeho/spectral-clustering-50aee862d300)
+
+
+---
+
+### The Basic Idea
 Spectral clustering works by embedding the data points $F \in \mathbb{R}^{N \times D}$ into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph $W \in \mathbb{R}^{N \times N}$. The data is then clustered in this new space embedded by $k$ eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$.
 
-### 1.2 The Graph Laplacian
+### The Graph Laplacian
 Given a set of data points, spectral clustering first constructs a similarity graph. Each node represents a data point, and edges represent the similarity between data points. The similarity graph can be represented by an adjacency matrix \( W \), where each element \( W_{ij} \) represents the similarity between data points \( i \) and \( j \).
 
 
@@ -48,7 +56,7 @@ L_{\text{rw}} = D^{-1} L = I - D^{-1} W
 \]
 
 
-### 2.1 Normalized Cuts 
+### Normalized Cuts 
 Normalized Cuts (Ncut) is a method for partitioning a graph into disjoint subsets, aiming to minimize the total edge weight between the subsets relative to the total edge weight within each subset. The Ncut criterion is particularly useful for ensuring balanced partitioning, which prevents trivial solutions where one cluster might be significantly smaller than the other.
 
 The normalized cut criterion is defined as:
@@ -75,7 +83,8 @@ Where:
 
 The goal is to find a partition that minimizes the Ncut value, which balances minimizing the inter-cluster connection (cut) with maintaining strong intra-cluster connections (association).
 
-### 2.2 Solving the Normalized Cut Using Eigenvectors
+
+### Solving the Normalized Cut Using Eigenvectors
 
 To solve the Ncut problem, we reformulate it as a problem of finding the eigenvectors of a normalized graph Laplacian. Here’s how this works:
 
@@ -185,7 +194,7 @@ Solving the full eigenvector $\mathbf{x} \in \mathbb{R}^{N \times N}$ is computa
 
 
 
-##### Example: Eigenvector Visualization
+#### Example: Eigenvector Visualization
 
 Let's visualize how the eigenvectors divide the graph into clusters using our toy example.
 
