@@ -53,7 +53,7 @@ NCUT eigenvectors are high dimensional, we need a bigger screen to see them all.
 
 ## RGB cube rotation
 
-Human perception is not uniform on the RGB color space -- green vs. yellow is less perceptionally different than red vs. blue. Therefore, it's a good idea to rotate the RGB cube and try a different color.
+Human perception is not uniform on the RGB color space -- green vs. yellow is less perceptually different than red vs. blue. Therefore, it's a good idea to rotate the RGB cube and try a different color. In the following example, all images has the same euclidean distance matrix, but perceptually they could tell different story.
 
 ```py linenums="1"
 # 9-way rotation of the rgb

@@ -3,37 +3,22 @@
 
 ## num_eig
 
-number of eigenvectors, more eigenvectors give more details on the segmentation, but is more eigenvectors is harder to visualize.
+number of eigenvectors 
+
+More eigenvectors give more details on the segmentation, less eigenvectors is more robust.
 
 In NCUT, by math design (see [How NCUT Works](how_ncut_works.md)), i-th eigenvector give a optimal graph cut that divides the graph into 2^(i-1) clusters. E.g. `eigenvectors[:, 1]` divides the graph into 2 clusters, `eigenvectors[:, 1:4]` divides the graph into 8 clusters.
 
+To answer the ultimate question ``How many eigenvectors should one use?'', one need to consider the complexity of the graph (how many images, what's the backbone model), and the goal (e.g., whole body vs body parts). Here's an example grid search of how many eigenvectors to include:
+
 <div style="text-align: center;">
-<img src="../images/parameters/n_eig=10_n_images=100.png" style="width:100%;">
+<img src="../images/n_eig_raw.jpg" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="../images/parameters/n_eig=20_n_images=100.png" style="width:100%;">
+<img src="../images/n_eig_tsne.jpg" style="width:100%;">
 </div>
 
-<div style="text-align: center;">
-<img src="../images/parameters/n_eig=30_n_images=100.png" style="width:100%;">
-</div>
-
-<div style="text-align: center;">
-<img src="../images/parameters/n_eig=40_n_images=100.png" style="width:100%;">
-</div>
-
-<div style="text-align: center;">
-<img src="../images/parameters/n_eig=50_n_images=100.png" style="width:100%;">
-</div>
-
-<div style="text-align: center;">
-<img src="../images/parameters/n_eig=100_n_images=100.png" style="width:100%;">
-</div>
-
-<div style="text-align: center;">
-<img src="../images/parameters/n_eig=1000_n_images=100.png" style="width:100%;">
-</div>
 
 ## knn
 
@@ -66,9 +51,9 @@ A_ij = 1 - cos_similarity(node_i, node_j)
 A_ij = exp(-(A_ij / affinity_focal_gamma))
 ```
 
-lower `affinity_focal_gamma` means shaper affinity. 
+lower `affinity_focal_gamma` means sharper affinity. 
 
-This transform is inspired by [focal loss](https://paperswithcode.com/method/focal-loss). In graph cut methods, disconnected edges are more important than connected edges, adding edge between two already connected clusters will not greatly alter the resulting eigenvectors, however, adding edge between two disconnected clusters will greatly alter the eigenvectors. Lower the `affinity_focal_gamma` value will make less-connected edges fade away, the resulting eigenvector will be shaper.
+This transform is inspired by [focal loss](https://paperswithcode.com/method/focal-loss). In graph cut methods, disconnected edges are more important than connected edges, adding edge between two already connected clusters will not greatly alter the resulting eigenvectors, however, adding edge between two disconnected clusters will greatly alter the eigenvectors. Lower the `affinity_focal_gamma` value will make less-connected edges fade away, the resulting eigenvector will be sharper.
 
 
 <div style="text-align: center;">

@@ -7,8 +7,8 @@ The limitation is that the quality of Nystrom approximation will degrades as sam
 
 | n_data | 10K | 100K | 1M | 10M |
 | --- | --- | --- | --- | --- |
-| **CPU time (sec)** | 0.495 | 7.410 | 32.775 | 291.610 |
-| **GPU time (sec)** | 0.049 | 0.443 | 2.092 | 19.226 |
+| **CPU (i9-13900K) time (sec)** | 0.495 | 7.410 | 32.775 | 291.610 |
+| **GPU (RTX4090) time (sec)** | 0.049 | 0.443 | 2.092 | 19.226 |
 
 
 ```py linenums="1"
