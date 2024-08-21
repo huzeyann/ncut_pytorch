@@ -120,7 +120,7 @@ I - D^{-1/2} W D^{-1/2} = Y \Lambda Y^T
 \]
 
 \[
-D^{-1/2} W D^{-1/2} = Y (1 - \Lambda) Y^T
+D^{-1/2} W D^{-1/2} = Y (I - \Lambda) Y^T
 \]
 
 #### Eigenvectors and Clustering
