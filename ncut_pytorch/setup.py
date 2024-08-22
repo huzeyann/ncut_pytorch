@@ -15,7 +15,7 @@ with open(requirement_file) as f:
 
 setup(
     name="ncut_pytorch",
-    version="1.0.7",
+    version="1.0.8",
     packages=['ncut_pytorch'],
     long_description=long_description,
     long_description_content_type='text/markdown',

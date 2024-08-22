@@ -75,6 +75,7 @@ Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t
 - [Tutorial 4 - Mixing Data](mixing_data.md)
 - [Tutorial 5 - Coloring](coloring.md)
 - [How to Get Better Segmentation](how_to_get_better_segmentation.md)
+- [Memory Usage](memory_usage.md)
 - [Speed and Performance](speed_and_performance.md)
 - [Gradient of NCUT](gradient_of_ncut.md)
 - [API Reference](api_reference.md)

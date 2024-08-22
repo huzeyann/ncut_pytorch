@@ -13,7 +13,7 @@ class NCUT:
         num_eig=50,
         knn=10,
         affinity_focal_gamma=1.0,
-        num_sample=30000,
+        num_sample=25000,
         sample_method="farthest",
         distance="cosine",
         indirect_connection=True,
@@ -254,7 +254,7 @@ def eigenvector_to_rgb(
 def nystrom_ncut(
     features,
     num_eig=20,
-    num_sample=30000,
+    num_sample=25000,
     knn=3,
     sample_method="farthest",
     distance="cosine",

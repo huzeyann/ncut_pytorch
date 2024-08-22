@@ -44,7 +44,7 @@ In practice, it's recommended to reduce the value of `affinity_focal_gamma` (def
 
 ## Increase Sampling Size
 
-It's recommended to use as large sample size as it fits into memory (default `num_sample=30000`).
+It's recommended to use as large sample size as it fits into memory (default `num_sample=25000`).
 
 Nystrom approximation made it possible to compute on large-scale graph (see [How NCUT Works](how_ncut_works.md)). A decent sampling size of Nystrom approximation is critical for a good approximation. 
 In general, as the graph gets larger, the sampling size need to be increased. In fact, the increased need for larger sampling size is due to the increased complexity of the graph but not more number of nodes.
