@@ -1,3 +1,4 @@
 mkdocs-material
 mkdocs-autorefs
 mkdocstrings[python]
+ncut-pytorch

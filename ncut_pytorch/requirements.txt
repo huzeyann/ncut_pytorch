@@ -5,4 +5,3 @@ umap-learn
 fpsample
 pycolormap-2d
 tqdm
-ncut-pytorch
