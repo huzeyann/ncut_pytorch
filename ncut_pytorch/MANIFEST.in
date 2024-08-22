@@ -1,5 +1,5 @@
-include __init__.py
-include ncut_pytorch.py
+include ncut_pytorch/__init__.py
+include ncut_pytorch/ncut_pytorch.py
 include requirements.txt
 include MANIFEST.in
 include README.md
