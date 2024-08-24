@@ -18,7 +18,7 @@ Model features visualized by NCUT. NCUT works for any input -- image, text, vide
 
 <div  style="text-align: center;">
 <video width="75%" controls muted autoplay loop>
-  <source src="../images/ncut_video_sam_264_small.mp4" type="video/mp4">
+  <source src="./images/ncut_video_sam_264_small.mp4" type="video/mp4">
 </video>
 </div>
 
