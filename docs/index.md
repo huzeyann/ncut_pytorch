@@ -5,14 +5,21 @@
 
 **Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
 
-## Gallery
+## [Gallery](gallery.md)
 
-Model features visualized by NCUT
+Model features visualized by NCUT. NCUT works for any input -- image, text, video, 3D, etc. Just plugin features extracted from any pre-trained model.
 
 <div style="text-align: center;">
 <a href="./gallery/">
 <img src="./images/ncut_gallery_cover.jpg" style="width:100%;">
 </a>
+</div>
+
+
+<div  style="text-align: center;">
+<video width="75%" controls muted autoplay loop>
+  <source src="../images/ncut_video_sam_264_small.mp4" type="video/mp4">
+</video>
 </div>
 
 

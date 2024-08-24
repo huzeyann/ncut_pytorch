@@ -6,7 +6,19 @@ More eigenvectors give more details on the segmentation, less eigenvectors is mo
 
 In NCUT, by math design (see [How NCUT Works](how_ncut_works.md)), i-th eigenvector give a optimal graph cut that divides the graph into 2^(i-1) clusters. E.g. `eigenvectors[:, 1]` divides the graph into 2 clusters, `eigenvectors[:, 1:4]` divides the graph into 8 clusters.
 
-To answer the question ``How many eigenvectors do I need?'', one need to consider the complexity of the graph (how many images, what's the backbone model), and the goal (e.g., whole-body or body parts). Here's an example grid search of how many eigenvectors to include:
+To answer the question ``How many eigenvectors do I need?'', one need to consider the complexity of the graph (how many images, what's the backbone model), and the goal (e.g., whole-body or body parts). 
+
+A general rule-of-thumb is:
+
+1. Less eigenvectors for robust results, more eigenvectors can be noisy
+
+2. More eigenvectors for larger set of images, less eigenvectors for fewer images
+
+3. More eigenvectors for objects parts, less eigenvectors for whole-object
+
+4. Try [recursive NCUT](how_to_get_better_segmentation.md/#recursive-ncut-for-small-object-parts) for large set of images
+
+Here's an example grid search of how many eigenvectors to include:
 
 <div style="text-align: center;">
 <img src="../images/n_eig_raw.jpg" style="width:100%;">
@@ -15,6 +27,8 @@ To answer the question ``How many eigenvectors do I need?'', one need to conside
 <div style="text-align: center;">
 <img src="../images/n_eig_tsne.jpg" style="width:100%;">
 </div>
+
+
 
 ## Clean up the Affinity Matrix 
 
@@ -66,11 +80,14 @@ Human perception is not uniform on the RGB color space -- green vs. yellow is le
 NCUT can be applied recursively, the eigenvectors from previous iteration is the input for the next iteration NCUT. 
 
 ```py linenums="1"
-
+# Type A: cosine, more amplification
 eigenvectors1, eigenvalues1 = NCUT(num_eig=100, affinity_focal_gamma=0.3).fit_transform(input_feats)
-eigenvectors2, eigenvalues2 = NCUT(num_eig=50, affinity_focal_gamma=0.3).fit_transform(eigenvectors1)
-eigenvectors3, eigenvalues3 = NCUT(num_eig=20, affinity_focal_gamma=0.3).fit_transform(eigenvectors2)
+eigenvectors2, eigenvalues2 = NCUT(num_eig=50, affinity_focal_gamma=0.3, distance='cosine', normalize_features=True).fit_transform(eigenvectors1)
+eigenvectors3, eigenvalues3 = NCUT(num_eig=20, affinity_focal_gamma=0.3, distance='cosine', normalize_features=True).fit_transform(eigenvectors2)
 
+# Type B: euclidean, less amplification, match t-SNE
+eigenvectors1, eigenvalues1 = NCUT(num_eig=100, affinity_focal_gamma=0.3).fit_transform(input_feats)
+eigenvectors2, eigenvalues2 = NCUT(num_eig=50, affinity_focal_gamma=0.3, distance='euclidean', normalize_features=False).fit_transform(eigenvectors1)
 ```
 
 **Recursive NCUT amplifies small object parts** because:

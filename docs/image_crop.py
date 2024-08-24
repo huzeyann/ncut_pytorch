@@ -59,9 +59,16 @@ def process_image(
     final_image.save(output_path)
 
 #%%
-input_image_path = "/nfscc/ncut_pytorch/docs/images/gallery/llama3/llama3_layer_0.jpg"
-output_image_path = "/nfscc/ncut_pytorch/docs/images/gallery/llama3/llama3_cover.png"
-text = "Llama3"
+# input_image_path = "/nfscc/ncut_pytorch/docs/images/gallery/llama3/llama3_layer_0.jpg"
+input_video_path = '/nfscc/ncut_pytorch/docs/images/gallery/sam2_video/ncut_video_sam2_264.mp4'
+import cv2
+cap = cv2.VideoCapture(input_video_path)
+ret, frame = cap.read()
+input_image_path = "/tmp/input_image.jpg"
+cv2.imwrite(input_image_path, frame)
+
+output_image_path = "/nfscc/ncut_pytorch/docs/images/gallery/sam2_video/sam2_video_cover.png"
+text = "SAM2\n(Video)"
 process_image(input_image_path, output_image_path, text, crop_size=(300, 300), font_size=50)
 
 # convert to jpg
