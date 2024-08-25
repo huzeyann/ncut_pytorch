@@ -5,9 +5,31 @@
 
 **Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
 
-## Gallery
+<div  style="text-align: center;">
+<video width="90%" controls muted autoplay loop>
+  <source src="./images/ncut_video_sam_264_small.mp4" type="video/mp4">
+</video>
+<p>Video: NCUT applied to image encoder features from Segment Anything Model.
+<a href="./gallery_sam_video">code</a>
+</p>
+</div>
 
-Model features visualized by NCUT. NCUT works for any input -- image, text, video, 3D, etc. Just plugin features extracted from any pre-trained model.
+
+
+UPCOMING:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](TODO) Interactive heatmap plot, ready-to-use for pseudo labeling.
+
+<div  style="text-align: center;">
+<video width="90%" controls muted autoplay loop>
+  <source src="./images/demo_heatmap.mp4" type="video/mp4">
+</video>
+</div>
+
+[🤗Hugging Face Demo](TODO), upload your images and get NCUT embeddings.
+
+## Gallery
+Just plugin features extracted from any pre-trained model and ready to go. NCUT works for any input -- image, text, video, 3D, .... Planty examples code and plots in the [Gallery](gallery.md)
 
 <div style="text-align: center;">
 <a href="./gallery/">
@@ -15,14 +37,6 @@ Model features visualized by NCUT. NCUT works for any input -- image, text, vide
 </a>
 </div>
 
-
-<div  style="text-align: center;">
-<video width="75%" controls muted autoplay loop>
-  <source src="./images/ncut_video_sam_264_small.mp4" type="video/mp4">
-</video>
-</div>
-
-[Jump to Gallery](gallery.md)
 
 ## Installation
 
