@@ -16,15 +16,16 @@
 
 
 
-UPCOMING:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](TODO) Interactive heatmap plot, ready-to-use for pseudo labeling.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]([TODO](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46)) Interactive heatmap plot, ready-to-use for pseudo labeling.
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
   <source src="./images/demo_heatmap.mp4" type="video/mp4">
 </video>
 </div>
+
+UPCOMING:
 
 [🤗Hugging Face Demo](TODO), upload your images and get NCUT embeddings.
 
