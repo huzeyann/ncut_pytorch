@@ -17,7 +17,7 @@
 
 
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]([TODO](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46)) Interactive heatmap plot, ready-to-use for pseudo labeling.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46) Interactive heatmap plot, ready-to-use for pseudo labeling.
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
