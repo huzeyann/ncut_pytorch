@@ -35,3 +35,21 @@ for device in ['cuda:0', 'cpu']:
         print(device, n_data, "Nyström ncut time: {:.3f}".format(end - start))
 
 ```
+
+
+---
+
+## Speed-up Tricks
+
+- decrease `num_sample` will **linearly** speed up NCUT and **quadratically** speed up t-SNE.
+
+```py
+eigenvectors, eigenvalues = NCUT(num_sample=1000).fit_transform(input_feats) 
+X_3d, rgb = rgb_from_tsne_3d(eigvectors, num_sample=1000) 
+```
+
+- do not apply post-hoc orthogonalization, if there's no need for strict orthogonality.
+
+```py
+eigenvectors, eigenvalues = NCUT(make_orthogonal=False).fit_transform(input_feats)
+```

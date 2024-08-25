@@ -13,7 +13,7 @@ class NCUT:
         num_eig=50,
         knn=10,
         affinity_focal_gamma=1.0,
-        num_sample=25000,
+        num_sample=3000,
         sample_method="farthest",
         distance="cosine",
         indirect_connection=True,
@@ -254,7 +254,7 @@ def eigenvector_to_rgb(
 def nystrom_ncut(
     features,
     num_eig=20,
-    num_sample=25000,
+    num_sample=3000,
     knn=3,
     sample_method="farthest",
     distance="cosine",
@@ -516,7 +516,7 @@ def ncut(
 
 def rgb_from_tsne_3d(
     features,
-    num_sample=30000,
+    num_sample=1000,
     perplexity=100,
     metric="euclidean",
     device=None,
@@ -566,7 +566,7 @@ def rgb_from_tsne_3d(
 
 def rgb_from_tsne_2d(
     features,
-    num_sample=30000,
+    num_sample=1000,
     perplexity=100,
     metric="euclidean",
     device=None,
@@ -617,7 +617,7 @@ def rgb_from_tsne_2d(
 
 def rgb_from_umap_2d(
     features,
-    num_sample=30000,
+    num_sample=1000,
     n_neighbors=100,
     min_dist=0.1,
     metric="euclidean",
@@ -668,7 +668,7 @@ def rgb_from_umap_2d(
 
 def rgb_from_umap_sphere(
     features,
-    num_sample=30000,
+    num_sample=1000,
     n_neighbors=100,
     min_dist=0.1,
     metric="euclidean",
@@ -724,7 +724,7 @@ def rgb_from_umap_sphere(
 
 def rgb_from_umap_3d(
     features,
-    num_sample=30000,
+    num_sample=1000,
     n_neighbors=100,
     min_dist=0.1,
     metric="euclidean",
@@ -1116,7 +1116,7 @@ def propagate_eigenvectors(
     features,
     new_features,
     knn=3,
-    num_sample=30000,
+    num_sample=3000,
     sample_method="farthest",
     chunk_size=8096,
     device=None,
@@ -1178,7 +1178,7 @@ def propagate_rgb_color(
     eigenvectors,
     new_eigenvectors,
     knn=1,
-    num_sample=30000,
+    num_sample=1000,
     sample_method="farthest",
     chunk_size=8096,
     device=None,

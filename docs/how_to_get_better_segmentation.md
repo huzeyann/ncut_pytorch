@@ -58,13 +58,14 @@ In practice, it's recommended to reduce the value of `affinity_focal_gamma` (def
 
 ## Increase Sampling Size
 
-It's recommended to use as large sample size as it fits into memory (default `num_sample=25000`).
+It's recommended to use as large sample size as it fits into memory (default `num_sample=3000`).
 
 Nystrom approximation made it possible to compute on large-scale graph (see [How NCUT Works](how_ncut_works.md)). A decent sampling size of Nystrom approximation is critical for a good approximation. 
 In general, as the graph gets larger, the sampling size need to be increased. In fact, the increased need for larger sampling size is due to the increased complexity of the graph but not more number of nodes.
 E.g., 100 images of different cats will be more complex than 100 views of the same cats, hence larger sample size is recommended.
 Thank's to [svd_lowrank](https://pytorch.org/docs/stable/generated/torch.svd_lowrank.html), the time complexity of NCUT scales **linearly** w.r.t. sample size, the bottleneck is memory scales quadratically. 
 
+On a 16GB GPU, `num_sample=30000` fits into memory. On a 12GB GPU, `num_sample=20000` fits into memory.
 
 ## Rotate the RGB Cube
 
