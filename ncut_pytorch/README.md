@@ -2,8 +2,8 @@
   <img src="../docs/images/ncut.svg" alt="NCUT" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
 </div>
 
-[![Documentation](📄)](https://ncut-pytorch.readthedocs.io/)
-[![HuggingFace Demo](🤗)](https://ncut-pytorch.readthedocs.io/)
+
+### [🌐Documentation](https://ncut-pytorch.readthedocs.io/) | [🤗HuggingFace Demo](https://huggingface.co/spaces/huzey/ncut-pytorch)
 
 
 ## NCUT: Nyström Normalized Cut
