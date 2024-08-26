@@ -4,17 +4,8 @@
   <img src="./docs/images/ncut.svg" alt="NCUT" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
 </div>
 
-<div style="display: flex; justify-content: center; margin-top: 20px;">
-
-  <a href="https://ncut-pytorch.readthedocs.io/" target="_blank" style="width: 20%; text-align: center; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 5%;">
-    📄 Documentation
-  </a>
-
-  <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 20%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-    🤗 HuggingFace Demo
-  </a>
-
-</div>
+[![Documentation](📄)](https://ncut-pytorch.readthedocs.io/)
+[![HuggingFace Demo](🤗)](https://ncut-pytorch.readthedocs.io/)
 
 
 ## NCUT: Nyström Normalized Cut
