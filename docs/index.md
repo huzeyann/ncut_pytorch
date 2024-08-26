@@ -1,9 +1,28 @@
 
+
+<div style="text-align: center;">
+  <img src="./images/ncut.svg" alt="NCUT" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
+</div>
+
+
+<div style="display: flex; justify-content: center; margin-top: 20px;">
+
+<a href="https://github.com/huzeyann/ncut_pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #007BFF; color: white; padding: 10px; border-radius: 5px; margin-right: 5%;">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" style="width: 24px; height: 24px; vertical-align: middle;"/> GitHub
+</a>
+
+<a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+🤗 HuggingFace Demo
+</a>
+
+</div>
+
 ```shell
 pip install ncut-pytorch
 ```
 
-## NCUT: Nyström Normalized Cut
+
+# NCUT: Nyström Normalized Cut
 
 **Normalized Cut**, aka. spectral clustering, is a graphical method to analyze data grouping in the affinity eigenvector space. It has been widely used for unsupervised segmentation in the 2000s.
 

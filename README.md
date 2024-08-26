@@ -1,7 +1,20 @@
 
 
+<div style="text-align: center;">
+  <img src="./docs/images/ncut.svg" alt="NCUT" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
+</div>
 
-Documentation [https://ncut-pytorch.readthedocs.io/](https://ncut-pytorch.readthedocs.io/)
+<div style="display: flex; justify-content: center; margin-top: 20px;">
+
+  <a href="https://ncut-pytorch.readthedocs.io/" target="_blank" style="width: 20%; text-align: center; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 5%;">
+    📄 Documentation
+  </a>
+
+  <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 20%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+    🤗 HuggingFace Demo
+  </a>
+
+</div>
 
 
 ## NCUT: Nyström Normalized Cut
@@ -10,35 +23,60 @@ Documentation [https://ncut-pytorch.readthedocs.io/](https://ncut-pytorch.readth
 
 **Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
 
-## Gallery
-TODO
+<div  style="text-align: center;">
+<video width="90%" controls muted autoplay loop>
+  <source src="./docs/images/ncut_video_sam_264_small.mp4" type="video/mp4">
+</video>
+<p>Video: NCUT applied to image encoder features from Segment Anything Model.</p>
+</div>
 
-## Installation
 
-PyPI install, our package is based on [PyTorch](https://pytorch.org/get-started/locally/), presuming you already have PyTorch installed
+
+
+
+Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>
+. Upload your images and get NCUT output. Play around backbone models and parameters.
+
+
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46) Interactive heatmap plot, ready-to-use for pseudo labeling.
+
+<div  style="text-align: center;">
+<video width="90%" controls muted autoplay loop>
+  <source src="./docs/images/demo_heatmap.mp4" type="video/mp4">
+</video>
+</div>
+
+---
+
+## Installation & Quick Start
+
+PyPI install, our package is based on PyTorch, please [install PyTorch](https://pytorch.org/get-started/locally/) first
 
 ```shell
 pip install ncut-pytorch
 ```
 
-[Install PyTorch](https://pytorch.org/get-started/locally/) if you haven't
-```shell
-pip install torch
+Minimal example on how to run NCUT, more examples in [Documentation](https://ncut-pytorch.readthedocs.io/).
+
+```py linenums="1"
+import torch
+from ncut_pytorch import NCUT, rgb_from_tsne_3d
+
+model_features = torch.rand(20, 64, 64, 768)
+
+inp = model_features.reshape(-1, 768)  # flatten
+eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(inp)
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device='cuda:0')
+
+eigvectors = eigvectors.reshape(20, 64, 64, 100)
+tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)
 ```
-## Why NCUT
 
-Normalized cut offers two advantages:
-
-1. soft-cluster assignments as eigenvectors
-
-2. hierarchical clustering by varying the number of eigenvectors
-
-Please see [NCUT and t-SNE/UMAP](compare.md) for a full comparison.
-
+---
 
 > paper in prep, Yang 2024
 >
-> AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*, 2024
+> AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*,2024
 > 
 > Normalized Cuts and Image Segmentation, Jianbo Shi and Jitendra Malik, 2000
-> 

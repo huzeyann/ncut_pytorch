@@ -10,10 +10,10 @@ class NCUT:
 
     def __init__(
         self,
-        num_eig=50,
+        num_eig=100,
         knn=10,
         affinity_focal_gamma=1.0,
-        num_sample=3000,
+        num_sample=10000,
         sample_method="farthest",
         distance="cosine",
         indirect_connection=True,
@@ -34,7 +34,7 @@ class NCUT:
             affinity_focal_gamma (float): affinity matrix temperature, lower t reduce the not-so-connected edge weights,
                 smaller t result in more sharp eigenvectors.
             num_sample (int): number of samples for Nystrom-like approximation,
-                reduce only if memory is not enough.
+                reduce only if memory is not enough, increase for better approximation
             sample_method (str): subgraph sampling, ['farthest', 'random'].
                 farthest point sampling is recommended for better Nystrom-approximation accuracy
             distance (str): distance metric for affinity matrix, ['cosine', 'euclidean'].
@@ -156,13 +156,14 @@ class NCUT:
 def eigenvector_to_rgb(
     eigen_vector,
     method="tsne_3d",
-    perplexity=100,
-    n_neighbors=100,
+    num_sample=300,
+    perplexity=150,
+    n_neighbors=150,
     min_distance=0.1,
     metric="euclidean",
     device=None,
     q=0.95,
-    knn=1,
+    knn=10,
     seed=0,
 ):
     """Use t-SNE or UMAP to convert eigenvectors (more than 3) to RGB color (3D RGB CUBE).
@@ -171,9 +172,10 @@ def eigenvector_to_rgb(
         eigen_vector (torch.Tensor): eigenvectors, shape (n_samples, num_eig)
         method (str): method to convert eigenvectors to RGB,
             choices are: ['tsne_2d', 'tsne_3d', 'umap_sphere', 'umap_2d', 'umap_3d']
-        perplexity (int): perplexity for t-SNE, default 100
-        n_neighbors (int): number of neighbors for UMAP, default 100
-        min_distance (float): minimum distance for UMAP, default 0.1
+        num_sample (int): number of samples for Nystrom-like approximation, increase for better approximation
+        perplexity (int): perplexity for t-SNE, increase for more global structure
+        n_neighbors (int): number of neighbors for UMAP, increase for more global structure
+        min_distance (float): minimum distance for UMAP
         metric (str): distance metric, default 'euclidean'
         device (str): device to use for computation, if None, will not change device
         q (float): quantile for RGB normalization, default 0.95. lower q results in more sharp colors
@@ -196,6 +198,7 @@ def eigenvector_to_rgb(
         embed, rgb = rgb_from_tsne_2d(
             eigen_vector,
             q=q,
+            num_sample=num_sample,
             perplexity=perplexity,
             seed=seed,
             device=device,
@@ -206,6 +209,7 @@ def eigenvector_to_rgb(
         embed, rgb = rgb_from_tsne_3d(
             eigen_vector,
             q=q,
+            num_sample=num_sample,
             perplexity=perplexity,
             seed=seed,
             device=device,
@@ -216,6 +220,7 @@ def eigenvector_to_rgb(
         embed, rgb = rgb_from_umap_sphere(
             eigen_vector,
             q=q,
+            num_sample=num_sample,
             n_neighbors=n_neighbors,
             min_dist=min_distance,
             seed=seed,
@@ -227,6 +232,7 @@ def eigenvector_to_rgb(
         embed, rgb = rgb_from_umap_2d(
             eigen_vector,
             q=q,
+            num_sample=num_sample,
             n_neighbors=n_neighbors,
             min_dist=min_distance,
             seed=seed,
@@ -238,6 +244,7 @@ def eigenvector_to_rgb(
         embed, rgb = rgb_from_umap_3d(
             eigen_vector,
             q=q,
+            num_sample=num_sample,
             n_neighbors=n_neighbors,
             min_dist=min_distance,
             seed=seed,
@@ -253,9 +260,9 @@ def eigenvector_to_rgb(
 
 def nystrom_ncut(
     features,
-    num_eig=20,
-    num_sample=3000,
-    knn=3,
+    num_eig=100,
+    num_sample=10000,
+    knn=10,
     sample_method="farthest",
     distance="cosine",
     affinity_focal_gamma=1.0,
@@ -516,12 +523,12 @@ def ncut(
 
 def rgb_from_tsne_3d(
     features,
-    num_sample=1000,
-    perplexity=100,
+    num_sample=300,
+    perplexity=150,
     metric="euclidean",
     device=None,
     seed=0,
-    knn=1,
+    knn=10,
 ):
     """
 
@@ -566,13 +573,13 @@ def rgb_from_tsne_3d(
 
 def rgb_from_tsne_2d(
     features,
-    num_sample=1000,
-    perplexity=100,
+    num_sample=300,
+    perplexity=150,
     metric="euclidean",
     device=None,
     seed=0,
     q=0.95,
-    knn=1,
+    knn=10,
 ):
     """
 
@@ -617,14 +624,14 @@ def rgb_from_tsne_2d(
 
 def rgb_from_umap_2d(
     features,
-    num_sample=1000,
-    n_neighbors=100,
+    num_sample=300,
+    n_neighbors=150,
     min_dist=0.1,
     metric="euclidean",
     device=None,
     seed=0,
     q=0.95,
-    knn=1,
+    knn=10,
 ):
     """
 
@@ -668,14 +675,14 @@ def rgb_from_umap_2d(
 
 def rgb_from_umap_sphere(
     features,
-    num_sample=1000,
-    n_neighbors=100,
+    num_sample=300,
+    n_neighbors=150,
     min_dist=0.1,
     metric="euclidean",
     device=None,
     seed=0,
     q=0.95,
-    knn=1,
+    knn=10,
 ):
     """
 
@@ -724,14 +731,14 @@ def rgb_from_umap_sphere(
 
 def rgb_from_umap_3d(
     features,
-    num_sample=1000,
-    n_neighbors=100,
+    num_sample=300,
+    n_neighbors=150,
     min_dist=0.1,
     metric="euclidean",
     device=None,
     seed=0,
     q=0.95,
-    knn=1,
+    knn=10,
 ):
     """
 
@@ -807,7 +814,7 @@ def rotate_rgb_cube(rgb, position=1):
 
 def farthest_point_sampling(
     features,
-    num_sample=1000,
+    num_sample=300,
     h=9,
 ):
     try:
@@ -832,7 +839,7 @@ def farthest_point_sampling(
 
 def run_subgraph_sampling(
     features,
-    num_sample=1000,
+    num_sample=300,
     max_draw=1000000,
     sample_method="farthest",
 ):
@@ -1000,7 +1007,7 @@ def propagate_knn(
     subgraph_output,
     inp_features,
     subgraph_features,
-    knn=3,
+    knn=10,
     chunk_size=8096,
     device=None,
     use_tqdm=True,
@@ -1115,7 +1122,7 @@ def propagate_eigenvectors(
     eigenvectors,
     features,
     new_features,
-    knn=3,
+    knn=10,
     num_sample=3000,
     sample_method="farthest",
     chunk_size=8096,
@@ -1177,8 +1184,8 @@ def propagate_rgb_color(
     rgb,
     eigenvectors,
     new_eigenvectors,
-    knn=1,
-    num_sample=1000,
+    knn=10,
+    num_sample=300,
     sample_method="farthest",
     chunk_size=8096,
     device=None,
