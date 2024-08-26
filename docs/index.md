@@ -1,4 +1,8 @@
 
+```shell
+pip install ncut-pytorch
+```
+
 ## NCUT: Nyström Normalized Cut
 
 **Normalized Cut**, aka. spectral clustering, is a graphical method to analyze data grouping in the affinity eigenvector space. It has been widely used for unsupervised segmentation in the 2000s.
@@ -25,9 +29,23 @@
 </video>
 </div>
 
-UPCOMING:
 
-[🤗Hugging Face Demo](TODO), upload your images and get NCUT embeddings.
+Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>
+. Upload your images and get NCUT output. Play around backbone models and parameters.
+
+<script
+	type="module"
+	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
+></script>
+
+<gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
+
+<!-- <iframe
+	src="https://huzey-ncut-pytorch.hf.space"
+	frameborder="0"
+	width="100%"
+	height="800"
+></iframe> -->
 
 ## Gallery
 Just plugin features extracted from any pre-trained model and ready to go. NCUT works for any input -- image, text, video, 3D, .... Planty examples code and plots in the [Gallery](gallery.md)
@@ -38,20 +56,53 @@ Just plugin features extracted from any pre-trained model and ready to go. NCUT 
 </a>
 </div>
 
+---
 
-## Installation
+## Installation & Quick Start
 
-PyPI install, our package is based on [PyTorch](https://pytorch.org/get-started/locally/), presuming you already have PyTorch installed
+PyPI install, our package is based on PyTorch, please [install PyTorch](https://pytorch.org/get-started/locally/) first
 
 ```shell
 pip install ncut-pytorch
 ```
 
-[Install PyTorch](https://pytorch.org/get-started/locally/) by `pip` (for CPU only) or `conda` (recommended for GPU)
-```shell
-pip install torch
+
+<details>
+<summary>
+
+How to install PyTorch (click to expand):
+
+</summary>
+
+Install PyTorch by pip (for CPU only) or conda (for GPU)
+
+``` shell
+# for cpu only
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# for gpu
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 ```
+
+</details>
+
+Minimal example on how to run NCUT, more examples in [Tutorial](tutorials.md) and [Gallery](gallery.md).
+
+```py linenums="1"
+import torch
+from ncut_pytorch import NCUT, rgb_from_tsne_3d
+
+model_features = torch.rand(20, 64, 64, 768)
+
+inp = model_features.reshape(-1, 768)  # flatten
+eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(inp)
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device='cuda:0')
+
+eigvectors = eigvectors.reshape(20, 64, 64, 100)
+tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)
+```
+
+---
+
 ## Why NCUT
 
 Normalized cut offers two advantages:
@@ -63,12 +114,15 @@ Normalized cut offers two advantages:
 Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t-SNE, UMAP.
 
 
+---
+
 > paper in prep, Yang 2024
 >
-> AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*, 2024
+> AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*,2024
 > 
 > Normalized Cuts and Image Segmentation, Jianbo Shi and Jitendra Malik, 2000
-> 
+
+
 
 <div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
     <a href="https://github.com/huzeyann/ncut_pytorch" target="_blank" style="text-decoration: none; color: inherit;">
@@ -85,6 +139,7 @@ Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t
     </a>
 </div>
 
+---
 
 ## Table of Contents
 
@@ -102,3 +157,5 @@ Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t
 - [Speed and Performance](speed_and_performance.md)
 - [Gradient of NCUT](gradient_of_ncut.md)
 - [API Reference](api_reference.md)
+
+---

@@ -16,6 +16,14 @@ NCUT eigenvectors are high dimensional, we need a bigger screen to see them all.
 </p></span>
 </div>
 
+||Pros|Cons|
+|---|---|---|
+|t-SNE(3D)|make fuller use of the color space|slow|
+|UMAP(3D)|2x faster than t-SNE|holes in the color space|
+|UMAP(sphere)|can be plotted in 2D|do not use the full color space|
+|t-SNE(2D)|can be plotted in 2D|do not use the full color space|
+|UMAP(2D)|can be plotted in 2D|do not use the full color space|
+
 <div style="text-align: center;">
 <img src="../images/spectral_tsne_3d.png" style="width:100%;">
 </div>

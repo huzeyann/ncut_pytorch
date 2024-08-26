@@ -1,8 +1,9 @@
 ## Accessing the Gradient of NCUT with Functional API
 
+In our PyTorch implementation of NCUT, gradient is handled by [PyTorch autograd](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html).
+
 By defaults, the class API `NCUT.fit_transform()` does not keep the gradient. It's possible to access the gradient with [functional API](api_reference.md/#ncut-functional-api). When accessing the gradient, please use the original NCUT without Nystrom approximation. Gradient with Nystrom approximation is not recommended due to the sub-sampling, if you need gradient in the training loop, please use mini-batch to reduce the graph size. 
 
-In our PyTorch implementation of NCUT, gradient is handled by [PyTorch autograd](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html).
 
 ---
 

@@ -1,6 +1,17 @@
 
 # NCUT Parameters
 
+Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>
+. Upload your images and get NCUT output. Play around backbone models and parameters.
+
+<script
+	type="module"
+	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
+></script>
+
+<gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
+
+
 ## num_eig
 
 number of eigenvectors 
@@ -95,3 +106,8 @@ This transform is inspired by [focal loss](https://paperswithcode.com/method/foc
 <div style="text-align: center;">
 <img src="../images/parameters/t=1.0.png" style="width:100%;">
 </div>
+
+## num_samples
+
+Nystrom approximation sample size (see [How NCUT Works](how_ncut_works.md)). A decent sampling size of Nystrom approximation is critical for a good approximation. Complexity scaling is **linear**.
+

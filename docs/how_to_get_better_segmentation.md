@@ -1,5 +1,16 @@
 # How to Get Better Segmentation from NCUT
 
+Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>
+. Upload your images and get NCUT output. Play around backbone models and parameters.
+
+<script
+	type="module"
+	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
+></script>
+
+<gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
+
+
 ## Pick Number of Eigenvectors
 
 More eigenvectors give more details on the segmentation, less eigenvectors is more robust.
@@ -67,6 +78,41 @@ Thank's to [svd_lowrank](https://pytorch.org/docs/stable/generated/torch.svd_low
 
 On a 16GB GPU, `num_sample=30000` fits into memory. On a 12GB GPU, `num_sample=20000` fits into memory.
 
+```py
+eigvecs, eigvals = NCUT(num_samples=30000).fit_transform(inp)
+```
+
+## t-SNE and UMAP parameters
+
+For visualization purpose, t-SNE or UMAP is applied on the NCUT eigenvectors. Our Nystrom approximation is also applied to t-SNE/UMAP. It's possible to in crease the quality of t-SNE/UMAP by tweaking the parameters:
+
+- increase the sample size of Nystrom approximation, `num_samples`
+
+- increase `perplexity` for t-SNE, `n_neighbors` for UMAP
+
+```py
+# faster compute
+X_3d, rgb = rgb_from_tsne_3d(eigvecs, num_samples=1000, perplexity=100)
+X_3d, rgb = rgb_from_umap_3d(eigvecs, num_samples=1000, n_neighbors=100, min_dist=0.1)
+# balanced speed and quality
+X_3d, rgb = rgb_from_tsne_3d(eigvecs, num_samples=10000, perplexity=100)
+X_3d, rgb = rgb_from_umap_3d(eigvecs, num_samples=10000, n_neighbors=100, min_dist=0.1)
+# extreme quality, much slower
+X_3d, rgb = rgb_from_tsne_3d(eigvecs, num_samples=50000, perplexity=500)
+X_3d, rgb = rgb_from_umap_3d(eigvecs, num_samples=50000, n_neighbors=500, min_dist=0.1)
+```
+
+Please see [Tutorial - Coloring](coloring.md) for a full comparison of coloring methods:
+
+||Pros|Cons|
+|---|---|---|
+|t-SNE(3D)|make fuller use of the color space|slow|
+|UMAP(3D)|2x faster than t-SNE|holes in the color space|
+|UMAP(sphere)|can be plotted in 2D|do not use the full color space|
+|t-SNE(2D)|can be plotted in 2D|do not use the full color space|
+|UMAP(2D)|can be plotted in 2D|do not use the full color space|
+
+
 ## Rotate the RGB Cube
 
 Human perception is not uniform on the RGB color space -- green vs. yellow is less perceptually different than red vs. blue. Therefore, it's a good idea to rotate the RGB cube and try a different color. In the following example, all images has the same euclidean distance matrix, but perceptually they could tell different story. Please see [Coloring](coloring.md) for the code to rotate RGB cube.
@@ -76,7 +122,7 @@ Human perception is not uniform on the RGB color space -- green vs. yellow is le
 <img src="../images/color_rotation.png" style="width:100%;">
 </div>
 
-## Recursive NCUT for Small Object Parts
+## Recursive NCUT
 
 NCUT can be applied recursively, the eigenvectors from previous iteration is the input for the next iteration NCUT. 
 
