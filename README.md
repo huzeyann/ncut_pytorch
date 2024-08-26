@@ -14,6 +14,12 @@
 **Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
 
 
+https://github.com/huzeyann/ncut_pytorch/raw/master/docs/images/demo_heatmap.mp4
+
+<div align="center">
+  Video: NCUT applied to image encoder features from Segment Anything Model.
+</div>
+
 ![sam_video](docs/images/ncut_video_sam_264_small.mp4)
 Video: NCUT applied to image encoder features from Segment Anything Model.
 
@@ -26,8 +32,7 @@ Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" targ
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46) Interactive heatmap plot, ready-to-use for pseudo labeling.
 
-![heatmap_video](docs/images/demo_heatmap.mp4)
-Video: NCUT applied to image encoder features from Segment Anything Model.
+https://github.com/huzeyann/ncut_pytorch/raw/master/docs/images/demo_heatmap.mp4https://github.com/huzeyann/ncut_pytorch/raw/master/docs/images/demo_heatmap.mp4
 
 ---
 
