@@ -78,9 +78,12 @@ Thank's to [svd_lowrank](https://pytorch.org/docs/stable/generated/torch.svd_low
 
 On a 16GB GPU, `num_sample=30000` fits into memory. On a 12GB GPU, `num_sample=20000` fits into memory.
 
-```py
-eigvecs, eigvals = NCUT(num_samples=30000).fit_transform(inp)
-```
+<div style="text-align:left;">
+    <pre><code>
+eigvecs, eigvals = <span style="color: #003366;">NCUT</span>(num_samples=<span style="color: #A020F0;">30000</span>).fit_transform(inp)
+    </code></pre>
+</div>
+
 
 ## t-SNE and UMAP parameters
 
@@ -90,25 +93,26 @@ For visualization purpose, t-SNE or UMAP is applied on the NCUT eigenvectors. Ou
 
 - increase `perplexity` for t-SNE, `n_neighbors` for UMAP
 
-```py
-# faster compute
-X_3d, rgb = rgb_from_tsne_3d(eigvecs, num_samples=1000, perplexity=100)
-X_3d, rgb = rgb_from_umap_3d(eigvecs, num_samples=1000, n_neighbors=100, min_dist=0.1)
-# balanced speed and quality
-X_3d, rgb = rgb_from_tsne_3d(eigvecs, num_samples=10000, perplexity=100)
-X_3d, rgb = rgb_from_umap_3d(eigvecs, num_samples=10000, n_neighbors=100, min_dist=0.1)
-# extreme quality, much slower
-X_3d, rgb = rgb_from_tsne_3d(eigvecs, num_samples=50000, perplexity=500)
-X_3d, rgb = rgb_from_umap_3d(eigvecs, num_samples=50000, n_neighbors=500, min_dist=0.1)
-```
+<div style="text-align:left;">
+    <pre><code>
+<span style="color: #008000;"># balanced speed and quality</span>
+X_3d, rgb = <span style="color: #003366;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, perplexity=<span style="color: #A020F0;">150</span>)
+X_3d, rgb = <span style="color: #003366;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, n_neighbors=<span style="color: #A020F0;">150</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
+
+<span style="color: #008000;"># extreme quality, much slower</span>
+X_3d, rgb = <span style="color: #003366;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, perplexity=<span style="color: #A020F0;">500</span>)
+X_3d, rgb = <span style="color: #003366;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, n_neighbors=<span style="color: #A020F0;">500</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
+    </code></pre>
+</div>
+
 
 Please see [Tutorial - Coloring](coloring.md) for a full comparison of coloring methods:
 
 ||Pros|Cons|
 |---|---|---|
-|t-SNE(3D)|make fuller use of the color space|slow|
-|UMAP(3D)|2x faster than t-SNE|holes in the color space|
-|UMAP(sphere)|can be plotted in 2D|do not use the full color space|
+|t-SNE(3D)|make fuller use of the color space|slow for large samples|
+|UMAP(3D)|fast for large samples|holes in the color space; slow for small samples|
+|UMAP(sphere)|can be plotted in 2D&3D|do not use the full color space|
 |t-SNE(2D)|can be plotted in 2D|do not use the full color space|
 |UMAP(2D)|can be plotted in 2D|do not use the full color space|
 
@@ -126,16 +130,20 @@ Human perception is not uniform on the RGB color space -- green vs. yellow is le
 
 NCUT can be applied recursively, the eigenvectors from previous iteration is the input for the next iteration NCUT. 
 
-```py linenums="1"
-# Type A: cosine, more amplification
-eigenvectors1, eigenvalues1 = NCUT(num_eig=100, affinity_focal_gamma=0.3).fit_transform(input_feats)
-eigenvectors2, eigenvalues2 = NCUT(num_eig=50, affinity_focal_gamma=0.3, distance='cosine', normalize_features=True).fit_transform(eigenvectors1)
-eigenvectors3, eigenvalues3 = NCUT(num_eig=20, affinity_focal_gamma=0.3, distance='cosine', normalize_features=True).fit_transform(eigenvectors2)
+<div style="text-align:left;">
+    <pre><code>
+<span style="color: #008000;"># Type A: cosine, more amplification</span>
+eigenvectors1, eigenvalues1 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">100</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>).fit_transform(input_feats)
+eigenvectors2, eigenvalues2 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">50</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'cosine'</span>, normalize_features=<span style="color: #A020F0;">True</span>).fit_transform(eigenvectors1)
+eigenvectors3, eigenvalues3 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">20</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'cosine'</span>, normalize_features=<span style="color: #A020F0;">True</span>).fit_transform(eigenvectors2)
 
-# Type B: euclidean, less amplification, match t-SNE
-eigenvectors1, eigenvalues1 = NCUT(num_eig=100, affinity_focal_gamma=0.3).fit_transform(input_feats)
-eigenvectors2, eigenvalues2 = NCUT(num_eig=50, affinity_focal_gamma=0.3, distance='euclidean', normalize_features=False).fit_transform(eigenvectors1)
-```
+<span style="color: #008000;"># Type B: euclidean, less amplification, match t-SNE</span>
+eigenvectors1, eigenvalues1 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">100</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>).fit_transform(input_feats)
+eigenvectors2, eigenvalues2 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">50</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'euclidean'</span>, normalize_features=<span style="color: #A020F0;">False</span>).fit_transform(eigenvectors1)
+    </code></pre>
+</div>
+
+
 
 **Recursive NCUT amplifies small object parts** because:
 

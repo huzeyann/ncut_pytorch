@@ -17,9 +17,11 @@
 
 </div>
 
-```shell
-pip install ncut-pytorch
-```
+<div style="text-align: center;">
+    <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
+</div>
+
+
 
 
 # NCUT: Nyström Normalized Cut
@@ -81,9 +83,11 @@ Just plugin features extracted from any pre-trained model and ready to go. NCUT 
 
 PyPI install, our package is based on PyTorch, please [install PyTorch](https://pytorch.org/get-started/locally/) first
 
-```shell
-pip install ncut-pytorch
-```
+<div style="text-align:">
+    <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
+</div>
+
+
 
 
 <details>
@@ -106,19 +110,24 @@ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvi
 
 Minimal example on how to run NCUT, more examples in [Tutorial](tutorials.md) and [Gallery](gallery.md).
 
-```py linenums="1"
-import torch
-from ncut_pytorch import NCUT, rgb_from_tsne_3d
+<div style="text-align:left;">
+    <pre><code>
+<span style="color: #008000;"><b>import</b></span> torch
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> NCUT, rgb_from_tsne_3d
 
 model_features = torch.rand(20, 64, 64, 768)
 
-inp = model_features.reshape(-1, 768)  # flatten
-eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(inp)
-tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device='cuda:0')
+inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768)  <span style="color: #008080;"># flatten</span>
+eigvectors, eigvalues = NCUT(num_eig=100, device=<span style="color: #A020F0;">'cuda:0'</span>).fit_transform(inp)
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #A020F0;">'cuda:0'</span>)
 
-eigvectors = eigvectors.reshape(20, 64, 64, 100)
-tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)
-```
+eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100)
+tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3)
+    </code></pre>
+</div>
+
+
+
 
 ---
 
