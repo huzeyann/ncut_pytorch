@@ -528,6 +528,7 @@ def rgb_from_tsne_3d(
     metric="euclidean",
     device=None,
     seed=0,
+    q=0.95,
     knn=10,
 ):
     """
@@ -566,7 +567,7 @@ def rgb_from_tsne_3d(
     )
 
     X_3d = embedding.cpu().numpy()
-    rgb = rgb_from_3d_rgb_cube(torch.tensor(X_3d))
+    rgb = rgb_from_3d_rgb_cube(torch.tensor(X_3d), q=q)
 
     return X_3d, rgb
 
@@ -1010,7 +1011,7 @@ def propagate_knn(
     knn=10,
     chunk_size=8096,
     device=None,
-    use_tqdm=True,
+    use_tqdm=False,
 ):
     """A generic function to propagate new nodes using KNN.
     
@@ -1127,7 +1128,7 @@ def propagate_eigenvectors(
     sample_method="farthest",
     chunk_size=8096,
     device=None,
-    use_tqdm=True,
+    use_tqdm=False,
 ):
     """Propagate eigenvectors to new nodes using KNN. Note: this is equivalent to the class API `NCUT.tranform(new_features)`, expect for the sampling is re-done in this function.
 
@@ -1189,7 +1190,7 @@ def propagate_rgb_color(
     sample_method="farthest",
     chunk_size=8096,
     device=None,
-    use_tqdm=True,
+    use_tqdm=False,
 ):
     """Propagate RGB color to new nodes using KNN.
 
