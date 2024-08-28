@@ -42,7 +42,7 @@
 
 
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46) Interactive heatmap of eigenvector distance, can be used for segmentation and pseudo labeling.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46): A demo software for one-point prompting segmentation and pseudo-labeling.
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
@@ -116,12 +116,12 @@ Minimal example on how to run NCUT, more examples in [Tutorial](tutorials.md) an
 <div style="text-align:left;">
     <pre><code>
 <span style="color: #008000;"><b>import</b></span> torch
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> NCUT, rgb_from_tsne_3d
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d
 
-model_features = torch.rand(20, 64, 64, 768)
+model_features = torch.rand(20, 64, 64, 768)  <span style="color: #008080;"># (B, H, W, C)</span>
 
 inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768)  <span style="color: #008080;"># flatten</span>
-eigvectors, eigvalues = NCUT(num_eig=100, device=<span style="color: #A020F0;">'cuda:0'</span>).fit_transform(inp)
+eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #A020F0;">'cuda:0'</span>).fit_transform(inp)
 tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #A020F0;">'cuda:0'</span>)
 
 eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100)
