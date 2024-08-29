@@ -1,4 +1,4 @@
 
-<meta http-equiv="refresh" content="0; url=https://f56a-2607-f470-8-1050-6725-fcc9-46e9-bdf5.ngrok-free.app/" />
+<meta http-equiv="refresh" content="0; url=https://fond-rich-sunbird.ngrok-free.app/" />
 
-<p><a href="https://f56a-2607-f470-8-1050-6725-fcc9-46e9-bdf5.ngrok-free.app/">Redirect</a></p>
+<p><a href="https://fond-rich-sunbird.ngrok-free.app/">Redirect</a></p>
