@@ -30,14 +30,14 @@ Minimal example on how to run NCUT, more examples in [Documentation](https://ncu
 import torch
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
 
-model_features = torch.rand(20, 64, 64, 768)
+model_features = torch.rand(20, 64, 64, 768)  # (B, H, W, C)
 
 inp = model_features.reshape(-1, 768)  # flatten
 eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(inp)
 tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device='cuda:0')
 
-eigvectors = eigvectors.reshape(20, 64, 64, 100)
-tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)
+eigvectors = eigvectors.reshape(20, 64, 64, 100)  # (B, H, W, num_eig)
+tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)  # (B, H, W, 3)
 ```
 
 ---

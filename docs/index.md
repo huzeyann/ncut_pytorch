@@ -54,8 +54,7 @@
 </div>
 
 
-Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>
-. Upload your images and get NCUT output. Play around backbone models and parameters.
+Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
 
 <script
 	type="module"
@@ -63,6 +62,26 @@ Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" targ
 ></script>
 
 <gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
+
+<script>
+	function handleLoadComplete() {
+		console.log("Embedded space has finished rendering");
+		// Click the "Gallery" button
+		const galleryButton = document.querySelector("button:contains('Gallery')");
+		if (galleryButton) {
+			galleryButton.click();
+		} else {
+			console.log("Gallery button not found");
+		}
+	}
+
+	const gradioApp = document.querySelector("gradio-app");
+	if (gradioApp) {
+		gradioApp.addEventListener("render", handleLoadComplete);
+	} else {
+		console.log("gradio-app element not found");
+	}
+</script>
 
 <!-- <iframe
 	src="https://huzey-ncut-pytorch.hf.space"
@@ -102,12 +121,14 @@ How to install PyTorch (click to expand):
 
 Install PyTorch by pip (for CPU only) or conda (for GPU)
 
-``` shell
+<div style="text-align:">
+<pre><code class="language-shell">
 # for cpu only
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 # for gpu
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-```
+</code></pre>
+</div>
 
 </details>
 
@@ -124,8 +145,8 @@ inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768)  <spa
 eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #A020F0;">'cuda:0'</span>).fit_transform(inp)
 tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #A020F0;">'cuda:0'</span>)
 
-eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100)
-tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3)
+eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100)  <span style="color: #008080;"># (B, H, W, num_eig)</span>
+tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3)  <span style="color: #008080;"># (B, H, W, 3)</span>
     </code></pre>
 </div>
 

@@ -222,8 +222,11 @@ make_video_from_images(save_dir, "/workspace/output/ncut_video_dinov2.mp4")
 
 </details>
 
-DiNOv2 backbone is an image model, examples in this gallery extracted feature for each frame in the video, then put them together
+This video example use image model without temporal dimension
 
+1. extract image feature for every frame, independently
+
+2. concatenate all the image features and compute NCUT
 
 <div  style="text-align: center;">
 <video width="100%" controls muted autoplay loop>

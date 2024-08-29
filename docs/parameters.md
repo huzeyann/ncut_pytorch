@@ -1,8 +1,7 @@
 
 # NCUT Parameters
 
-Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>
-. Upload your images and get NCUT output. Play around backbone models and parameters.
+Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
 
 <script
 	type="module"
