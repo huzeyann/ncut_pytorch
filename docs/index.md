@@ -49,7 +49,7 @@
   <source src="./images/demo_heatmap.mp4" type="video/mp4">
 </video>
 <p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pointer.
-<a href="https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46">code</a>
+<a href="https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46" target="_blank">code</a>
 </p>
 </div>
 

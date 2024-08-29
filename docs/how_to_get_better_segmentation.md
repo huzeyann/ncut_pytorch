@@ -79,7 +79,7 @@ On a 16GB GPU, `num_sample=30000` fits into memory. On a 12GB GPU, `num_sample=2
 
 <div style="text-align:left;">
     <pre><code>
-eigvecs, eigvals = <span style="color: #003366;">NCUT</span>(num_samples=<span style="color: #A020F0;">30000</span>).fit_transform(inp)
+eigvecs, eigvals = <span style="color: #FF6D00;">NCUT</span>(num_samples=<span style="color: #A020F0;">30000</span>).fit_transform(inp)
     </code></pre>
 </div>
 
@@ -95,12 +95,12 @@ For visualization purpose, t-SNE or UMAP is applied on the NCUT eigenvectors. Ou
 <div style="text-align:left;">
     <pre><code>
 <span style="color: #008000;"># balanced speed and quality</span>
-X_3d, rgb = <span style="color: #003366;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, perplexity=<span style="color: #A020F0;">150</span>)
-X_3d, rgb = <span style="color: #003366;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, n_neighbors=<span style="color: #A020F0;">150</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
+X_3d, rgb = <span style="color: #FF6D00;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, perplexity=<span style="color: #A020F0;">150</span>)
+X_3d, rgb = <span style="color: #FF6D00;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, n_neighbors=<span style="color: #A020F0;">150</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
 
 <span style="color: #008000;"># extreme quality, much slower</span>
-X_3d, rgb = <span style="color: #003366;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, perplexity=<span style="color: #A020F0;">500</span>)
-X_3d, rgb = <span style="color: #003366;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, n_neighbors=<span style="color: #A020F0;">500</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
+X_3d, rgb = <span style="color: #FF6D00;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, perplexity=<span style="color: #A020F0;">500</span>)
+X_3d, rgb = <span style="color: #FF6D00;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, n_neighbors=<span style="color: #A020F0;">500</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
     </code></pre>
 </div>
 
@@ -132,13 +132,13 @@ NCUT can be applied recursively, the eigenvectors from previous iteration is the
 <div style="text-align:left;">
     <pre><code>
 <span style="color: #008000;"># Type A: cosine, more amplification</span>
-eigenvectors1, eigenvalues1 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">100</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>).fit_transform(input_feats)
-eigenvectors2, eigenvalues2 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">50</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'cosine'</span>, normalize_features=<span style="color: #A020F0;">True</span>).fit_transform(eigenvectors1)
-eigenvectors3, eigenvalues3 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">20</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'cosine'</span>, normalize_features=<span style="color: #A020F0;">True</span>).fit_transform(eigenvectors2)
+eigenvectors1, eigenvalues1 = <span style="color: #FF6D00;">NCUT</span>(num_eig=<span style="color: #A020F0;">100</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>).fit_transform(input_feats)
+eigenvectors2, eigenvalues2 = <span style="color: #FF6D00;">NCUT</span>(num_eig=<span style="color: #A020F0;">50</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'cosine'</span>, normalize_features=<span style="color: #A020F0;">True</span>).fit_transform(eigenvectors1)
+eigenvectors3, eigenvalues3 = <span style="color: #FF6D00;">NCUT</span>(num_eig=<span style="color: #A020F0;">20</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'cosine'</span>, normalize_features=<span style="color: #A020F0;">True</span>).fit_transform(eigenvectors2)
 
 <span style="color: #008000;"># Type B: euclidean, less amplification, match t-SNE</span>
-eigenvectors1, eigenvalues1 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">100</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>).fit_transform(input_feats)
-eigenvectors2, eigenvalues2 = <span style="color: #003366;">NCUT</span>(num_eig=<span style="color: #A020F0;">50</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'euclidean'</span>, normalize_features=<span style="color: #A020F0;">False</span>).fit_transform(eigenvectors1)
+eigenvectors1, eigenvalues1 = <span style="color: #FF6D00;">NCUT</span>(num_eig=<span style="color: #A020F0;">100</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>).fit_transform(input_feats)
+eigenvectors2, eigenvalues2 = <span style="color: #FF6D00;">NCUT</span>(num_eig=<span style="color: #A020F0;">50</span>, affinity_focal_gamma=<span style="color: #A020F0;">0.3</span>, distance=<span style="color: #A020F0;">'euclidean'</span>, normalize_features=<span style="color: #A020F0;">False</span>).fit_transform(eigenvectors1)
     </code></pre>
 </div>
 

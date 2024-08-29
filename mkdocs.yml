@@ -5,6 +5,35 @@ repo_name: ncut_pytorch
 
 theme:
   name: "material"
+  # palette: 
+  #   # Palette toggle for light mode
+  #   - scheme: default
+  #     toggle:
+  #       icon: material/weather-night
+  #       name: Switch to dark mode
+
+  #   # Palette toggle for dark mode
+  #   - scheme: slate
+  #     toggle:
+  #       icon: material/weather-sunny
+  #       name: Switch to light mode
+
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: light blue
+      accent: pink
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+
   features:
     - content.code.copy
     - content.code.select
@@ -64,8 +93,13 @@ extra_javascript:
   - javascripts/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
+copyright: Copyright &copy; 2024 Huzheng Yang
 
 extra:
   analytics:
     provider: google
     property: G-8CPZDV5GR1
+  generator: true
+  social: 
+  - icon: fontawesome/brands/x-twitter
+    link: https://twitter.com/HuzeYann
