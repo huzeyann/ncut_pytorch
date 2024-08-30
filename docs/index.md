@@ -142,13 +142,15 @@ Minimal example on how to run NCUT, more examples in [Tutorial](tutorials.md) an
 model_features = torch.rand(20, 64, 64, 768)  <span style="color: #008080;"># (B, H, W, C)</span>
 
 inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768)  <span style="color: #008080;"># flatten</span>
-eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #A020F0;">'cuda:0'</span>).fit_transform(inp)
-tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #A020F0;">'cuda:0'</span>)
+eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #ab38f2;">'cuda:0'</span>).fit_transform(inp)
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #ab38f2;">'cuda:0'</span>)
 
 eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100)  <span style="color: #008080;"># (B, H, W, num_eig)</span>
 tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3)  <span style="color: #008080;"># (B, H, W, 3)</span>
     </code></pre>
 </div>
+
+#### Load Any Pre-trained Model
 
 We have implemented some backbone models, they can be used as feature extractors. Here is a list of available models:
 <div style="text-align:left;"> <pre><code> 
@@ -169,24 +171,46 @@ We have implemented some backbone models, they can be used as feature extractors
 ] 
 </span> </code></pre> </div>
 
-A example that runs with a real backbone model:
+#### Image model example:
 
 <div style="text-align:left;"> <pre><code> <span style="color: #008000;">
 <b>import</b></span> torch <span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d 
 <span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> load_model, extract_features
 
-model = load_model(model_name=<span style="color: #A020F0;">"SAM(sam_vit_b)"</span>) 
+model = load_model(model_name=<span style="color: #ab38f2;">"SAM(sam_vit_b)"</span>) 
 images = torch.rand(20, 3, 1024, 1024) 
-model_features = extract_features(images, model, node_type=<span style="color: #A020F0;">'attn'</span>, layer=<span style="color: #008080;">6</span>) <span style="color: #008080;">
+model_features = extract_features(images, model, node_type=<span style="color: #ab38f2;">'attn'</span>, layer=<span style="color: #008080;">6</span>) <span style="color: #008080;">
 # model_features = model(images)['attn'][6]  # this also works</span>
 
 inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768) <span style="color: #008080;"># flatten</span>
-eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #A020F0;">'cuda:0'</span>).fit_transform(inp) 
-tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #A020F0;">'cuda:0'</span>)
+eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #ab38f2;">'cuda:0'</span>).fit_transform(inp) 
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #ab38f2;">'cuda:0'</span>)
 
 eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100) <span style="color: #008080;"># (B, H, W, num_eig)</span> 
 tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3) <span style="color: #008080;"># (B, H, W, 3)</span> </code></pre>
 </div>
+
+#### Text model example:
+
+
+Here is the code block written in HTML with each line correctly broken:
+
+<div style="text-align:left;">
+    <pre><code>
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone_text <span style="color: #008000;"><b>import</b></span> load_model
+
+llama = load_model(<span style="color: #ab38f2;">"meta-llama/Meta-Llama-3.1-8B"</span>).cuda()
+output_dict = llama(<span style="color: #808080;">"The quick white fox jumps over the lazy cat."</span>)
+
+model_features = output_dict[<span style="color: #ab38f2;">'block'</span>][<span style="color: #008080;">31</span>].squeeze(<span style="color: #008080;">0</span>)  <span style="color: #008080;"># 32nd block output</span>
+token_texts = output_dict[<span style="color: #ab38f2;">'token_texts'</span>]
+eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=<span style="color: #008080;">5</span>, device=<span style="color: #ab38f2;">'cuda:0'</span>).fit_transform(model_features)
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #ab38f2;">'cuda:0'</span>)
+<span style="color: #008080;"># eigvectors.shape[0] == tsne_rgb.shape[0] == len(token_texts)</span>
+    </code></pre>
+</div>
+
 
 
 ---

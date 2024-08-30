@@ -58,7 +58,7 @@ print(list_models())
 ]
 ```
 
-A example that run with a real backbone model:
+#### Image backbone model example:
 
 ```py linenums="1"
 import torch
@@ -78,7 +78,7 @@ eigvectors = eigvectors.reshape(20, 64, 64, 100)  # (B, H, W, num_eig)
 tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)  # (B, H, W, 3)
 ```
 
-A text model example:
+#### Text backbone model example:
 
 ```py linenums="1"
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
