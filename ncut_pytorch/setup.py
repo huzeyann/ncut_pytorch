@@ -9,13 +9,12 @@ long_description = (this_directory / "README.md").read_text()
 # read the requirements file
 import os
 requirement_file = 'requirements.txt'
-# requirement_file = os.path.join(os.path.dirname(__file__), requirement_file)
 with open(requirement_file) as f:
     required = f.read().splitlines()
-
+    
 setup(
     name="ncut_pytorch",
-    version="1.1.0",
+    version="1.2.1",
     packages=['ncut_pytorch'],
     long_description=long_description,
     long_description_content_type='text/markdown',

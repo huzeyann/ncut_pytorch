@@ -2,12 +2,27 @@
 
 In our PyTorch implementation of NCUT, gradient is handled by [PyTorch autograd](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html).
 
-By defaults, the class API `NCUT.fit_transform()` does not keep the gradient. It's possible to access the gradient with [functional API](api_reference.md/#ncut-functional-api). When accessing the gradient, please use the original NCUT without Nystrom approximation. Gradient with Nystrom approximation is not recommended due to the sub-sampling, if you need gradient in the training loop, please use mini-batch to reduce the graph size. 
+---
 
+This example use NCUT **with** Nystrom approximation, and access gradient of eigenvectors.
+
+```py linenums="1"
+from ncut_pytorch import NCUT
+import torch
+
+features = torch.randn(10000, 768)
+features.requires_grad = True
+eigvectors, eigvalues = NCUT(num_eig=50, num_sample=1000).fit_transform(features)
+loss = eigvectors.sum()
+loss.backward()
+grad = features.grad
+print(grad.shape)
+# torch.Size([10000, 768])
+```
 
 ---
 
-This example use NCUT without Nystrom approximation, and access gradient of eigenvectors.
+This example use NCUT **without** Nystrom approximation, and access gradient of eigenvectors.
 
 ```py linenums="1"
 from ncut_pytorch import ncut, affinity_from_features  # use functional API

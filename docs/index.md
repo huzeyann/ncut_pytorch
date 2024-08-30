@@ -150,7 +150,40 @@ tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3) 
     </code></pre>
 </div>
 
+We have implemented some backbone models, they can be used as feature extractors. Here is a list of available models:
+<div style="text-align:left;"> <pre><code> 
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> list_models 
+<span style="color: #008080;">print</span>(list_models()) 
+[ 
+  <span style="color: #808080;">'SAM2(sam2_hiera_t)'</span>, <span style="color: #808080;">'SAM2(sam2_hiera_s)'</span>, <span style="color: #808080;">'SAM2(sam2_hiera_b+)'</span>, <span style="color: #808080;">'SAM2(sam2_hiera_l)'</span>, 
+  <span style="color: #808080;">'SAM(sam_vit_b)'</span>, <span style="color: #808080;">'SAM(sam_vit_l)'</span>, <span style="color: #808080;">'SAM(sam_vit_h)'</span>, <span style="color: #808080;">'MobileSAM(TinyViT)'</span>, 
+  <span style="color: #808080;">'DiNOv2reg(dinov2_vits14_reg)'</span>, <span style="color: #808080;">'DiNOv2reg(dinov2_vitb14_reg)'</span>, <span style="color: #808080;">'DiNOv2reg(dinov2_vitl14_reg)'</span>, <span style="color: #808080;">'DiNOv2reg(dinov2_vitg14_reg)'</span>, 
+  <span style="color: #808080;">'DiNOv2(dinov2_vits14)'</span>, <span style="color: #808080;">'DiNOv2(dinov2_vitb14)'</span>, <span style="color: #808080;">'DiNOv2(dinov2_vitl14)'</span>, <span style="color: #808080;">'DiNOv2(dinov2_vitg14)'</span>, 
+  <span style="color: #808080;">'DiNO(dino_vitb8)'</span>, <span style="color: #808080;">'DiNO(dino_vits8)'</span>, <span style="color: #808080;">'DiNO(dino_vitb16)'</span>, <span style="color: #808080;">'DiNO(dino_vits16)'</span>, 
+  <span style="color: #808080;">'CLIP(ViT-B-16/openai)'</span>, <span style="color: #808080;">'CLIP(ViT-B-16/laion2b_s34b_b88k)'</span>, 
+  <span style="color: #808080;">'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)'</span>, 
+  <span style="color: #808080;">'CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)'</span>, 
+  <span style="color: #808080;">'MAE(vit_base)'</span>, <span style="color: #808080;">'ImageNet(vit_base)'</span> 
+] </code></pre> </div>
 
+A example that runs with a real backbone model:
+
+<div style="text-align:left;"> <pre><code> <span style="color: #008000;">
+<b>import</b></span> torch <span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d 
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> load_model, extract_features
+
+model = load_model(model_name=<span style="color: #A020F0;">"SAM(sam_vit_b)"</span>) 
+images = torch.rand(20, 1024, 1024, 3) 
+model_features = extract_features(images, model, node_type=<span style="color: #A020F0;">'attn'</span>, layer=<span style="color: #008080;">6</span>) <span style="color: #008080;">
+# model_features = model(images)['attn'][6]  # this also works</span>
+
+inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768) <span style="color: #008080;"># flatten</span>
+eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #A020F0;">'cuda:0'</span>).fit_transform(inp) 
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #A020F0;">'cuda:0'</span>)
+
+eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100) <span style="color: #008080;"># (B, H, W, num_eig)</span> 
+tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3) <span style="color: #008080;"># (B, H, W, 3)</span> </code></pre>
+</div>
 
 
 ---
@@ -175,40 +208,3 @@ Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t
 > Normalized Cuts and Image Segmentation, Jianbo Shi and Jitendra Malik, 2000
 
 
-
-<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-    <a href="https://github.com/huzeyann/ncut_pytorch" target="_blank" style="text-decoration: none; color: inherit;">
-        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
-            <div>
-                <h2 style="margin: 0;">ncut-pytorch</h2>
-                <p style="margin: 5px 0 0; color: #586069;">github.com/huzeyann/ncut_pytorch</p>
-            </div>
-        </div>
-        <div style="padding: 15px; background-color: #fff;">
-            <p style="margin: 0; color: #333;"></p>
-        </div>
-    </a>
-</div>
-
----
-
-## Table of Contents
-
-- [Overview & Install](index.md)
-- [Gallery](gallery.md)
-- [How NCUT Works](how_ncut_works.md)
-- [NCUT and t-SNE/UMAP](compare.md)
-- [Tutorial 1 - Quick Start](tutorials.md)
-- [Tutorial 2 - Parameters](parameters.md)
-- [Tutorial 3 - Add Nodes](add_nodes.md)
-- [Tutorial 4 - Mixing Data](mixing_data.md)
-- [Tutorial 5 - Coloring](coloring.md)
-- [How to Get Better Segmentation](how_to_get_better_segmentation.md)
-- [Make NCUT Aligned](alignedcut_vs_ncut.md)
-- [Memory Usage](memory_usage.md)
-- [Speed and Performance](speed_and_performance.md)
-- [Gradient of NCUT](gradient_of_ncut.md)
-- [API Reference](api_reference.md)
-
----

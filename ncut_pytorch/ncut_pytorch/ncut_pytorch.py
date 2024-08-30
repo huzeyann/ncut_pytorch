@@ -85,7 +85,6 @@ class NCUT:
         self.make_orthogonal = make_orthogonal
         self.verbose = verbose
 
-    @torch.no_grad()
     def fit(self, features):
         """Fit Nystrom Normalized Cut on the input features.
 
@@ -116,7 +115,6 @@ class NCUT:
         self.subgraph_features = features[self.subgraph_indices]
         return self
 
-    @torch.no_grad()
     def transform(self, features):
         """Transform new features using the fitted Nystrom Normalized Cut.
 
@@ -194,64 +192,27 @@ def eigenvector_to_rgb(
         (torch.Tensor): t-SNE or UMAP embedding, shape (n_samples, 2) or (n_samples, 3)
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
+    kwargs = {
+        "num_sample": num_sample,
+        "perplexity": perplexity,
+        "n_neighbors": n_neighbors,
+        "min_distance": min_distance,
+        "metric": metric,
+        "device": device,
+        "q": q,
+        "knn": knn,
+        "seed": seed,
+    }
     if method == "tsne_2d":
-        embed, rgb = rgb_from_tsne_2d(
-            eigen_vector,
-            q=q,
-            num_sample=num_sample,
-            perplexity=perplexity,
-            seed=seed,
-            device=device,
-            metric=metric,
-            knn=knn,
-        )
+        embed, rgb = rgb_from_tsne_2d(eigen_vector, **kwargs)
     elif method == "tsne_3d":
-        embed, rgb = rgb_from_tsne_3d(
-            eigen_vector,
-            q=q,
-            num_sample=num_sample,
-            perplexity=perplexity,
-            seed=seed,
-            device=device,
-            metric=metric,
-            knn=knn,
-        )
+        embed, rgb = rgb_from_tsne_3d(eigen_vector, **kwargs)
     elif method == "umap_sphere":
-        embed, rgb = rgb_from_umap_sphere(
-            eigen_vector,
-            q=q,
-            num_sample=num_sample,
-            n_neighbors=n_neighbors,
-            min_dist=min_distance,
-            seed=seed,
-            device=device,
-            metric=metric,
-            knn=knn,
-        )
+        embed, rgb = rgb_from_umap_sphere(eigen_vector, **kwargs)
     elif method == "umap_2d":
-        embed, rgb = rgb_from_umap_2d(
-            eigen_vector,
-            q=q,
-            num_sample=num_sample,
-            n_neighbors=n_neighbors,
-            min_dist=min_distance,
-            seed=seed,
-            device=device,
-            metric=metric,
-            knn=knn,
-        )
+        embed, rgb = rgb_from_umap_2d(eigen_vector, **kwargs)
     elif method == "umap_3d":
-        embed, rgb = rgb_from_umap_3d(
-            eigen_vector,
-            q=q,
-            num_sample=num_sample,
-            n_neighbors=n_neighbors,
-            min_dist=min_distance,
-            seed=seed,
-            device=device,
-            metric=metric,
-            knn=knn,
-        )
+        embed, rgb = rgb_from_umap_3d(eigen_vector, **kwargs)
     else:
         raise ValueError("method should be 'tsne_2d', 'tsne_3d' or 'umap_sphere'")
 
@@ -530,6 +491,7 @@ def rgb_from_tsne_3d(
     seed=0,
     q=0.95,
     knn=10,
+    **kwargs,
 ):
     """
 
@@ -581,6 +543,7 @@ def rgb_from_tsne_2d(
     seed=0,
     q=0.95,
     knn=10,
+    **kwargs,
 ):
     """
 
@@ -633,6 +596,7 @@ def rgb_from_umap_2d(
     seed=0,
     q=0.95,
     knn=10,
+    **kwargs,
 ):
     """
 
@@ -684,6 +648,7 @@ def rgb_from_umap_sphere(
     seed=0,
     q=0.95,
     knn=10,
+    **kwargs,
 ):
     """
 
@@ -740,6 +705,7 @@ def rgb_from_umap_3d(
     seed=0,
     q=0.95,
     knn=10,
+    **kwargs,
 ):
     """
 
@@ -837,13 +803,14 @@ def farthest_point_sampling(
     ).astype(np.int64)
     return kdline_fps_samples_idx
 
-
+@torch.no_grad()
 def run_subgraph_sampling(
     features,
     num_sample=300,
     max_draw=1000000,
     sample_method="farthest",
 ):
+    features = features.clone().detach()
     if num_sample > features.shape[0]:
         # if too many samples, use all samples and bypass Nystrom-like approximation
         logging.info(

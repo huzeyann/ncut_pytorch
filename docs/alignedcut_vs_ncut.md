@@ -1,5 +1,10 @@
 # Make NCUT Aligned across Images
 
+- **NCut** processes each image independently.
+
+- **AlignedCut** process all images as one large-scale graph cut. 
+
+The new developed Nystrom approximation solved the scalability and speed bottle-neck.
 
 ## NCut vs. AlignedCut
 
@@ -9,8 +14,6 @@
 </p>
 </div>
 
-**NCut** processes each image independently, with no color alignment -- The arms and legs is colored randomly across different image outputs.
-
 
 <div style="text-align: center;">
 <p><b>AlignedCut</b>: Color is aligned across images. <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">Try on HuggingFace</a>
@@ -18,7 +21,6 @@
 </p>
 </div>
 
-**AlignedCut** improves upon NCut by aligning color across images and handling larger datasets more efficiently. The new developed Nystrom-like approximation solved the scalability and speed bottle-neck.
 
 > [1] AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*,2024
 > 
@@ -34,18 +36,22 @@
 
 ---
 
-#### Pros (NCut vs. AlignedCut):
+#### Pros (NCut):
 
 - Simple: Uses fewer eigenvectors. The solution space contain less clusters because it's one image.
 
 - Exact: No approximations. Approximation is not necessary for small-scale NCUT.
 
-#### Cons (NCut vs. AlignedCut):
+#### Cons (NCut):
 
 - No Alignment: Color and distance aren't aligned across images. 
 
 - Scalability Issues: Struggles with large pixel counts.
 
+
+#### Limitation of AlignedCut
+
+Adding new images to existing eigenvector solution is not straight-forward, because the eigenvectors for new images need to be consistent with existing images. One solution is use KNN to propagate to new images, please see [Tutorial 3 - Adding Nodes](add_nodes.md).
 
 
 
