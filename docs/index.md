@@ -204,19 +204,17 @@ This example use your access token and download Llama from HuggingFace. How to s
 
 <p>Step 1: Request access for Llama from <a ref="https://huggingface.co/meta-llama/Meta-Llama-3.1-8B" target="_blank">https://huggingface.co/meta-llama/Meta-Llama-3.1-8B</a>
 
-<p>Step 2: Set the environment variable, find your access token at <a ref="https://huggingface.co/settings/tokens" target="_blank">https://huggingface.co/settings/tokens</a> </p>
-
-<pre><code>
-export HF_ACCESS_TOKEN="your_token"
-</code></pre>
+<p>Step 2: Find your access token at <a ref="https://huggingface.co/settings/tokens" target="_blank">https://huggingface.co/settings/tokens</a> </p>
 
 </details>
 
 <div style="text-align:left;">
     <pre><code>
+<span style="color: #008000;"><b>import</b></span> os
 <span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d
 <span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone_text <span style="color: #008000;"><b>import</b></span> load_model
 
+<span>os.environ['HF_ACCESS_TOKEN'] = </span><span style="color: #008080;">"your_huggingface_token"</span>
 llama = load_model(<span style="color: #ab38f2;">"meta-llama/Meta-Llama-3.1-8B"</span>).cuda()
 output_dict = llama(<span style="color: #808080;">"The quick white fox jumps over the lazy cat."</span>)
 

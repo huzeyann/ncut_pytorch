@@ -81,9 +81,11 @@ tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)  # (B, H, W, 3)
 #### Text backbone model example:
 
 ```py linenums="1"
+import os
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
 from ncut_pytorch.backbone_text import load_model
 
+os.environ['HF_ACCESS_TOKEN'] = "your_huggingface_token"
 llama = load_model("meta-llama/Meta-Llama-3.1-8B").cuda()
 output_dict = llama("The quick white fox jumps over the lazy cat.")
 
