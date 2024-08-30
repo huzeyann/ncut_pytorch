@@ -156,8 +156,7 @@ We have implemented some backbone models, they can be used as feature extractors
 <div style="text-align:left;"> <pre><code> 
 <span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> list_models 
 <span style="color: #008080;">print</span>(list_models()) 
-<span style="color: #808080;">
-[
+<span style="color: #808080;">[
   'SAM2(sam2_hiera_t)', 'SAM2(sam2_hiera_s)', 'SAM2(sam2_hiera_b+)', 'SAM2(sam2_hiera_l)', 
   'SAM(sam_vit_b)', 'SAM(sam_vit_l)', 'SAM(sam_vit_h)', 'MobileSAM(TinyViT)', 
   'DiNOv2reg(dinov2_vits14_reg)', 'DiNOv2reg(dinov2_vitb14_reg)', 'DiNOv2reg(dinov2_vitl14_reg)', 'DiNOv2reg(dinov2_vitg14_reg)', 
@@ -168,7 +167,10 @@ We have implemented some backbone models, they can be used as feature extractors
   'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', "CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)",
   'MAE(vit_base)', 'MAE(vit_large)', 'MAE(vit_huge)', 
   'ImageNet(vit_base)'
-] 
+]</span>
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone_text <span style="color: #008000;"><b>import</b></span> list_models 
+<span style="color: #008080;">print</span>(list_models()) 
+<span style="color: #808080;">["meta-llama/Meta-Llama-3.1-8B", "meta-llama/Meta-Llama-3-8B", "gpt2"]</span>
 </span> </code></pre> </div>
 
 #### Image model example:
@@ -193,7 +195,22 @@ tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3) 
 #### Text model example:
 
 
-Here is the code block written in HTML with each line correctly broken:
+<details>
+<summary>
+
+This example use your access token and download Llama from HuggingFace. How to set up Llama access token from HuggingFace (click to expand):
+
+</summary>
+
+<p>Step 1: Request access for Llama from <a ref="https://huggingface.co/meta-llama/Meta-Llama-3.1-8B" target="_blank">https://huggingface.co/meta-llama/Meta-Llama-3.1-8B</a>
+
+<p>Step 2: Set the environment variable, find your access token at <a ref="https://huggingface.co/settings/tokens" target="_blank">https://huggingface.co/settings/tokens</a> </p>
+
+<pre><code>
+export HF_ACCESS_TOKEN="your_token"
+</code></pre>
+
+</details>
 
 <div style="text-align:left;">
     <pre><code>
