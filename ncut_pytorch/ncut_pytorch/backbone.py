@@ -493,32 +493,32 @@ class DiNO(nn.Module):
             'block': block_outputs
         }
             
-MODEL_DICT["DiNO(dino_vits8[hi-res])"] = partial(DiNO, ver="dino_vits8")
-LAYER_DICT["DiNO(dino_vits8[hi-res])"] = 12
-RES_DICT["DiNO(dino_vits8[hi-res])"] = (896, 896)
-MODEL_DICT["DiNO(dino_vitb8[hi-res])"] = partial(DiNO)
-LAYER_DICT["DiNO(dino_vitb8[hi-res])"] = 12
-RES_DICT["DiNO(dino_vitb8[hi-res])"] = (896, 896)
+MODEL_DICT["DiNO(dino_vits8_896)"] = partial(DiNO, ver="dino_vits8")
+LAYER_DICT["DiNO(dino_vits8_896)"] = 12
+RES_DICT["DiNO(dino_vits8_896)"] = (896, 896)
+MODEL_DICT["DiNO(dino_vitb8_896)"] = partial(DiNO)
+LAYER_DICT["DiNO(dino_vitb8_896)"] = 12
+RES_DICT["DiNO(dino_vitb8_896)"] = (896, 896)
 
-MODEL_DICT["DiNO(dino_vits8[mid-res])"] = partial(DiNO, ver="dino_vits8")
-LAYER_DICT["DiNO(dino_vits8[mid-res])"] = 12
-RES_DICT["DiNO(dino_vits8[mid-res])"] = (672, 672)
-MODEL_DICT["DiNO(dino_vitb8[mid-res])"] = partial(DiNO)
-LAYER_DICT["DiNO(dino_vitb8[mid-res])"] = 12
-RES_DICT["DiNO(dino_vitb8[mid-res])"] = (672, 672)
+MODEL_DICT["DiNO(dino_vits8_672)"] = partial(DiNO, ver="dino_vits8")
+LAYER_DICT["DiNO(dino_vits8_672)"] = 12
+RES_DICT["DiNO(dino_vits8_672)"] = (672, 672)
+MODEL_DICT["DiNO(dino_vitb8_672)"] = partial(DiNO)
+LAYER_DICT["DiNO(dino_vitb8_672)"] = 12
+RES_DICT["DiNO(dino_vitb8_672)"] = (672, 672)
 
-MODEL_DICT["DiNO(dino_vits8)"] = partial(DiNO, ver="dino_vits8")
-LAYER_DICT["DiNO(dino_vits8)"] = 12
-RES_DICT["DiNO(dino_vits8)"] = (448, 448)
-MODEL_DICT["DiNO(dino_vitb8)"] = partial(DiNO)
-LAYER_DICT["DiNO(dino_vitb8)"] = 12
-RES_DICT["DiNO(dino_vitb8)"] = (448, 448)
-MODEL_DICT["DiNO(dino_vits16)"] = partial(DiNO, ver="dino_vits16")
-LAYER_DICT["DiNO(dino_vits16)"] = 12
-RES_DICT["DiNO(dino_vits16)"] = (448, 448)
-MODEL_DICT["DiNO(dino_vitb16)"] = partial(DiNO, ver="dino_vitb16")
-LAYER_DICT["DiNO(dino_vitb16)"] = 12
-RES_DICT["DiNO(dino_vitb16)"] = (448, 448)
+MODEL_DICT["DiNO(dino_vits8_448)"] = partial(DiNO, ver="dino_vits8")
+LAYER_DICT["DiNO(dino_vits8_448)"] = 12
+RES_DICT["DiNO(dino_vits8_448)"] = (448, 448)
+MODEL_DICT["DiNO(dino_vitb8_448)"] = partial(DiNO)
+LAYER_DICT["DiNO(dino_vitb8_448)"] = 12
+RES_DICT["DiNO(dino_vitb8_448)"] = (448, 448)
+MODEL_DICT["DiNO(dino_vits16_448)"] = partial(DiNO, ver="dino_vits16")
+LAYER_DICT["DiNO(dino_vits16_448)"] = 12
+RES_DICT["DiNO(dino_vits16_448)"] = (448, 448)
+MODEL_DICT["DiNO(dino_vitb16_448)"] = partial(DiNO, ver="dino_vitb16")
+LAYER_DICT["DiNO(dino_vitb16_448)"] = 12
+RES_DICT["DiNO(dino_vitb16_448)"] = (448, 448)
 
 
 def resample_position_embeddings(embeddings, h, w):
