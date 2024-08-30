@@ -53,9 +53,10 @@ print(list_models())
   'DiNO(dino_vits8)', 'DiNO(dino_vitb8)', 'DiNO(dino_vits16)', 'DiNO(dino_vitb16)',
   'CLIP(ViT-B-16/openai)', 'CLIP(ViT-L-14/openai)', 'CLIP(ViT-H-14/openai)', 'CLIP(ViT-B-16/laion2b_s34b_b88k)', 
   'CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)', 'CLIP(convnext_large_d_320/laion2b_s29b_b131k_ft_soup)', 'CLIP(convnext_xxlarge/laion2b_s34b_b82k_augreg_soup)', 
-  'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', "CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"，
+  'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', "CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)",
   'MAE(vit_base)', 'MAE(vit_large)', 'MAE(vit_huge)', 
-  'ImageNet(vit_base)']
+  'ImageNet(vit_base)'
+]
 ```
 
 A example that run with a real backbone model:
