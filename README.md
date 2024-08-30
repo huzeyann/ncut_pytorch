@@ -60,12 +60,13 @@ print(list_models())
   'SAM(sam_vit_b)', 'SAM(sam_vit_l)', 'SAM(sam_vit_h)', 'MobileSAM(TinyViT)', 
   'DiNOv2reg(dinov2_vits14_reg)', 'DiNOv2reg(dinov2_vitb14_reg)', 'DiNOv2reg(dinov2_vitl14_reg)', 'DiNOv2reg(dinov2_vitg14_reg)', 
   'DiNOv2(dinov2_vits14)', 'DiNOv2(dinov2_vitb14)', 'DiNOv2(dinov2_vitl14)', 'DiNOv2(dinov2_vitg14)', 
-  'DiNO(dino_vitb8)', 'DiNO(dino_vits8)', 'DiNO(dino_vitb16)', 'DiNO(dino_vits16)', 
-  'CLIP(ViT-B-16/openai)', 'CLIP(ViT-B-16/laion2b_s34b_b88k)', 
-  'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', 
-  'CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)', 
-  'MAE(vit_base)', 'ImageNet(vit_base)'
-]
+  "DiNO(dino_vits8[hi-res])", "DiNO(dino_vitb8[hi-res])",
+  'DiNO(dino_vits8)', 'DiNO(dino_vitb8)', 'DiNO(dino_vits16)', 'DiNO(dino_vitb16)',
+  'CLIP(ViT-B-16/openai)', 'CLIP(ViT-L-14/openai)', 'CLIP(ViT-H-14/openai)', 'CLIP(ViT-B-16/laion2b_s34b_b88k)', 
+  'CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)', 'CLIP(convnext_large_d_320/laion2b_s29b_b131k_ft_soup)', 'CLIP(convnext_xxlarge/laion2b_s34b_b82k_augreg_soup)', 
+  'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', "CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"，
+  'MAE(vit_base)', 'MAE(vit_large)', 'MAE(vit_huge)', 
+  'ImageNet(vit_base)']
 ```
 
 A example that run with a real backbone model:
@@ -88,6 +89,21 @@ eigvectors = eigvectors.reshape(20, 64, 64, 100)  # (B, H, W, num_eig)
 tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)  # (B, H, W, 3)
 ```
 
+A text model example:
+
+```py linenums="1"
+from ncut_pytorch import NCUT, rgb_from_tsne_3d
+from ncut_pytorch.backbone_text import load_model
+
+llama = load_model("meta-llama/Meta-Llama-3.1-8B").cuda()
+output_dict = llama("The quick white fox jumps over the lazy cat.")
+
+model_features = output_dict['block'][31].squeeze(0)  # 32nd block output
+token_texts = output_dict['token_texts']
+eigvectors, eigvalues = NCUT(num_eig=5, device='cuda:0').fit_transform(model_features)
+tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device='cuda:0')
+# eigvectors.shape[0] == tsne_rgb.shape[0] == len(token_texts)
+```
 
 ---
 

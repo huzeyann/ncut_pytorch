@@ -21,10 +21,14 @@ class SAM2(nn.Module):
 
         try:
             from sam2.build_sam import build_sam2
-        except ImportError:
-            print("Please install segment_anything_2 from https://github.com/facebookresearch/segment-anything-2.git")
-            print("pip install git+https://github.com/facebookresearch/segment-anything-2.git")
-            return
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install segment_anything_2 from https://github.com/facebookresearch/segment-anything-2.git
+            pip install git+https://github.com/facebookresearch/segment-anything-2.git
+            """
+            raise ImportError(s)
         
         config_dict = {
             'sam2_hiera_l': ("sam2_hiera_large.pt", "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt"),
@@ -127,10 +131,14 @@ class SAM(torch.nn.Module):
         try:
             from segment_anything import sam_model_registry, SamPredictor
             from segment_anything.modeling.sam import Sam
-        except ImportError:
-            print("Please install segment-anything from https://github.com/facebookresearch/segment-anything.git")
-            print("pip install git+https://github.com/facebookresearch/segment-anything.git@6fdee8f")
-            return
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install segment_anything from https://github.com/facebookresearch/segment-anything.git
+            pip install git+https://github.com/huzeyann/segment-anything-2.git
+            """
+            raise ImportError(s)
 
         # https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth
         # https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
@@ -207,10 +215,10 @@ MODEL_DICT["SAM(sam_vit_b)"] = partial(SAM)
 LAYER_DICT["SAM(sam_vit_b)"] = 12
 RES_DICT["SAM(sam_vit_b)"] = (1024, 1024)
 MODEL_DICT["SAM(sam_vit_l)"] = partial(SAM, model_cfg='vit_l')
-LAYER_DICT["SAM(sam_vit_l)"] = 'not sure'
+LAYER_DICT["SAM(sam_vit_l)"] = 24
 RES_DICT["SAM(sam_vit_l)"] = (1024, 1024)
 MODEL_DICT["SAM(sam_vit_h)"] = partial(SAM, model_cfg='vit_h')
-LAYER_DICT["SAM(sam_vit_h)"] = 'not sure'
+LAYER_DICT["SAM(sam_vit_h)"] = 32
 RES_DICT["SAM(sam_vit_h)"] = (1024, 1024)
 
 
@@ -221,10 +229,14 @@ class MobileSAM(nn.Module):
 
         try:
             from mobile_sam import sam_model_registry
-        except ImportError:
-            print("Please install mobile_sam from https://github.com/ChaoningZhang/MobileSAM.git")
-            print("pip install git+https://github.com/ChaoningZhang/MobileSAM.git@c12dd83")
-            return
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install mobile_sam from https://github.com/ChaoningZhang/MobileSAM.git
+            pip install git+https://github.com/ChaoningZhang/MobileSAM.git@c12dd83
+            """
+            raise ImportError(s)
 
         url = "https://raw.githubusercontent.com/ChaoningZhang/MobileSAM/master/weights/mobile_sam.pt"
         model_type = "vit_t"
@@ -414,29 +426,29 @@ class DiNOv2(torch.nn.Module):
         }
 
 MODEL_DICT["DiNOv2reg(dinov2_vits14_reg)"] = partial(DiNOv2, ver="dinov2_vits14_reg", num_reg=5)
-LAYER_DICT["DiNOv2reg(dinov2_vits14_reg)"] = "not sure"
+LAYER_DICT["DiNOv2reg(dinov2_vits14_reg)"] = 12
 RES_DICT["DiNOv2reg(dinov2_vits14_reg)"] = (672, 672)
 MODEL_DICT["DiNOv2reg(dinov2_vitb14_reg)"] = partial(DiNOv2, ver="dinov2_vitb14_reg", num_reg=5)
 LAYER_DICT["DiNOv2reg(dinov2_vitb14_reg)"] = 12
 RES_DICT["DiNOv2reg(dinov2_vitb14_reg)"] = (672, 672)
 MODEL_DICT["DiNOv2reg(dinov2_vitl14_reg)"] = partial(DiNOv2, ver="dinov2_vitl14_reg", num_reg=5)
-LAYER_DICT["DiNOv2reg(dinov2_vitl14_reg)"] = "not sure"
+LAYER_DICT["DiNOv2reg(dinov2_vitl14_reg)"] = 24
 RES_DICT["DiNOv2reg(dinov2_vitl14_reg)"] = (672, 672)
 MODEL_DICT["DiNOv2reg(dinov2_vitg14_reg)"] = partial(DiNOv2, ver="dinov2_vitg14_reg", num_reg=5)
-LAYER_DICT["DiNOv2reg(dinov2_vitg14_reg)"] = "not sure"
+LAYER_DICT["DiNOv2reg(dinov2_vitg14_reg)"] = 40
 RES_DICT["DiNOv2reg(dinov2_vitg14_reg)"] = (672, 672)
 
 MODEL_DICT["DiNOv2(dinov2_vits14)"] = partial(DiNOv2, ver="dinov2_vits14", num_reg=1)
-LAYER_DICT["DiNOv2(dinov2_vits14)"] = "not sure"
+LAYER_DICT["DiNOv2(dinov2_vits14)"] = 12
 RES_DICT["DiNOv2(dinov2_vits14)"] = (672, 672)
 MODEL_DICT["DiNOv2(dinov2_vitb14)"] = partial(DiNOv2, ver="dinov2_vitb14", num_reg=1)
 LAYER_DICT["DiNOv2(dinov2_vitb14)"] = 12
 RES_DICT["DiNOv2(dinov2_vitb14)"] = (672, 672)
 MODEL_DICT["DiNOv2(dinov2_vitl14)"] = partial(DiNOv2, ver="dinov2_vitl14", num_reg=1)
-LAYER_DICT["DiNOv2(dinov2_vitl14)"] = "not sure"
+LAYER_DICT["DiNOv2(dinov2_vitl14)"] = 24
 RES_DICT["DiNOv2(dinov2_vitl14)"] = (672, 672)
 MODEL_DICT["DiNOv2(dinov2_vitg14)"] = partial(DiNOv2, ver="dinov2_vitg14", num_reg=1)
-LAYER_DICT["DiNOv2(dinov2_vitg14)"] = "not sure"
+LAYER_DICT["DiNOv2(dinov2_vitg14)"] = 40
 RES_DICT["DiNOv2(dinov2_vitg14)"] = (672, 672)
 
 class DiNO(nn.Module):
@@ -481,18 +493,26 @@ class DiNO(nn.Module):
             'block': block_outputs
         }
             
+MODEL_DICT["DiNO(dino_vits8[hi-res])"] = partial(DiNO, ver="dino_vits8")
+LAYER_DICT["DiNO(dino_vits8[hi-res])"] = 12
+RES_DICT["DiNO(dino_vits8[hi-res])"] = (448, 448)
+MODEL_DICT["DiNO(dino_vitb8[hi-res])"] = partial(DiNO)
+LAYER_DICT["DiNO(dino_vitb8[hi-res])"] = 12
+RES_DICT["DiNO(dino_vitb8[hi-res])"] = (448, 448)
+
+MODEL_DICT["DiNO(dino_vits8)"] = partial(DiNO, ver="dino_vits8")
+LAYER_DICT["DiNO(dino_vits8)"] = 12
+RES_DICT["DiNO(dino_vits8)"] = (448, 448)
 MODEL_DICT["DiNO(dino_vitb8)"] = partial(DiNO)
 LAYER_DICT["DiNO(dino_vitb8)"] = 12
 RES_DICT["DiNO(dino_vitb8)"] = (448, 448)
-MODEL_DICT["DiNO(dino_vits8)"] = partial(DiNO, ver="dino_vits8")
-LAYER_DICT["DiNO(dino_vits8)"] = "not sure"
-RES_DICT["DiNO(dino_vits8)"] = (448, 448)
-MODEL_DICT["DiNO(dino_vitb16)"] = partial(DiNO, ver="dino_vitb16")
-LAYER_DICT["DiNO(dino_vitb16)"] = "not sure"
-RES_DICT["DiNO(dino_vitb16)"] = (448, 448)
 MODEL_DICT["DiNO(dino_vits16)"] = partial(DiNO, ver="dino_vits16")
-LAYER_DICT["DiNO(dino_vits16)"] = "not sure"
+LAYER_DICT["DiNO(dino_vits16)"] = 12
 RES_DICT["DiNO(dino_vits16)"] = (448, 448)
+MODEL_DICT["DiNO(dino_vitb16)"] = partial(DiNO, ver="dino_vitb16")
+LAYER_DICT["DiNO(dino_vitb16)"] = 12
+RES_DICT["DiNO(dino_vitb16)"] = (448, 448)
+
 
 def resample_position_embeddings(embeddings, h, w):
     cls_embeddings = embeddings[0]
@@ -510,10 +530,14 @@ class OpenCLIPViT(nn.Module):
         super().__init__()
         try:
             import open_clip
-        except ImportError:
-            print("Please install open-clip-torch to use this class.")
-            print("pip install open-clip-torch==2.20.0")
-            return
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install open-clip-torch to use this model.
+            pip install open-clip-torch
+            """
+            raise ImportError(s)
         
         model, _, _ = open_clip.create_model_and_transforms(version, pretrained=pretrained)
         
@@ -564,28 +588,100 @@ class OpenCLIPViT(nn.Module):
             'mlp': mlp_outputs,
             'block': block_outputs
         }
-        
+
 MODEL_DICT["CLIP(ViT-B-16/openai)"] = partial(OpenCLIPViT, version='ViT-B-16', pretrained='openai')
 LAYER_DICT["CLIP(ViT-B-16/openai)"] = 12
 RES_DICT["CLIP(ViT-B-16/openai)"] = (672, 672)
+MODEL_DICT["CLIP(ViT-L-14/openai)"] = partial(OpenCLIPViT, version='ViT-L-14', pretrained='openai')
+LAYER_DICT["CLIP(ViT-L-14/openai)"] = 24
+RES_DICT["CLIP(ViT-L-14/openai)"] = (672, 672)
+MODEL_DICT["CLIP(ViT-H-14/openai)"] = partial(OpenCLIPViT, version='ViT-H-14', pretrained='openai')
+LAYER_DICT["CLIP(ViT-H-14/openai)"] = 32
+RES_DICT["CLIP(ViT-H-14/openai)"] = (672, 672)
+
 MODEL_DICT["CLIP(ViT-B-16/laion2b_s34b_b88k)"] = partial(OpenCLIPViT, version='ViT-B-16', pretrained='laion2b_s34b_b88k')
 LAYER_DICT["CLIP(ViT-B-16/laion2b_s34b_b88k)"] = 12
 RES_DICT["CLIP(ViT-B-16/laion2b_s34b_b88k)"] = (672, 672)
 
+
+class CLIPConvnext(nn.Module):
+    def __init__(self, version='convnext_base_w_320', pretrained='laion_aesthetic_s13b_b82k'):
+        super().__init__()
+        try:
+            import open_clip
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install open-clip-torch to use this model.
+            pip install open-clip-torch
+            """
+            raise ImportError(s)
+    
+        model, _, _ = open_clip.create_model_and_transforms(version, pretrained=pretrained)
+        
+        def new_forward(self, x):
+            shortcut = x
+            x = self.conv_dw(x)
+            if self.use_conv_mlp:
+                x = self.norm(x)
+                x = self.mlp(x)
+            else:
+                x = x.permute(0, 2, 3, 1)
+                x = self.norm(x)
+                x = self.mlp(x)
+                x = x.permute(0, 3, 1, 2)
+            if self.gamma is not None:
+                x = x.mul(self.gamma.reshape(1, -1, 1, 1))
+
+            x = self.drop_path(x) + self.shortcut(shortcut)
+            self.block_output = rearrange(x.clone(), "b c h w -> b h w c")
+            return x
+
+        setattr(model.visual.trunk.stages[0].blocks[0].__class__, "forward", new_forward)
+        
+        self.model = model
+        self.model.eval()
+    
+    def forward(self, x):
+        out = self.model(x)
+        block_outputs = []
+        for stage in self.model.visual.trunk.stages:
+            for block in stage.blocks:
+                block_outputs.append(block.block_output)
+        return {
+            'block': block_outputs
+        }
+        
+    
+MODEL_DICT["CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)"] = partial(CLIPConvnext, version='convnext_base_w_320', pretrained='laion_aesthetic_s13b_b82k')
+LAYER_DICT["CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)"] = 36
+RES_DICT["CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)"] = (960, 960)
+MODEL_DICT["CLIP(convnext_large_d_320/laion2b_s29b_b131k_ft_soup)"] = partial(CLIPConvnext, version='convnext_large_d_320', pretrained='laion2b_s29b_b131k_ft_soup')
+LAYER_DICT["CLIP(convnext_large_d_320/laion2b_s29b_b131k_ft_soup)"] = 36
+RES_DICT["CLIP(convnext_large_d_320/laion2b_s29b_b131k_ft_soup)"] = (960, 960)
+MODEL_DICT["CLIP(convnext_xxlarge/laion2b_s34b_b82k_augreg_soup)"] = partial(CLIPConvnext, version='convnext_xxlarge', pretrained='laion2b_s34b_b82k_augreg_soup')
+LAYER_DICT["CLIP(convnext_xxlarge/laion2b_s34b_b82k_augreg_soup)"] = 40
+RES_DICT["CLIP(convnext_xxlarge/laion2b_s34b_b82k_augreg_soup)"] = (960, 960)
+
 class EVA02(nn.Module):
     
-    def __init__(self, **kwargs):
+    def __init__(self, version='eva02_base_patch14_448/mim_in22k_ft_in1k', **kwargs):
         super().__init__(**kwargs)
         
         try:
             import timm
-        except ImportError:
-            print("Please install timm to use this class.")
-            print("pip install timm")
-            return
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install timm to use this model.
+            pip install timm
+            """
+            raise ImportError(s)
         
         model = timm.create_model(
-            'eva02_base_patch14_448.mim_in22k_ft_in1k',
+            version,
             pretrained=True,
             num_classes=0,  # remove classifier nn.Linear
         )
@@ -632,101 +728,65 @@ class EVA02(nn.Module):
             'block': block_outputs
         }
         
-MODEL_DICT["CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)"] = partial(EVA02)
+MODEL_DICT["CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)"] = partial(EVA02, version='eva02_base_patch14_448/mim_in22k_ft_in1k')
 LAYER_DICT["CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)"] = 12
 RES_DICT["CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)"] = (448, 448)
-
-class CLIPConvnext(nn.Module):
-    def __init__(self):
-        super().__init__()
-        try:
-            import open_clip
-        except ImportError:
-            print("Please install open-clip-torch to use this class.")
-            print("pip install open-clip-torch==2.20.0")
-            return
-    
-        model, _, _ = open_clip.create_model_and_transforms('convnext_base_w_320', pretrained='laion_aesthetic_s13b_b82k')
-        
-        def new_forward(self, x):
-            shortcut = x
-            x = self.conv_dw(x)
-            if self.use_conv_mlp:
-                x = self.norm(x)
-                x = self.mlp(x)
-            else:
-                x = x.permute(0, 2, 3, 1)
-                x = self.norm(x)
-                x = self.mlp(x)
-                x = x.permute(0, 3, 1, 2)
-            if self.gamma is not None:
-                x = x.mul(self.gamma.reshape(1, -1, 1, 1))
-
-            x = self.drop_path(x) + self.shortcut(shortcut)
-            self.block_output = rearrange(x.clone(), "b c h w -> b h w c")
-            return x
-
-        setattr(model.visual.trunk.stages[0].blocks[0].__class__, "forward", new_forward)
-        
-        self.model = model
-        self.model.eval()
-    
-    def forward(self, x):
-        out = self.model(x)
-        block_outputs = []
-        for stage in self.model.visual.trunk.stages:
-            for block in stage.blocks:
-                block_outputs.append(block.block_output)
-        return {
-            'block': block_outputs
-        }
-        
-    
-MODEL_DICT["CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)"] = partial(CLIPConvnext)
-LAYER_DICT["CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)"] = 36
-RES_DICT["CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)"] = (960, 960)
-
+MODEL_DICT["CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"] = partial(EVA02, version='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k')
+LAYER_DICT["CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"] = 24
+RES_DICT["CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"] = (448, 448)
 
 class MAE(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, size='base', **kwargs):
         super().__init__(**kwargs)
 
         try:
             import timm
-        except ImportError:
-            print("Please install timm to use this class.")
-            print("pip install timm")
-            return
-        
-        self.mae = timm.models.vision_transformer.VisionTransformer()
-        
-        sd = torch.hub.load_state_dict_from_url(
-            "https://dl.fbaipublicfiles.com/mae/pretrain/mae_pretrain_vit_base.pth"
-        )
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
 
+            Please install timm to use this model.
+            pip install timm
+            """
+            raise ImportError(s)
+        
+        if size == 'base':
+            self.mae_encoder = timm.models.vision_transformer.VisionTransformer(patch_size=16, embed_dim=768, depth=12, num_heads=12)
+            sd = torch.hub.load_state_dict_from_url(
+                "https://dl.fbaipublicfiles.com/mae/pretrain/mae_pretrain_vit_base.pth"
+            )
+        if size == 'large':
+            self.mae_encoder = timm.models.vision_transformer.VisionTransformer(patch_size=16, embed_dim=1024, depth=24, num_heads=16)
+            sd = torch.hub.load_state_dict_from_url(
+                "https://dl.fbaipublicfiles.com/mae/pretrain/mae_pretrain_vit_large.pth"
+            )
+        if size == 'huge':
+            self.mae_encoder = timm.models.vision_transformer.VisionTransformer(patch_size=14, embed_dim=1280, depth=32, num_heads=16)
+            sd = torch.hub.load_state_dict_from_url(
+                "https://dl.fbaipublicfiles.com/mae/pretrain/mae_pretrain_vit_huge.pth"
+            )
+            
         checkpoint_model = sd["model"]
-        state_dict = self.mae.state_dict()
+        state_dict = self.mae_encoder.state_dict()
         for k in ["head.weight", "head.bias"]:
             if (
                 k in checkpoint_model
                 and checkpoint_model[k].shape != state_dict[k].shape
             ):
-                print(f"Removing key {k} from pretrained checkpoint")
                 del checkpoint_model[k]
 
         # load pre-trained model
-        msg = self.mae.load_state_dict(checkpoint_model, strict=False)
-        print(msg)
+        msg = self.mae_encoder.load_state_dict(checkpoint_model, strict=False)
         
         # resample the patch embeddings to 56x56, take 896x896 input
-        pos_embed = self.mae.pos_embed[0]
+        pos_embed = self.mae_encoder.pos_embed[0]
         pos_embed = resample_position_embeddings(pos_embed, 42, 42)
-        self.mae.pos_embed = nn.Parameter(pos_embed.unsqueeze(0))
-        self.mae.img_size = (672, 672)
-        self.mae.patch_embed.img_size = (672, 672)
+        self.mae_encoder.pos_embed = nn.Parameter(pos_embed.unsqueeze(0))
+        self.mae_encoder.img_size = (672, 672)
+        self.mae_encoder.patch_embed.img_size = (672, 672)
 
-        self.mae.requires_grad_(False)
-        self.mae.eval()
+        self.mae_encoder.requires_grad_(False)
+        self.mae_encoder.eval()
         
         def forward(self, x):
             self.saved_attn_node = self.ls1(self.attn(self.norm1(x)))
@@ -736,10 +796,10 @@ class MAE(nn.Module):
             self.saved_block_output = x.clone()
             return x
         
-        setattr(self.mae.blocks[0].__class__, "forward", forward)
+        setattr(self.mae_encoder.blocks[0].__class__, "forward", forward)
         
     def forward(self, x):
-        out = self.mae.forward(x)
+        out = self.mae_encoder.forward(x)
         def remove_cls_and_reshape(x):
             x = x.clone()
             x = x[:, 1:]
@@ -747,19 +807,27 @@ class MAE(nn.Module):
             x = rearrange(x, "b (h w) c -> b h w c", h=hw)
             return x
         
-        attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae.blocks]
-        mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae.blocks]
-        block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae.blocks]
+        attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae_encoder.blocks]
+        mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae_encoder.blocks]
+        block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae_encoder.blocks]
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
             'block': block_outputs
         }
         
+        
 
-MODEL_DICT["MAE(vit_base)"] = partial(MAE)
+MODEL_DICT["MAE(vit_base)"] = partial(MAE, size='base')
 LAYER_DICT["MAE(vit_base)"] = 12
 RES_DICT["MAE(vit_base)"] = (672, 672)
+MODEL_DICT["MAE(vit_large)"] = partial(MAE, size='large')
+LAYER_DICT["MAE(vit_large)"] = 24
+RES_DICT["MAE(vit_large)"] = (672, 672)
+MODEL_DICT["MAE(vit_huge)"] = partial(MAE, size='huge')
+LAYER_DICT["MAE(vit_huge)"] = 32
+RES_DICT["MAE(vit_huge)"] = (672, 672)
+
 
 class ImageNet(nn.Module):
     def __init__(self, **kwargs):
@@ -767,9 +835,14 @@ class ImageNet(nn.Module):
 
         try:
             import timm
-        except ImportError:
-            print("Please install timm to use this class.")
-            print("pip install timm")
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install timm to use this model.
+            pip install timm
+            """
+            raise ImportError(s)
             return
         
         model = timm.create_model(
@@ -833,11 +906,12 @@ def download_all_models():
         
 def get_demo_model_names():
     # for my huggingface demo
-    list_of_models = []
-    for model_name in MODEL_DICT:
-        if LAYER_DICT[model_name] != "not sure":
-            list_of_models.append(model_name)
-    return list_of_models
+    return ['SAM2(sam2_hiera_t)', 'SAM2(sam2_hiera_s)', 'SAM2(sam2_hiera_b+)', 'SAM2(sam2_hiera_l)', 'SAM(sam_vit_b)', 'MobileSAM(TinyViT)', 'DiNOv2reg(dinov2_vitb14_reg)', 'DiNOv2(dinov2_vitb14)', 'DiNO(dino_vitb8)', 'CLIP(ViT-B-16/openai)', 'CLIP(ViT-B-16/laion2b_s34b_b88k)', 'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', 'CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)', 'MAE(vit_base)', 'ImageNet(vit_base)']
+    # list_of_models = []
+    # for model_name in MODEL_DICT:
+    #     if LAYER_DICT[model_name] != "not sure":
+    #         list_of_models.append(model_name)
+    # return list_of_models
 
 
 def load_model(model_name):
@@ -858,7 +932,7 @@ def extract_features(images: torch.Tensor, model: nn.Module,
     
     if use_cuda:
         model = model.to(device)
-
+        
     chunked_idxs = torch.split(torch.arange(images.shape[0]), batch_size)
     
     outputs = []
@@ -887,4 +961,12 @@ if __name__ == '__main__':
     # out = model(inp)
     # print(out[0][0].shape, out[0][1].shape, out[0][2].shape)
     print(list_models())
+    for model_name in list_models():
+        if LAYER_DICT[model_name] == "not sure":
+            model = MODEL_DICT[model_name]().cuda()
+            print(f"Model: {model_name}")
+            inp = torch.rand(1, 3, *RES_DICT[model_name]).cuda()
+            out = model(inp)
+            print(len(out['block']))
+
 # %%
