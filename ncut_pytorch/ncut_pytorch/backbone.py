@@ -495,10 +495,17 @@ class DiNO(nn.Module):
             
 MODEL_DICT["DiNO(dino_vits8[hi-res])"] = partial(DiNO, ver="dino_vits8")
 LAYER_DICT["DiNO(dino_vits8[hi-res])"] = 12
-RES_DICT["DiNO(dino_vits8[hi-res])"] = (448, 448)
+RES_DICT["DiNO(dino_vits8[hi-res])"] = (896, 896)
 MODEL_DICT["DiNO(dino_vitb8[hi-res])"] = partial(DiNO)
 LAYER_DICT["DiNO(dino_vitb8[hi-res])"] = 12
-RES_DICT["DiNO(dino_vitb8[hi-res])"] = (448, 448)
+RES_DICT["DiNO(dino_vitb8[hi-res])"] = (896, 896)
+
+MODEL_DICT["DiNO(dino_vits8[mid-res])"] = partial(DiNO, ver="dino_vits8")
+LAYER_DICT["DiNO(dino_vits8[mid-res])"] = 12
+RES_DICT["DiNO(dino_vits8[mid-res])"] = (672, 672)
+MODEL_DICT["DiNO(dino_vitb8[mid-res])"] = partial(DiNO)
+LAYER_DICT["DiNO(dino_vitb8[mid-res])"] = 12
+RES_DICT["DiNO(dino_vitb8[mid-res])"] = (672, 672)
 
 MODEL_DICT["DiNO(dino_vits8)"] = partial(DiNO, ver="dino_vits8")
 LAYER_DICT["DiNO(dino_vits8)"] = 12
