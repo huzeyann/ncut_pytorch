@@ -173,7 +173,7 @@ A example that runs with a real backbone model:
 <span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> load_model, extract_features
 
 model = load_model(model_name=<span style="color: #A020F0;">"SAM(sam_vit_b)"</span>) 
-images = torch.rand(20, 1024, 1024, 3) 
+images = torch.rand(20, 3, 1024, 1024) 
 model_features = extract_features(images, model, node_type=<span style="color: #A020F0;">'attn'</span>, layer=<span style="color: #008080;">6</span>) <span style="color: #008080;">
 # model_features = model(images)['attn'][6]  # this also works</span>
 

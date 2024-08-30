@@ -65,7 +65,7 @@ from ncut_pytorch import NCUT, rgb_from_tsne_3d
 from ncut_pytorch.backbone import load_model, extract_features
 
 model = load_model(model_name="SAM(sam_vit_b)")
-images = torch.rand(20, 1024, 1024, 3)
+images = torch.rand(20, 3, 1024, 1024)
 model_features = extract_features(images, model, node_type='attn', layer=6)
 # model_features = model(images)['attn'][6]  # this also works
 
