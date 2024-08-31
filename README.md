@@ -50,6 +50,8 @@ eigvectors = eigvectors.reshape(20, 64, 64, 100)  # (B, H, W, num_eig)
 tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)  # (B, H, W, 3)
 ```
 
+#### Load Feature Extractor Model
+
 We have implemented some backbone models, they can be used as feature extractors, Here is a list of available models:
 
 ```py
@@ -69,7 +71,7 @@ print(list_models())
 ]
 ```
 
-#### Image backbone model example:
+#### Image model example:
 
 ```py linenums="1"
 import torch
@@ -89,7 +91,7 @@ eigvectors = eigvectors.reshape(20, 64, 64, 100)  # (B, H, W, num_eig)
 tsne_rgb = tsne_rgb.reshape(20, 64, 64, 3)  # (B, H, W, 3)
 ```
 
-#### Text backbone model example:
+#### Text model example:
 
 ```py linenums="1"
 import os

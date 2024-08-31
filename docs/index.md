@@ -150,7 +150,7 @@ tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3) 
     </code></pre>
 </div>
 
-#### Load Any Pre-trained Model
+#### Load Feature Extractor Model
 
 We have implemented some backbone models, they can be used as feature extractors. Here is a list of available models:
 <div style="text-align:left;"> <pre><code> 
