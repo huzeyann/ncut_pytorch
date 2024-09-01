@@ -1,23 +1,10 @@
-site_name: Nyström Normalized Cuts
+site_name: Nyström Normalized Cuts PyTorch
 
 repo_url: https://github.com/huzeyann/ncut_pytorch
 repo_name: ncut_pytorch
 
 theme:
   name: "material"
-  # palette: 
-  #   # Palette toggle for light mode
-  #   - scheme: default
-  #     toggle:
-  #       icon: material/weather-night
-  #       name: Switch to dark mode
-
-  #   # Palette toggle for dark mode
-  #   - scheme: slate
-  #     toggle:
-  #       icon: material/weather-sunny
-  #       name: Switch to light mode
-
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -47,7 +34,6 @@ theme:
   icon:
     repo: fontawesome/brands/github
   logo: images/ncut.svg
-
 
 plugins:
 - search
