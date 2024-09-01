@@ -65,6 +65,7 @@ nav:
   - Speed and Performance: speed_and_performance.md
   - Gradient of NCUT: gradient_of_ncut.md
   - API Reference: api_reference.md
+  - Demo: demo.md
 
 markdown_extensions:
   - pymdownx.highlight:

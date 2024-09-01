@@ -19,3 +19,35 @@ hide:
 	width="100%"
 	height="1600"
 ></iframe>
+
+---
+
+## Hosting this demo locally
+
+Step 1. Install [Docker](https://www.docker.com/) and [Nvidia-docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) plugin.
+
+```shell
+curl -fsSL https://get.docker.com -o get-docker.sh | sudo sh
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) && curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg && curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+```
+
+Step 2. Run this docker container locally. 
+
+```
+docker run -it -p 7860:7860 --platform=linux/amd64 --gpus all \
+	-e HF_ACCESS_TOKEN="YOUR_VALUE_HERE" \
+	-e USE_HUGGINGFACE_ZEROGPU="false" \
+	-e DOWNLOAD_ALL_MODELS_DATASETS="false" \
+	registry.hf.space/huzey-ncut-pytorch:latest python app.py
+```
+
+`HF_ACCESS_TOKEN` is only needed if you need access to restricted models (Llama, SDv3), please see [Backbones](backbones.md).
+
+Step 3. Use the printed out link to access your local demo.
+
+```
+...
+Running on local URL:  http://0.0.0.0:7860
+Running on public URL: https://some_link_here.gradio.live
+```
