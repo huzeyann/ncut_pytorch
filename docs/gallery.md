@@ -1,3 +1,7 @@
+---
+hide:
+  - toc
+---
 
 ## Images
 
@@ -55,3 +59,14 @@
 
 
 </p>
+
+---
+
+All the models, including those not listed in this gallery, can be accessed at <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>.
+
+<script
+	type="module"
+	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
+></script>
+
+<gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
