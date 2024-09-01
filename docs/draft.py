@@ -1,53 +1,26 @@
 # %%
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.datasets import make_blobs
-from scipy.linalg import eigh
-from sklearn.metrics.pairwise import rbf_kernel
-from sklearn.cluster import KMeans
+from ncut_pytorch.backbone import load_model
+import torch
+model = load_model(model_name="SAM(sam_vit_b)").cuda()
+images = torch.rand(1, 3, 1024, 1024).cuda()
+out_dict = model(images)
 
-# Generate synthetic data with 4 clusters
-X, y = make_blobs(n_samples=400, centers=4, cluster_std=0.60, random_state=0)
+for node_name in out_dict.keys():
+    print(f"node_name: `{node_name}`, num_layers: {len(out_dict[node_name])}")
+    print(f"layer_0 shape: {out_dict[node_name][0].shape}")
 
-# Compute the similarity matrix using RBF (Gaussian) kernel
-sigma = 1.0
-W = rbf_kernel(X, gamma=1/(2*sigma**2))
+# %%
+from ncut_pytorch.backbone_text import load_text_model
+import torch
+model = load_text_model(model_name="gpt2").cuda()
+out_dict = model("I know this sky loves you")
 
-# Degree matrix
-D = np.diag(np.sum(W, axis=1))
+# out_dict = {node_name: List[layer_0, layer_1, ...]}
 
-# Unnormalized Laplacian
-L = D - W
-
-# Normalized Laplacian (symmetric)
-D_inv_sqrt = np.linalg.inv(np.sqrt(D))
-L_sym = np.dot(np.dot(D_inv_sqrt, L), D_inv_sqrt)
-
-# Compute the eigenvalues and eigenvectors of the normalized Laplacian
-eigvals, eigvecs = eigh(L_sym)
-
-# Plot the first few eigenvectors
-    
-fig, ax = plt.subplots(2, 2, figsize=(8, 8))
-for i in range(4):
-    ax[i//2, i%2].scatter(X[:, 0], X[:, 1], c=eigvecs[:, i], s=50, cmap='coolwarm')
-    ax[i//2, i%2].set_title(f"Eigenvector {i+1} - Dividing the Graph")
-plt.tight_layout()
-plt.show()
-
-k = 4
-# Use the first k eigenvectors to form a matrix U
-U = eigvecs[:, :k]
-
-# Normalize U
-U_norm = U / np.linalg.norm(U, axis=1, keepdims=True)
-
-# Perform k-means clustering on U_norm
-kmeans = KMeans(n_clusters=k, random_state=0)
-labels = kmeans.fit_predict(U_norm)
-
-# Plot the clusters
-plt.scatter(X[:, 0], X[:, 1], c=labels, s=50, cmap='viridis')
-plt.title("Spectral Clustering: Clusters Found")
-plt.show()
+for node_name in out_dict.keys():
+    if isinstance(out_dict[node_name][0], torch.Tensor):
+        print(f"node_name: `{node_name}`, num_layers: {len(out_dict[node_name])}")
+        print(f"layer_0 shape: {out_dict[node_name][0].shape}")
+    else:
+        print(f"token_texts: {out_dict[node_name]}")
 # %%

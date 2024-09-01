@@ -152,7 +152,9 @@ tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3) 
 
 #### Load Feature Extractor Model
 
-We have implemented some backbone models, they can be used as feature extractors. Here is a list of available models:
+Any backbone model works as plug-in feature extractor. 
+We have implemented some backbone models, here is a list of available models:
+
 <div style="text-align:left;"> <pre><code> 
 <span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> list_models 
 <span style="color: #008080;">print</span>(list_models()) 
@@ -162,6 +164,7 @@ We have implemented some backbone models, they can be used as feature extractors
   'DiNOv2reg(dinov2_vits14_reg)', 'DiNOv2reg(dinov2_vitb14_reg)', 'DiNOv2reg(dinov2_vitl14_reg)', 'DiNOv2reg(dinov2_vitg14_reg)', 
   'DiNOv2(dinov2_vits14)', 'DiNOv2(dinov2_vitb14)', 'DiNOv2(dinov2_vitl14)', 'DiNOv2(dinov2_vitg14)', 
   'DiNO(dino_vits8_896)', 'DiNO(dino_vitb8_896)', 'DiNO(dino_vits8_672)', 'DiNO(dino_vitb8_672)', 'DiNO(dino_vits8_448)', 'DiNO(dino_vitb8_448)', 'DiNO(dino_vits16_448)', 'DiNO(dino_vitb16_448)',
+  'Diffusion(stabilityai/stable-diffusion-2)', 'Diffusion(CompVis/stable-diffusion-v1-4)', 'Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)',
   'CLIP(ViT-B-16/openai)', 'CLIP(ViT-L-14/openai)', 'CLIP(ViT-H-14/openai)', 'CLIP(ViT-B-16/laion2b_s34b_b88k)', 
   'CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)', 'CLIP(convnext_large_d_320/laion2b_s29b_b131k_ft_soup)', 'CLIP(convnext_xxlarge/laion2b_s34b_b82k_augreg_soup)', 
   'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', "CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)",
@@ -212,10 +215,10 @@ This example use your access token and download Llama from HuggingFace. How to s
     <pre><code>
 <span style="color: #008000;"><b>import</b></span> os
 <span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone_text <span style="color: #008000;"><b>import</b></span> load_model
+<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone_text <span style="color: #008000;"><b>import</b></span> load_text_model
 
 <span>os.environ['HF_ACCESS_TOKEN'] = </span><span style="color: #008080;">"your_huggingface_token"</span>
-llama = load_model(<span style="color: #ab38f2;">"meta-llama/Meta-Llama-3.1-8B"</span>).cuda()
+llama = load_text_model(<span style="color: #ab38f2;">"meta-llama/Meta-Llama-3.1-8B"</span>).cuda()
 output_dict = llama(<span style="color: #808080;">"The quick white fox jumps over the lazy cat."</span>)
 
 model_features = output_dict[<span style="color: #ab38f2;">'block'</span>][<span style="color: #008080;">31</span>].squeeze(<span style="color: #008080;">0</span>)  <span style="color: #008080;"># 32nd block output</span>
@@ -248,5 +251,3 @@ Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t
 > AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*,2024
 > 
 > Normalized Cuts and Image Segmentation, Jianbo Shi and Jitendra Malik, 2000
-
-

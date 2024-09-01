@@ -231,6 +231,8 @@ def download_all_models():
             print(f"Error downloading {model_name}: {e}")
             continue
         
+def load_text_model(model_name: str):
+    return MODEL_DICT[model_name]()
 
 if __name__ == '__main__':
 

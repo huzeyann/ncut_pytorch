@@ -1,23 +1,10 @@
-site_name: Nyström Normalized Cuts
+site_name: Nyström Normalized Cuts PyTorch
 
 repo_url: https://github.com/huzeyann/ncut_pytorch
 repo_name: ncut_pytorch
 
 theme:
   name: "material"
-  # palette: 
-  #   # Palette toggle for light mode
-  #   - scheme: default
-  #     toggle:
-  #       icon: material/weather-night
-  #       name: Switch to dark mode
-
-  #   # Palette toggle for dark mode
-  #   - scheme: slate
-  #     toggle:
-  #       icon: material/weather-sunny
-  #       name: Switch to light mode
-
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -48,7 +35,6 @@ theme:
     repo: fontawesome/brands/github
   logo: images/ncut.svg
 
-
 plugins:
 - search
 - autorefs
@@ -72,6 +58,7 @@ nav:
   - Tutorial 3 - Add Nodes: add_nodes.md
   - Tutorial 4 - Mixing Data: mixing_data.md
   - Tutorial 5 - Coloring: coloring.md
+  - Backbone Models: backbones.md
   - How to Get Better Segmentation: how_to_get_better_segmentation.md
   - Make NCUT Aligned: alignedcut_vs_ncut.md
   - Memory Usage: memory_usage.md

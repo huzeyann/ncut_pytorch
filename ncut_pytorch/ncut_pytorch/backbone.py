@@ -1,6 +1,6 @@
 # Author: Huzheng Yang
 # %%
-from typing import Literal, Optional, Tuple
+from typing import Literal, Optional, Tuple, Dict, Any
 from einops import rearrange
 import requests
 import torch
@@ -12,6 +12,7 @@ from functools import partial
 
 MODEL_DICT = {}
 LAYER_DICT = {}
+SD_KEY_DICT = {}
 RES_DICT = {}
 
 class SAM2(nn.Module):
@@ -136,7 +137,7 @@ class SAM(torch.nn.Module):
             Import Error: {e}
 
             Please install segment_anything from https://github.com/facebookresearch/segment-anything.git
-            pip install git+https://github.com/huzeyann/segment-anything-2.git
+            pip install git+ttps://github.com/facebookresearch/segment-anything.git
             """
             raise ImportError(s)
 
@@ -548,7 +549,14 @@ class OpenCLIPViT(nn.Module):
         
         model, _, _ = open_clip.create_model_and_transforms(version, pretrained=pretrained)
         
-        positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 42, 42)
+        if version == 'ViT-B-16':
+            positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 42, 42)
+        elif version == 'ViT-L-14':
+            positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 48, 48)
+        elif version == 'ViT-H-14':
+            positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 48, 48)
+        else:
+            raise ValueError(f"Unsupported version: {version}")
         model.visual.positional_embedding = nn.Parameter(positional_embedding)
         
         def new_forward(
@@ -902,6 +910,431 @@ MODEL_DICT["ImageNet(vit_base)"] = partial(ImageNet)
 LAYER_DICT["ImageNet(vit_base)"] = 12
 RES_DICT["ImageNet(vit_base)"] = (672, 672)
 
+
+def expand_hw(tensor):
+    hw = np.sqrt(tensor.shape[1]).astype(int)
+    return rearrange(tensor, 'b (h w) c -> b h w c', h=hw, w=hw)
+
+class StableDiffusion(nn.Module):
+    def __init__(self, total_time_steps=50, timestep=10, model_id="stabilityai/stable-diffusion-2"):
+        super().__init__()
+        try:
+            from diffusers import DDPMScheduler
+            from diffusers import StableDiffusionPipeline
+        except ImportError:
+            raise ImportError("Please install diffusers to use this class. \n pip install diffusers")
+        
+        self.timestep = timestep
+        noise_scheduler = DDPMScheduler(num_train_timesteps=total_time_steps)
+        pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32, device="cpu")
+        
+        def new_attn_forward(
+            self,
+            hidden_states: torch.Tensor,
+            attention_mask: Optional[torch.Tensor] = None,
+            encoder_hidden_states: Optional[torch.Tensor] = None,
+            encoder_attention_mask: Optional[torch.Tensor] = None,
+            timestep: Optional[torch.LongTensor] = None,
+            cross_attention_kwargs: Dict[str, Any] = None,
+            class_labels: Optional[torch.LongTensor] = None,
+            added_cond_kwargs: Optional[Dict[str, torch.Tensor]] = None,
+        ) -> torch.Tensor:
+
+            # Notice that normalization is always applied before the real computation in the following blocks.
+            # 0. Self-Attention
+            batch_size = hidden_states.shape[0]
+
+            if self.norm_type == "ada_norm":
+                norm_hidden_states = self.norm1(hidden_states, timestep)
+            elif self.norm_type == "ada_norm_zero":
+                norm_hidden_states, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.norm1(
+                    hidden_states, timestep, class_labels, hidden_dtype=hidden_states.dtype
+                )
+            elif self.norm_type in ["layer_norm", "layer_norm_i2vgen"]:
+                norm_hidden_states = self.norm1(hidden_states)
+            elif self.norm_type == "ada_norm_continuous":
+                norm_hidden_states = self.norm1(hidden_states, added_cond_kwargs["pooled_text_emb"])
+            elif self.norm_type == "ada_norm_single":
+                shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
+                    self.scale_shift_table[None] + timestep.reshape(batch_size, 6, -1)
+                ).chunk(6, dim=1)
+                norm_hidden_states = self.norm1(hidden_states)
+                norm_hidden_states = norm_hidden_states * (1 + scale_msa) + shift_msa
+            else:
+                raise ValueError("Incorrect norm used")
+
+            if self.pos_embed is not None:
+                norm_hidden_states = self.pos_embed(norm_hidden_states)
+
+            # 1. Prepare GLIGEN inputs
+            cross_attention_kwargs = cross_attention_kwargs.copy() if cross_attention_kwargs is not None else {}
+            gligen_kwargs = cross_attention_kwargs.pop("gligen", None)
+
+            attn_output = self.attn1(
+                norm_hidden_states,
+                encoder_hidden_states=encoder_hidden_states if self.only_cross_attention else None,
+                attention_mask=attention_mask,
+                **cross_attention_kwargs,
+            )
+
+            if self.norm_type == "ada_norm_zero":
+                attn_output = gate_msa.unsqueeze(1) * attn_output
+            elif self.norm_type == "ada_norm_single":
+                attn_output = gate_msa * attn_output
+
+            self.attn1_output = expand_hw(attn_output.clone())
+            
+            hidden_states = attn_output + hidden_states
+            if hidden_states.ndim == 4:
+                hidden_states = hidden_states.squeeze(1)
+
+            # 1.2 GLIGEN Control
+            if gligen_kwargs is not None:
+                hidden_states = self.fuser(hidden_states, gligen_kwargs["objs"])
+
+            # 3. Cross-Attention
+            if self.attn2 is not None:
+                if self.norm_type == "ada_norm":
+                    norm_hidden_states = self.norm2(hidden_states, timestep)
+                elif self.norm_type in ["ada_norm_zero", "layer_norm", "layer_norm_i2vgen"]:
+                    norm_hidden_states = self.norm2(hidden_states)
+                elif self.norm_type == "ada_norm_single":
+                    # For PixArt norm2 isn't applied here:
+                    # https://github.com/PixArt-alpha/PixArt-alpha/blob/0f55e922376d8b797edd44d25d0e7464b260dcab/diffusion/model/nets/PixArtMS.py#L70C1-L76C103
+                    norm_hidden_states = hidden_states
+                elif self.norm_type == "ada_norm_continuous":
+                    norm_hidden_states = self.norm2(hidden_states, added_cond_kwargs["pooled_text_emb"])
+                else:
+                    raise ValueError("Incorrect norm")
+
+                if self.pos_embed is not None and self.norm_type != "ada_norm_single":
+                    norm_hidden_states = self.pos_embed(norm_hidden_states)
+
+                attn_output = self.attn2(
+                    norm_hidden_states,
+                    encoder_hidden_states=encoder_hidden_states,
+                    attention_mask=encoder_attention_mask,
+                    **cross_attention_kwargs,
+                )
+                self.attn2_output = expand_hw(attn_output.clone())
+                hidden_states = attn_output + hidden_states
+
+            # 4. Feed-forward
+            # i2vgen doesn't have this norm 🤷‍♂️
+            if self.norm_type == "ada_norm_continuous":
+                norm_hidden_states = self.norm3(hidden_states, added_cond_kwargs["pooled_text_emb"])
+            elif not self.norm_type == "ada_norm_single":
+                norm_hidden_states = self.norm3(hidden_states)
+
+            if self.norm_type == "ada_norm_zero":
+                norm_hidden_states = norm_hidden_states * (1 + scale_mlp[:, None]) + shift_mlp[:, None]
+
+            if self.norm_type == "ada_norm_single":
+                norm_hidden_states = self.norm2(hidden_states)
+                norm_hidden_states = norm_hidden_states * (1 + scale_mlp) + shift_mlp
+
+            
+            ff_output = self.ff(norm_hidden_states)
+
+            if self.norm_type == "ada_norm_zero":
+                ff_output = gate_mlp.unsqueeze(1) * ff_output
+            elif self.norm_type == "ada_norm_single":
+                ff_output = gate_mlp * ff_output
+            
+            self.ff_output = expand_hw(ff_output.clone())
+            
+            hidden_states = ff_output + hidden_states
+            if hidden_states.ndim == 4:
+                hidden_states = hidden_states.squeeze(1)
+
+            self.block_output = expand_hw(hidden_states.clone())
+            
+            return hidden_states
+
+        setattr(pipe.unet.down_blocks[0].attentions[0].transformer_blocks[0].__class__, "forward", new_attn_forward)
+
+        def new_resnet_forward(self, input_tensor: torch.Tensor, temb: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+
+            hidden_states = input_tensor
+
+            hidden_states = self.norm1(hidden_states)
+            hidden_states = self.nonlinearity(hidden_states)
+
+            if self.upsample is not None:
+                # upsample_nearest_nhwc fails with large batch sizes. see https://github.com/huggingface/diffusers/issues/984
+                if hidden_states.shape[0] >= 64:
+                    input_tensor = input_tensor.contiguous()
+                    hidden_states = hidden_states.contiguous()
+                input_tensor = self.upsample(input_tensor)
+                hidden_states = self.upsample(hidden_states)
+            elif self.downsample is not None:
+                input_tensor = self.downsample(input_tensor)
+                hidden_states = self.downsample(hidden_states)
+
+            hidden_states = self.conv1(hidden_states)
+            
+            from einops import rearrange
+            self.conv1_output = hidden_states.clone()
+            self.conv1_output = rearrange(self.conv1_output, 'b c h w -> b h w c')
+
+            if self.time_emb_proj is not None:
+                if not self.skip_time_act:
+                    temb = self.nonlinearity(temb)
+                temb = self.time_emb_proj(temb)[:, :, None, None]
+
+            if self.time_embedding_norm == "default":
+                if temb is not None:
+                    hidden_states = hidden_states + temb
+                hidden_states = self.norm2(hidden_states)
+            elif self.time_embedding_norm == "scale_shift":
+                if temb is None:
+                    raise ValueError(
+                        f" `temb` should not be None when `time_embedding_norm` is {self.time_embedding_norm}"
+                    )
+                time_scale, time_shift = torch.chunk(temb, 2, dim=1)
+                hidden_states = self.norm2(hidden_states)
+                hidden_states = hidden_states * (1 + time_scale) + time_shift
+            else:
+                hidden_states = self.norm2(hidden_states)
+
+            hidden_states = self.nonlinearity(hidden_states)
+
+            hidden_states = self.dropout(hidden_states)
+            hidden_states = self.conv2(hidden_states)
+            
+            self.conv2_output = hidden_states.clone()
+            self.conv2_output = rearrange(self.conv2_output, 'b c h w -> b h w c')
+            
+            if self.conv_shortcut is not None:
+                input_tensor = self.conv_shortcut(input_tensor)
+
+            output_tensor = (input_tensor + hidden_states) / self.output_scale_factor
+
+            self.block_output = output_tensor.clone()
+            self.block_output = rearrange(self.block_output, 'b c h w -> b h w c')
+            return output_tensor
+
+        setattr(pipe.unet.down_blocks[0].resnets[0].__class__, "forward", new_resnet_forward)
+
+        self.pipe = pipe
+        self.noise_scheduler = noise_scheduler
+
+    def forward(self, image, timestep=None, positive_prompt="", negative_prompt=""):
+        timestep = self.timestep if timestep is None else timestep
+        device = image.device
+        self.pipe = self.pipe.to(device)
+        
+        noise = torch.randn(image.shape).to(device)
+        image = self.noise_scheduler.add_noise(image, noise, torch.LongTensor([timestep]).to(device))
+        
+        prompt_embed, _ = self.pipe.encode_prompt(positive_prompt, device, image.shape[0], negative_prompt)
+                
+        latent = self.pipe.vae.encode(image).latent_dist.sample()
+        
+        out = self.pipe.unet(latent, self.noise_scheduler.timesteps[timestep], prompt_embed)
+        
+        
+        def add_prefix(d, prefix):
+            if d is None:
+                return {}
+            if len(d) == 0:
+                return {}
+            return {f"{prefix}_{k}": v for k, v in d.items()}
+        
+        
+        def get_all_from_tsf_block(tsf_block):
+            return {name: getattr(tsf_block, name) for name in ['attn1_output', 'attn2_output', 'ff_output', 'block_output']}
+        
+        def get_all_from_attentions_block(attentions_block):
+            transformer_blocks = getattr(attentions_block, 'transformer_blocks')
+            return_dict = {}
+            for i in range(len(transformer_blocks)):
+                return_dict.update(
+                    add_prefix(get_all_from_tsf_block(transformer_blocks[i]), f"tsf_{i}"))
+            return return_dict
+                            
+        
+        def get_all_from_resnet_block(resnet_block):
+            return {name: getattr(resnet_block, name) for name in ['conv1_output', 'conv2_output', 'block_output']}
+        
+        def get_all_from_block(block, block_name):
+            return_dict = {}
+            if block_name == 'attentions':
+                block = getattr(block, 'attentions')
+                for i in range(len(block)):
+                    return_dict.update(
+                        add_prefix(get_all_from_attentions_block(block[i]), f"{block_name}_{i}")
+                        )
+            if block_name == 'resnets':
+                block = getattr(block, 'resnets')
+                for i in range(len(block)):
+                    return_dict.update(
+                        add_prefix(get_all_from_resnet_block(block[i]), f"{block_name}_{i}")
+                        )
+            return return_dict
+                
+        def get_all_from_blocks(blocks, block_name):
+            return_dict = {}
+            for i_block, block in enumerate(blocks):
+                if hasattr(block, 'attentions'):
+                    return_dict.update(
+                        add_prefix(get_all_from_block(block, "attentions"), f"{block_name}_{i_block}")
+                    )
+                if hasattr(block, 'resnets'):
+                    return_dict.update(
+                        add_prefix(get_all_from_block(block, "resnets"), f"{block_name}_{i_block}")
+                    )
+            return return_dict
+        
+        out_dict = {}
+        for big_block, big_block_name in zip([self.pipe.unet.down_blocks, self.pipe.unet.up_blocks], ['down', 'up']):
+            out_dict.update(
+                get_all_from_blocks(big_block, big_block_name)
+            )
+            
+        # remove '_output' from keys
+        out_dict = {k.replace('_output', ''): v for k, v in out_dict.items()}
+        # add the layer dimension to be consistent with other models
+        out_dict = {k: [v] for k, v in out_dict.items()}
+        
+        return out_dict
+    
+MODEL_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = partial(StableDiffusion, model_id="stabilityai/stable-diffusion-2")
+LAYER_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = 8
+RES_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = (512, 512)
+SD_KEY_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = ['down_0_attentions_0_tsf_0_attn1', 'down_0_attentions_0_tsf_0_attn2', 'down_0_attentions_0_tsf_0_ff', 'down_0_attentions_0_tsf_0_block', 'down_0_attentions_1_tsf_0_attn1', 'down_0_attentions_1_tsf_0_attn2', 'down_0_attentions_1_tsf_0_ff', 'down_0_attentions_1_tsf_0_block', 'down_0_resnets_0_conv1', 'down_0_resnets_0_conv2', 'down_0_resnets_0_block', 'down_0_resnets_1_conv1', 'down_0_resnets_1_conv2', 'down_0_resnets_1_block', 'down_1_attentions_0_tsf_0_attn1', 'down_1_attentions_0_tsf_0_attn2', 'down_1_attentions_0_tsf_0_ff', 'down_1_attentions_0_tsf_0_block', 'down_1_attentions_1_tsf_0_attn1', 'down_1_attentions_1_tsf_0_attn2', 'down_1_attentions_1_tsf_0_ff', 'down_1_attentions_1_tsf_0_block', 'down_1_resnets_0_conv1', 'down_1_resnets_0_conv2', 'down_1_resnets_0_block', 'down_1_resnets_1_conv1', 'down_1_resnets_1_conv2', 'down_1_resnets_1_block', 'down_2_attentions_0_tsf_0_attn1', 'down_2_attentions_0_tsf_0_attn2', 'down_2_attentions_0_tsf_0_ff', 'down_2_attentions_0_tsf_0_block', 'down_2_attentions_1_tsf_0_attn1', 'down_2_attentions_1_tsf_0_attn2', 'down_2_attentions_1_tsf_0_ff', 'down_2_attentions_1_tsf_0_block', 'down_2_resnets_0_conv1', 'down_2_resnets_0_conv2', 'down_2_resnets_0_block', 'down_2_resnets_1_conv1', 'down_2_resnets_1_conv2', 'down_2_resnets_1_block', 'down_3_resnets_0_conv1', 'down_3_resnets_0_conv2', 'down_3_resnets_0_block', 'down_3_resnets_1_conv1', 'down_3_resnets_1_conv2', 'down_3_resnets_1_block', 'up_0_resnets_0_conv1', 'up_0_resnets_0_conv2', 'up_0_resnets_0_block', 'up_0_resnets_1_conv1', 'up_0_resnets_1_conv2', 'up_0_resnets_1_block', 'up_0_resnets_2_conv1', 'up_0_resnets_2_conv2', 'up_0_resnets_2_block', 'up_1_attentions_0_tsf_0_attn1', 'up_1_attentions_0_tsf_0_attn2', 'up_1_attentions_0_tsf_0_ff', 'up_1_attentions_0_tsf_0_block', 'up_1_attentions_1_tsf_0_attn1', 'up_1_attentions_1_tsf_0_attn2', 'up_1_attentions_1_tsf_0_ff', 'up_1_attentions_1_tsf_0_block', 'up_1_attentions_2_tsf_0_attn1', 'up_1_attentions_2_tsf_0_attn2', 'up_1_attentions_2_tsf_0_ff', 'up_1_attentions_2_tsf_0_block', 'up_1_resnets_0_conv1', 'up_1_resnets_0_conv2', 'up_1_resnets_0_block', 'up_1_resnets_1_conv1', 'up_1_resnets_1_conv2', 'up_1_resnets_1_block', 'up_1_resnets_2_conv1', 'up_1_resnets_2_conv2', 'up_1_resnets_2_block', 'up_2_attentions_0_tsf_0_attn1', 'up_2_attentions_0_tsf_0_attn2', 'up_2_attentions_0_tsf_0_ff', 'up_2_attentions_0_tsf_0_block', 'up_2_attentions_1_tsf_0_attn1', 'up_2_attentions_1_tsf_0_attn2', 'up_2_attentions_1_tsf_0_ff', 'up_2_attentions_1_tsf_0_block', 'up_2_attentions_2_tsf_0_attn1', 'up_2_attentions_2_tsf_0_attn2', 'up_2_attentions_2_tsf_0_ff', 'up_2_attentions_2_tsf_0_block', 'up_2_resnets_0_conv1', 'up_2_resnets_0_conv2', 'up_2_resnets_0_block', 'up_2_resnets_1_conv1', 'up_2_resnets_1_conv2', 'up_2_resnets_1_block', 'up_2_resnets_2_conv1', 'up_2_resnets_2_conv2', 'up_2_resnets_2_block', 'up_3_attentions_0_tsf_0_attn1', 'up_3_attentions_0_tsf_0_attn2', 'up_3_attentions_0_tsf_0_ff', 'up_3_attentions_0_tsf_0_block', 'up_3_attentions_1_tsf_0_attn1', 'up_3_attentions_1_tsf_0_attn2', 'up_3_attentions_1_tsf_0_ff', 'up_3_attentions_1_tsf_0_block', 'up_3_attentions_2_tsf_0_attn1', 'up_3_attentions_2_tsf_0_attn2', 'up_3_attentions_2_tsf_0_ff', 'up_3_attentions_2_tsf_0_block', 'up_3_resnets_0_conv1', 'up_3_resnets_0_conv2', 'up_3_resnets_0_block', 'up_3_resnets_1_conv1', 'up_3_resnets_1_conv2', 'up_3_resnets_1_block', 'up_3_resnets_2_conv1', 'up_3_resnets_2_conv2', 'up_3_resnets_2_block']
+
+MODEL_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = partial(StableDiffusion, model_id="CompVis/stable-diffusion-v1-4")
+LAYER_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = 8
+RES_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = (512, 512)
+SD_KEY_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = ['down_0_attentions_0_tsf_0_attn1', 'down_0_attentions_0_tsf_0_attn2', 'down_0_attentions_0_tsf_0_ff', 'down_0_attentions_0_tsf_0_block', 'down_0_attentions_1_tsf_0_attn1', 'down_0_attentions_1_tsf_0_attn2', 'down_0_attentions_1_tsf_0_ff', 'down_0_attentions_1_tsf_0_block', 'down_0_resnets_0_conv1', 'down_0_resnets_0_conv2', 'down_0_resnets_0_block', 'down_0_resnets_1_conv1', 'down_0_resnets_1_conv2', 'down_0_resnets_1_block', 'down_1_attentions_0_tsf_0_attn1', 'down_1_attentions_0_tsf_0_attn2', 'down_1_attentions_0_tsf_0_ff', 'down_1_attentions_0_tsf_0_block', 'down_1_attentions_1_tsf_0_attn1', 'down_1_attentions_1_tsf_0_attn2', 'down_1_attentions_1_tsf_0_ff', 'down_1_attentions_1_tsf_0_block', 'down_1_resnets_0_conv1', 'down_1_resnets_0_conv2', 'down_1_resnets_0_block', 'down_1_resnets_1_conv1', 'down_1_resnets_1_conv2', 'down_1_resnets_1_block', 'down_2_attentions_0_tsf_0_attn1', 'down_2_attentions_0_tsf_0_attn2', 'down_2_attentions_0_tsf_0_ff', 'down_2_attentions_0_tsf_0_block', 'down_2_attentions_1_tsf_0_attn1', 'down_2_attentions_1_tsf_0_attn2', 'down_2_attentions_1_tsf_0_ff', 'down_2_attentions_1_tsf_0_block', 'down_2_resnets_0_conv1', 'down_2_resnets_0_conv2', 'down_2_resnets_0_block', 'down_2_resnets_1_conv1', 'down_2_resnets_1_conv2', 'down_2_resnets_1_block', 'down_3_resnets_0_conv1', 'down_3_resnets_0_conv2', 'down_3_resnets_0_block', 'down_3_resnets_1_conv1', 'down_3_resnets_1_conv2', 'down_3_resnets_1_block', 'up_0_resnets_0_conv1', 'up_0_resnets_0_conv2', 'up_0_resnets_0_block', 'up_0_resnets_1_conv1', 'up_0_resnets_1_conv2', 'up_0_resnets_1_block', 'up_0_resnets_2_conv1', 'up_0_resnets_2_conv2', 'up_0_resnets_2_block', 'up_1_attentions_0_tsf_0_attn1', 'up_1_attentions_0_tsf_0_attn2', 'up_1_attentions_0_tsf_0_ff', 'up_1_attentions_0_tsf_0_block', 'up_1_attentions_1_tsf_0_attn1', 'up_1_attentions_1_tsf_0_attn2', 'up_1_attentions_1_tsf_0_ff', 'up_1_attentions_1_tsf_0_block', 'up_1_attentions_2_tsf_0_attn1', 'up_1_attentions_2_tsf_0_attn2', 'up_1_attentions_2_tsf_0_ff', 'up_1_attentions_2_tsf_0_block', 'up_1_resnets_0_conv1', 'up_1_resnets_0_conv2', 'up_1_resnets_0_block', 'up_1_resnets_1_conv1', 'up_1_resnets_1_conv2', 'up_1_resnets_1_block', 'up_1_resnets_2_conv1', 'up_1_resnets_2_conv2', 'up_1_resnets_2_block', 'up_2_attentions_0_tsf_0_attn1', 'up_2_attentions_0_tsf_0_attn2', 'up_2_attentions_0_tsf_0_ff', 'up_2_attentions_0_tsf_0_block', 'up_2_attentions_1_tsf_0_attn1', 'up_2_attentions_1_tsf_0_attn2', 'up_2_attentions_1_tsf_0_ff', 'up_2_attentions_1_tsf_0_block', 'up_2_attentions_2_tsf_0_attn1', 'up_2_attentions_2_tsf_0_attn2', 'up_2_attentions_2_tsf_0_ff', 'up_2_attentions_2_tsf_0_block', 'up_2_resnets_0_conv1', 'up_2_resnets_0_conv2', 'up_2_resnets_0_block', 'up_2_resnets_1_conv1', 'up_2_resnets_1_conv2', 'up_2_resnets_1_block', 'up_2_resnets_2_conv1', 'up_2_resnets_2_conv2', 'up_2_resnets_2_block', 'up_3_attentions_0_tsf_0_attn1', 'up_3_attentions_0_tsf_0_attn2', 'up_3_attentions_0_tsf_0_ff', 'up_3_attentions_0_tsf_0_block', 'up_3_attentions_1_tsf_0_attn1', 'up_3_attentions_1_tsf_0_attn2', 'up_3_attentions_1_tsf_0_ff', 'up_3_attentions_1_tsf_0_block', 'up_3_attentions_2_tsf_0_attn1', 'up_3_attentions_2_tsf_0_attn2', 'up_3_attentions_2_tsf_0_ff', 'up_3_attentions_2_tsf_0_block', 'up_3_resnets_0_conv1', 'up_3_resnets_0_conv2', 'up_3_resnets_0_block', 'up_3_resnets_1_conv1', 'up_3_resnets_1_conv2', 'up_3_resnets_1_block', 'up_3_resnets_2_conv1', 'up_3_resnets_2_conv2', 'up_3_resnets_2_block']
+
+class StableDiffusion3(nn.Module):
+    def __init__(self, total_time_steps=50, timestep=10, return_flat_dict=True):
+        super().__init__()
+        try:
+            from diffusers import StableDiffusion3Pipeline
+        except ImportError:
+            raise ImportError("Please install the diffusers package by running `pip install diffusers`")
+        
+        access_token = os.getenv("HF_ACCESS_TOKEN")
+        if access_token is None:
+            raise ValueError("HF_ACCESS_TOKEN environment variable must be set")
+        
+        
+        pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3-medium-diffusers", token=access_token)
+        
+        from diffusers.models.attention import _chunked_feed_forward
+        def new_forward(
+            self, hidden_states: torch.FloatTensor, encoder_hidden_states: torch.FloatTensor, temb: torch.FloatTensor
+        ):
+            norm_hidden_states, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.norm1(hidden_states, emb=temb)
+
+            if self.context_pre_only:
+                norm_encoder_hidden_states = self.norm1_context(encoder_hidden_states, temb)
+            else:
+                norm_encoder_hidden_states, c_gate_msa, c_shift_mlp, c_scale_mlp, c_gate_mlp = self.norm1_context(
+                    encoder_hidden_states, emb=temb
+                )
+
+            # Attention.
+            attn_output, context_attn_output = self.attn(
+                hidden_states=norm_hidden_states, encoder_hidden_states=norm_encoder_hidden_states
+            )
+
+            # Process attention outputs for the `hidden_states`.
+            attn_output = gate_msa.unsqueeze(1) * attn_output
+            
+            self.attn_output = expand_hw(attn_output.clone())
+            
+            hidden_states = hidden_states + attn_output
+
+            norm_hidden_states = self.norm2(hidden_states)
+            norm_hidden_states = norm_hidden_states * (1 + scale_mlp[:, None]) + shift_mlp[:, None]
+            if self._chunk_size is not None:
+                # "feed_forward_chunk_size" can be used to save memory
+                ff_output = _chunked_feed_forward(self.ff, norm_hidden_states, self._chunk_dim, self._chunk_size)
+            else:
+                ff_output = self.ff(norm_hidden_states)
+            ff_output = gate_mlp.unsqueeze(1) * ff_output
+            
+            self.mlp_output = expand_hw(ff_output.clone())
+
+            hidden_states = hidden_states + ff_output
+
+            # Process attention outputs for the `encoder_hidden_states`.
+            if self.context_pre_only:
+                encoder_hidden_states = None
+            else:
+                context_attn_output = c_gate_msa.unsqueeze(1) * context_attn_output
+                encoder_hidden_states = encoder_hidden_states + context_attn_output
+
+                norm_encoder_hidden_states = self.norm2_context(encoder_hidden_states)
+                norm_encoder_hidden_states = norm_encoder_hidden_states * (1 + c_scale_mlp[:, None]) + c_shift_mlp[:, None]
+                if self._chunk_size is not None:
+                    # "feed_forward_chunk_size" can be used to save memory
+                    context_ff_output = _chunked_feed_forward(
+                        self.ff_context, norm_encoder_hidden_states, self._chunk_dim, self._chunk_size
+                    )
+                else:
+                    context_ff_output = self.ff_context(norm_encoder_hidden_states)
+                encoder_hidden_states = encoder_hidden_states + c_gate_mlp.unsqueeze(1) * context_ff_output
+
+            self.block_output = expand_hw(hidden_states.clone())
+            
+            return encoder_hidden_states, hidden_states
+
+        setattr(pipe.transformer.transformer_blocks[0].__class__, 'forward', new_forward)     
+        
+        from diffusers import DDPMScheduler
+        
+        self.timestep = timestep
+        noise_scheduler = DDPMScheduler(num_train_timesteps=total_time_steps)
+        
+        self.noise_scheduler = noise_scheduler
+        self.timestep = timestep
+        self.vae = pipe.vae
+        self.transformer = pipe.transformer
+        
+        self.return_flat_dict = return_flat_dict
+        
+    def forward(self, image, timestep=None, return_flat_dict=False):
+        timestep = self.timestep if timestep is None else timestep
+        device = image.device
+        self.vae = self.vae.to(device)
+        self.transformer = self.transformer.to(device)
+        
+        encoder_hidden_states = torch.zeros(1, 1, 4096).to(device)
+        pooled_projections = torch.zeros(1, 2048).to(device)
+        
+        noise = torch.randn(image.shape).to(device)
+        image = self.noise_scheduler.add_noise(image, noise, torch.LongTensor([timestep]).to(device))
+        
+        latent = self.vae.encode(image).latent_dist.sample()
+        
+        out = self.transformer(latent, 
+                            timestep=self.noise_scheduler.timesteps[timestep].unsqueeze(0).to(device), 
+                            pooled_projections=pooled_projections, encoder_hidden_states=encoder_hidden_states)
+        
+        attn_outputs = [block.attn_output for block in self.transformer.transformer_blocks]
+        mlp_outputs = [block.mlp_output for block in self.transformer.transformer_blocks]
+        block_outputs = [block.block_output for block in self.transformer.transformer_blocks]
+        out_dict = {
+            'attn': attn_outputs,
+            'mlp': mlp_outputs,
+            'block': block_outputs
+        }
+        
+        if self.return_flat_dict or return_flat_dict:
+            out_dict = {f'{k}_{i}': [v] for k, values in out_dict.items() for i, v in enumerate(values)}
+        
+        return out_dict
+
+MODEL_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = partial(StableDiffusion3, total_time_steps=50, timestep=10)
+LAYER_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = 24
+RES_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = (1024, 1024)
+SD_KEY_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = ['attn_0', 'attn_1', 'attn_2', 'attn_3', 'attn_4', 'attn_5', 'attn_6', 'attn_7', 'attn_8', 'attn_9', 'attn_10', 'attn_11', 'attn_12', 'attn_13', 'attn_14', 'attn_15', 'attn_16', 'attn_17', 'attn_18', 'attn_19', 'attn_20', 'attn_21', 'attn_22', 'attn_23', 'mlp_0', 'mlp_1', 'mlp_2', 'mlp_3', 'mlp_4', 'mlp_5', 'mlp_6', 'mlp_7', 'mlp_8', 'mlp_9', 'mlp_10', 'mlp_11', 'mlp_12', 'mlp_13', 'mlp_14', 'mlp_15', 'mlp_16', 'mlp_17', 'mlp_18', 'mlp_19', 'mlp_20', 'mlp_21', 'mlp_22', 'mlp_23', 'block_0', 'block_1', 'block_2', 'block_3', 'block_4', 'block_5', 'block_6', 'block_7', 'block_8', 'block_9', 'block_10', 'block_11', 'block_12', 'block_13', 'block_14', 'block_15', 'block_16', 'block_17', 'block_18', 'block_19', 'block_20', 'block_21', 'block_22', 'block_23']
+
 def download_all_models():
     for model_name in MODEL_DICT:
         print(f"Downloading {model_name}")
@@ -921,10 +1354,11 @@ def get_demo_model_names():
     # return list_of_models
 
 
-def load_model(model_name):
+def load_model(model_name, quite=False):
     model = MODEL_DICT[model_name]()
     resolution = RES_DICT[model_name]
-    print(f"Loaded {model_name}, please use input resolution: {resolution}")
+    if not quite:
+        print(f"Loaded {model_name}, please use input resolution: {resolution}")
     return model
         
 def list_models():
@@ -960,20 +1394,3 @@ def extract_features(images: torch.Tensor, model: nn.Module,
     outputs = torch.cat(outputs, dim=0)
 
     return outputs
-
-    
-if __name__ == '__main__':
-    # inp = torch.rand(1, 3, 1024, 1024)
-    # model = MAE()
-    # out = model(inp)
-    # print(out[0][0].shape, out[0][1].shape, out[0][2].shape)
-    print(list_models())
-    for model_name in list_models():
-        if LAYER_DICT[model_name] == "not sure":
-            model = MODEL_DICT[model_name]().cuda()
-            print(f"Model: {model_name}")
-            inp = torch.rand(1, 3, *RES_DICT[model_name]).cuda()
-            out = model(inp)
-            print(len(out['block']))
-
-# %%
