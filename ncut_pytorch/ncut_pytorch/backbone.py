@@ -27,7 +27,7 @@ class SAM2(nn.Module):
             Import Error: {e}
 
             Please install segment_anything_2 from https://github.com/facebookresearch/segment-anything-2.git
-            pip install git+https://github.com/facebookresearch/segment-anything-2.git
+            pip install git+https://github.com/huzeyann/segment-anything-2.git
             """
             raise ImportError(s)
         
