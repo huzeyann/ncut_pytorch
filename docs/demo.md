@@ -22,7 +22,14 @@ hide:
 
 ---
 
-## Hosting this demo locally
+Alternative: access this demo at 
+<a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+🤗 HuggingFace Demo
+</a>
+
+---
+
+## Hosting this demo software locally
 
 Step 1. Install [Docker](https://www.docker.com/) and [Nvidia-docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) plugin.
 
