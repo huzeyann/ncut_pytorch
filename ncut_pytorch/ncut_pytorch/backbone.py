@@ -1304,8 +1304,9 @@ class StableDiffusion3(nn.Module):
         self.vae = self.vae.to(device)
         self.transformer = self.transformer.to(device)
         
-        encoder_hidden_states = torch.zeros(1, 1, 4096).to(device)
-        pooled_projections = torch.zeros(1, 2048).to(device)
+        bsz = image.shape[0]
+        encoder_hidden_states = torch.zeros(bsz, 1, 4096).to(device)
+        pooled_projections = torch.zeros(bsz, 2048).to(device)
         
         noise = torch.randn(image.shape).to(device)
         image = self.noise_scheduler.add_noise(image, noise, torch.LongTensor([timestep]).to(device))
