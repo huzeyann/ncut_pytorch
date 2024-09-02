@@ -4,28 +4,25 @@ hide:
   - toc
 ---
 
-<!-- <script
-	type="module"
-	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
-></script>
-
-<gradio-app src="https://fond-rich-sunbird.ngrok-free.app/"></gradio-app> -->
-
-# > ncut-pytorch demo, hosted at UPenn
+#
 
 <iframe
 	src="https://fond-rich-sunbird.ngrok-free.app/"
 	frameborder="0"
 	width="100%"
-	height="1600"
+	height="1000"
 ></iframe>
 
----
+## This demo is hosted at UPenn
 
-Alternative: access this demo at 
-<a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-🤗 HuggingFace Demo
+Open this demo at 
+<a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">
+HuggingFace
 </a>
+<!-- <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+🤗 HuggingFace Demo
+</a> -->
+
 
 ---
 

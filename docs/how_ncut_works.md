@@ -15,6 +15,10 @@ Image taken from [Spectral Clustering: Step-by-step derivation of the spectral c
 ### The Basic Idea
 Spectral clustering works by embedding the data points $F \in \mathbb{R}^{N \times D}$ into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph $W \in \mathbb{R}^{N \times N}$. The data is then clustered in this new space embedded by $k$ eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$.
 
+<div style="text-align: center;">
+<img src="../images/spectral_tsne_how.png" style="width:80%;">
+</div>
+
 ### The Graph Laplacian
 Given a set of data points, spectral clustering first constructs a similarity graph. Each node represents a data point, and edges represent the similarity between data points. The similarity graph can be represented by an adjacency matrix \( W \), where each element \( W_{ij} \) represents the similarity between data points \( i \) and \( j \).
 
@@ -58,6 +62,10 @@ L_{\text{rw}} = D^{-1} L = I - D^{-1} W
 
 ### Normalized Cuts 
 Normalized Cuts (Ncut) is a method for partitioning a graph into disjoint subsets, aiming to minimize the total edge weight between the subsets relative to the total edge weight within each subset. The Ncut criterion is particularly useful for ensuring balanced partitioning, which prevents trivial solutions where one cluster might be significantly smaller than the other.
+
+<div style="text-align: center;">
+<img src="../images/graph_cut.png" style="width:100%;">
+</div>
 
 The normalized cut criterion is defined as:
 
@@ -165,7 +173,7 @@ thus, solving eigenvector $\mathbf{y}$ of $D^{-1/2} L D^{-1/2} = \lambda \mathbf
 
 #### Laplacian vs Affinity
 
-Since \(Y Y^T = I \), Normalized Cuts can also be solved by eigenvectors of \(D^{-1/2} W D^{-1/2} \), instead of \(D^{-1/2} L D^{-1/2} \), where $L = D - W$.
+Normalized Cuts can also be solved by eigenvectors of \(D^{-1/2} W D^{-1/2} \), instead of \(D^{-1/2} L D^{-1/2} \), where $L = D - W$. They have the same eigenvectors:
 
 $$\begin{aligned}
 D^{-1/2} (D - W) D^{-1/2} &= Y \Lambda Y^T \\
@@ -183,15 +191,6 @@ Each subsequent eigenvector can be used to further partition the graph into subc
 2. Compute the eigenvectors \( \mathbf{x}_1, \mathbf{x}_2, \dots, \mathbf{x}_k \) corresponding to the smallest \( k \) eigenvalues.
 3. Use \( \mathbf{x}_2 \) (the Fiedler vector) to divide the graph into two clusters.
 4. For multi-way clustering, use the next eigenvectors \( \mathbf{x}_3, \mathbf{x}_4, \dots \) to further hierarchically subdivide these clusters.
-
-##### Eigenvector Solver
-
-Solving the full eigenvector $\mathbf{x} \in \mathbb{R}^{N \times N}$ is computational expensive, methods has been developed to solve top k eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$ in linearly complexity scaling. In particular, we use [svd_lowrank](https://pytorch.org/docs/stable/generated/torch.svd_lowrank.html).
-
-- Reference: 
-
-    Nathan Halko, Per-Gunnar Martinsson, and Joel Tropp, Finding structure with randomness: probabilistic algorithms for constructing approximate matrix decompositions, 2009.
-
 
 
 #### Example: Eigenvector Visualization
@@ -266,6 +265,13 @@ plt.show()
 <img src="../images/dots_kmeans.png" style="width:60%;">
 </div>
 
+#### A Good Eigenvector Solver
+
+Solving the full eigenvector $\mathbf{x} \in \mathbb{R}^{N \times N}$ is computational expensive, methods has been developed to solve top k eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$ in linearly complexity scaling. In particular, we use [svd_lowrank](https://pytorch.org/docs/stable/generated/torch.svd_lowrank.html).
+
+- Reference: 
+
+    Nathan Halko, Per-Gunnar Martinsson, and Joel Tropp, Finding structure with randomness: probabilistic algorithms for constructing approximate matrix decompositions, 2009.
 
 ### Summary
 The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value. It embeds the data points into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph.
@@ -285,6 +291,10 @@ Eigenvectors are:
 The Nystrom-like approximation is our new technique designed to address the computational challenges of solving large-scale graph cuts. 
 
 **An intuition**: Nystrom approximation solve the large-scale problem on a small sub-sampled set, then propagate the solution from the small set to the large set.
+
+<div style="text-align: center;">
+<img src="../images/subsample.png" style="width:80%;">
+</div>
 
 The approach involves three main steps: (1) sub-sampling a subset of nodes, (2) computing the Normalized Cut (Ncut) on the sampled nodes, and (3) propagating the eigenvectors from the sampled nodes to the unsampled nodes.
 
@@ -318,7 +328,7 @@ We use a tree-based QuickFPS algorithm developed in
 
     QuickFPS: Architecture and Algorithm Co-Design for Farthest Point Sampling in Large-Scale Point Cloud, Han, Meng and Wang, Liang and Xiao, Limin and Zhang, Hao and Zhang, Chenhao and Xu, Xiangrong and Zhu, Jianfeng, 2023
 
-As a side note, for high-dimensional input model features $F \in \mathbb{R}^{N \times D}$ where $D$ is feature dimension, FPS can be computationally expensive for large $D$. To mitigate this, Principal Component Analysis (PCA) is used to reduce the dimensionality of the features to $F' \in \mathbb{R}^{N \times 5}$. PCA is only applied in the FPS sampling step, but not to the affinity graph $W$.
+As a side note for speed, for high-dimensional input model features $F \in \mathbb{R}^{N \times D}$ where $D$ is feature dimension, FPS can be computationally expensive for large $D$. To mitigate this, Principal Component Analysis (PCA) is used to reduce the dimensionality of the features to $F' \in \mathbb{R}^{N \times 5}$. PCA is only applied in the FPS sampling step, but not to the affinity graph $W$.
 
 ### Accounting for Indirect Connections
 
@@ -340,7 +350,23 @@ where \( D_{\text{r}} \) and \( D_{\text{c}} \) are the row and column sums of m
 
 the term \( \left({D_{\text{r}}}^{-1} B\right) \left(B {D_{\text{c}}}^{-1}\right)^\top \in \mathbb{R}^{n \times n}\) is the indirect random walk probabilities.
 
-Given that \( B \) has dimensions \( (N-n) \times n \), directly storing and computing with \( B \) can be prohibitively expensive. To overcome this, we reduce the number of unsampled nodes by applying PCA. If the feature size is \( D \), let \( F_A \in \mathbb{R}^{n \times D} \) be the feature matrix for the sampled nodes, and \( F_B \in \mathbb{R}^{(N-n) \times D} \) be the feature matrix for the unsampled nodes. After applying PCA, $m$ is the PCA-ed dimension, the reduced feature matrix \( F_B' \in \mathbb{R}^{m \times D} \) represents the unsampled nodes, where \( m \ll (N-n) \). Thus, \( B' = d(F_A, F_{B'}) \) becomes a matrix of size \( m \times n \), thus significantly reduce computation loads.
+#### Example Case for Indirect Connections
+
+<div style="text-align: center;">
+<img src="../images/indirect_vs_17.png" style="width:80%;">
+</div>
+
+
+<div style="text-align: center;">
+<img src="../images/indirect_vs_12.png" style="width:80%;">
+</div>
+
+This example shows when indirect connection is important. In the bottom example, the connected components of the graph is altered, thus will lead to incorrect approximation. After adding indirect connection, the graph become correctly connected.
+
+#### Reduce Computation Loads for Indirect Connections
+
+Given that \( B \) has dimensions \( (N-n) \times n \), $N$ is large, directly storing and computing with \( B \) can be prohibitively expensive. To overcome this, we reduce the number of unsampled nodes by applying PCA. If the feature size is \( D \), let \( F_A \in \mathbb{R}^{n \times D} \) be the feature matrix for the sampled nodes, and \( F_B \in \mathbb{R}^{(N-n) \times D} \) be the feature matrix for the unsampled nodes. After applying PCA, $m$ is the PCA-ed dimension, the reduced feature matrix \( F_B' \in \mathbb{R}^{m \times D} \) represents the unsampled nodes, where \( m \ll (N-n) \). Thus, \( B' = d(F_A, F_{B'}) \) becomes a matrix of size \( \mathbb{R}^{m \times n} \), significantly reduce computation loads and memory usage.
+
 
 ### K-Nearest Neighbors (KNN) Propagation
 
@@ -361,6 +387,40 @@ The propagation step is only when \(B \in \mathbb{R}^{n \times (N-n)} \) is comp
 ```py
 # GPU speeds up the KNN propagation
 eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(data)
+```
+
+---
+
+## Visualizing NCUT Eigenvectors
+
+<div style="text-align: center;">
+<img src="../images/spectral_tsne_how.png" style="width:80%;">
+</div>
+
+The input image features \( F \in \mathbb{R}^{N \times D} \) are embedded into eigenvectors \( X \in \mathbb{R}^{N \times k} \), where \( N \) is the number of pixels, \( D \) is the feature dimension, and \( k \) is the number of eigenvectors. We use t-SNE or UMAP on the eigenvectors for visualization. 
+
+3D t-SNE is computed on eigenvectors \( X \in \mathbb{R}^{N \times k} \), resulting in a color matrix \( \mathbb{R}^{N \times 3} \). RGB values are assigned to each pixel based on its 3D t-SNE embedding.
+
+<div style="text-align: center;">
+<img src="../images/raw_eigenvectors.png" style="width:80%;">
+</div>
+
+Alternatively, in the old days before t-SNE comes out, K-means clustering are applied to the eigenvectors. Compares t-SNE with K-means, t-SNE has two advantages: (1) continuous color gradients instead of discrete clusters, (2) t-SNE color reflects distances (e.g., distance between purple vs. red < green vs. red). K-means colors are arbitrary.
+
+<div style="text-align: center;">
+<img src="../images/tsne_vs_kmeans.png" style="width:80%;">
+</div>
+
+
+### Nystrom Approximation for t-SNE and UMAP
+
+t-SNE and UMAP can be slow for large-scale graphs. We applied the same Nystrom-like approximation: (1) FPS sub-samples a subset of nodes, (2) t-SNE is computed on the sampled nodes, and (3) KNN propagates the colors from sampled to unsampled nodes.
+
+For extra speed-up, we found FPS sub-sampling (euclidean) on eigenvectors \( X \in \mathbb{R}^{N \times k} \) more effective than on the original features \( F \in \mathbb{R}^{N \times D} \), because the distribution of eigenvectors. Thus, the Nystrom approximation for t-SNE requires fewer samples to perform well (we recommend 300 samples for t-SNE, 10,000 for NCUT). Note that small sampling works well for t-SNE only on eigenvectors but not on the original features. 
+t-SNE with small sampling is fast on CPU, then the expensive KNN propagation step computes in GPU.
+
+```py
+X_3d, rgb = rgb_from_tsne_3d(eigvectors, num_samples=300, device='cuda:0')
 ```
 
 ---
