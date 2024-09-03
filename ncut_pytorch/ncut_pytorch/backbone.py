@@ -1354,16 +1354,19 @@ def get_demo_model_names():
     #         list_of_models.append(model_name)
     # return list_of_models
 
+MODEL_NAMES = list(MODEL_DICT.keys())
+        
+def list_models():
+    return MODEL_NAMES
 
-def load_model(model_name, quite=False):
+def load_model(model_name: Literal[tuple(MODEL_NAMES)], quite=False):
+    if model_name not in MODEL_DICT:
+        raise ValueError(f"Model `{model_name}` not found. Please choose from: {MODEL_NAMES}")
     model = MODEL_DICT[model_name]()
     resolution = RES_DICT[model_name]
     if not quite:
         print(f"Loaded {model_name}, please use input resolution: {resolution}")
     return model
-        
-def list_models():
-    return list(MODEL_DICT.keys())
 
 
 @torch.no_grad()
@@ -1395,3 +1398,5 @@ def extract_features(images: torch.Tensor, model: nn.Module,
     outputs = torch.cat(outputs, dim=0)
 
     return outputs
+
+

@@ -382,7 +382,7 @@ After computing the eigenvectors \( \mathbf{X}' \in \mathbb{R}^{n \times C} \) o
 
 Here, \( \text{KNN}(\mathbf{A}_{*i}; n, K) \) denotes the set of K-nearest neighbors from the full-graph node \( i \leq N \) to the sub-graph nodes \( k \leq n \). In other words, the eigenvectors of un-sampled nodes are assigned by weighted averaging top KNN eigenvectors from sampled nodes.
 
-The propagation step is only when \(B \in \mathbb{R}^{n \times (N-n)} \) is computed (but not stored), recall that the full \( B \) is too large to store, our implementation divide the propagation into chunks, where each $q$ size chunk \(B_i \in \mathbb{R}^{n \times (q)} \) is feasible to store, each chunk \(B_i\) is discarded after the propagation. In practice, the KNN propagation is the major speed bottle-neck for NCUT on large-scale graph, but it's easy to parallelize on GPU. 
+The propagation step is only when \(B \in \mathbb{R}^{n \times (N-n)} \) is computed (but not stored), recall that the full \( B \) is too large to store, our implementation divide the propagation into chunks, where each $q$ size chunk \(B_i \in \mathbb{R}^{n \times (q)} \) is feasible to store, each chunk \(B_i\) is discarded after the propagation. In practice, the KNN propagation is the major speed bottle-neck for NCUT on large-scale graph, but KNN propagation is easy to parallelize on GPU. 
 
 ```py
 # GPU speeds up the KNN propagation

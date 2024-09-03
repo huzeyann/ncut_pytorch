@@ -511,6 +511,11 @@ def rgb_from_tsne_3d(
         num_sample=num_sample,
         sample_method="farthest",
     )
+    if perplexity > len(subgraph_indices) // 2:
+        logging.warning(
+            f"perplexity is larger than num_sample, set perplexity to {len(subgraph_indices)//2}"
+        )
+        perplexity = len(subgraph_indices) // 2
     _inp = features[subgraph_indices].cpu().numpy()
     _subgraph_embed = TSNE(
         n_components=3,
@@ -563,6 +568,11 @@ def rgb_from_tsne_2d(
         num_sample=num_sample,
         sample_method="farthest",
     )
+    if perplexity > len(subgraph_indices) // 2:
+        logging.warning(
+            f"perplexity is larger than num_sample, set perplexity to {len(subgraph_indices)//2}"
+        )
+        perplexity = len(subgraph_indices) // 2
     _inp = features[subgraph_indices].cpu().numpy()
     _subgraph_embed = TSNE(
         n_components=2,
