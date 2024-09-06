@@ -397,9 +397,9 @@ eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(data)
 <img src="../images/spectral_tsne_how.png" style="width:80%;">
 </div>
 
-The input image features \( F \in \mathbb{R}^{N \times D} \) are embedded into eigenvectors \( X \in \mathbb{R}^{N \times k} \), where \( N \) is the number of pixels, \( D \) is the feature dimension, and \( k \) is the number of eigenvectors. We use t-SNE or UMAP on the eigenvectors for visualization. 
+The input image features \( F \in \mathbb{R}^{N \times D} \) are embedded into eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \), where \( N \) is the number of pixels, \( D \) is the feature dimension, and \( k \) is the number of eigenvectors. We use t-SNE or UMAP on the eigenvectors for visualization. 
 
-3D t-SNE is computed on eigenvectors \( X \in \mathbb{R}^{N \times k} \), resulting in a color matrix \( \mathbb{R}^{N \times 3} \). RGB values are assigned to each pixel based on its 3D t-SNE embedding.
+3D t-SNE is computed on eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \), resulting in a color matrix \( \mathbb{R}^{N \times 3} \). RGB values are assigned to each pixel based on its 3D t-SNE embedding.
 
 <div style="text-align: center;">
 <img src="../images/raw_eigenvectors.png" style="width:80%;">
@@ -416,7 +416,7 @@ Alternatively, in the old days before t-SNE comes out, K-means clustering are ap
 
 t-SNE and UMAP can be slow for large-scale graphs. We applied the same Nystrom-like approximation: (1) FPS sub-samples a subset of nodes, (2) t-SNE is computed on the sampled nodes, and (3) KNN propagates the colors from sampled to unsampled nodes.
 
-For extra speed-up, we found FPS sub-sampling (euclidean) on eigenvectors \( X \in \mathbb{R}^{N \times k} \) more effective than on the original features \( F \in \mathbb{R}^{N \times D} \), because the distribution of eigenvectors. Thus, the Nystrom approximation for t-SNE requires fewer samples to perform well (we recommend 300 samples for t-SNE, 10,000 for NCUT). Note that small sampling works well for t-SNE only on eigenvectors but not on the original features. 
+For extra speed-up, we found FPS sub-sampling (euclidean) on eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \) more effective than on the original features \( F \in \mathbb{R}^{N \times D} \), because the distribution of eigenvectors. Thus, the Nystrom approximation for t-SNE requires fewer samples to perform well (we recommend 300 samples for t-SNE, 10,000 for NCUT). Note that small sampling works well for t-SNE only on eigenvectors but not on the original features. 
 t-SNE with small sampling is fast on CPU, then the expensive KNN propagation step computes in GPU.
 
 ```py

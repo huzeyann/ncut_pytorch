@@ -5,7 +5,7 @@ from einops import rearrange
 import requests
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
 import numpy as np
 import os
 from functools import partial
@@ -916,7 +916,8 @@ def expand_hw(tensor):
     return rearrange(tensor, 'b (h w) c -> b h w c', h=hw, w=hw)
 
 class StableDiffusion(nn.Module):
-    def __init__(self, total_time_steps=50, timestep=10, model_id="stabilityai/stable-diffusion-2"):
+    def __init__(self, model_id="stabilityai/stable-diffusion-2", total_time_steps=50, timestep=10, 
+                    positive_prompt="", negative_prompt=""):
         super().__init__()
         try:
             from diffusers import DDPMScheduler
@@ -925,6 +926,8 @@ class StableDiffusion(nn.Module):
             raise ImportError("Please install diffusers to use this class. \n pip install diffusers")
         
         self.timestep = timestep
+        self.positive_prompt = positive_prompt
+        self.negative_prompt = negative_prompt
         noise_scheduler = DDPMScheduler(num_train_timesteps=total_time_steps)
         pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32, device="cpu")
         
@@ -1121,6 +1124,9 @@ class StableDiffusion(nn.Module):
 
     def forward(self, image, timestep=None, positive_prompt="", negative_prompt=""):
         timestep = self.timestep if timestep is None else timestep
+        positive_prompt = self.positive_prompt if positive_prompt == "" else positive_prompt
+        negative_prompt = self.negative_prompt if negative_prompt == "" else negative_prompt
+        
         device = image.device
         self.pipe = self.pipe.to(device)
         
@@ -1187,11 +1193,27 @@ class StableDiffusion(nn.Module):
             return return_dict
         
         out_dict = {}
-        for big_block, big_block_name in zip([self.pipe.unet.down_blocks, self.pipe.unet.up_blocks], ['down', 'up']):
+
+        if hasattr(self.pipe.unet, 'down_blocks'):
             out_dict.update(
-                get_all_from_blocks(big_block, big_block_name)
+                get_all_from_blocks(self.pipe.unet.down_blocks, "down")
             )
-            
+        if hasattr(self.pipe.unet, 'mid_block'):
+            block = self.pipe.unet.mid_block
+            if hasattr(block, 'attentions'):
+                out_dict.update(
+                    add_prefix(get_all_from_block(block, "attentions"), "mid")
+                )
+            if hasattr(block, 'resnets'):
+                out_dict.update(
+                    add_prefix(get_all_from_block(block, "resnets"), "mid")
+                )
+        if hasattr(self.pipe.unet, 'up_blocks'):
+            out_dict.update(
+                get_all_from_blocks(self.pipe.unet.up_blocks, "up")
+            )
+        
+                        
         # remove '_output' from keys
         out_dict = {k.replace('_output', ''): v for k, v in out_dict.items()}
         # add the layer dimension to be consistent with other models
@@ -1202,12 +1224,12 @@ class StableDiffusion(nn.Module):
 MODEL_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = partial(StableDiffusion, model_id="stabilityai/stable-diffusion-2")
 LAYER_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = 8
 RES_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = (512, 512)
-SD_KEY_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = ['down_0_attentions_0_tsf_0_attn1', 'down_0_attentions_0_tsf_0_attn2', 'down_0_attentions_0_tsf_0_ff', 'down_0_attentions_0_tsf_0_block', 'down_0_attentions_1_tsf_0_attn1', 'down_0_attentions_1_tsf_0_attn2', 'down_0_attentions_1_tsf_0_ff', 'down_0_attentions_1_tsf_0_block', 'down_0_resnets_0_conv1', 'down_0_resnets_0_conv2', 'down_0_resnets_0_block', 'down_0_resnets_1_conv1', 'down_0_resnets_1_conv2', 'down_0_resnets_1_block', 'down_1_attentions_0_tsf_0_attn1', 'down_1_attentions_0_tsf_0_attn2', 'down_1_attentions_0_tsf_0_ff', 'down_1_attentions_0_tsf_0_block', 'down_1_attentions_1_tsf_0_attn1', 'down_1_attentions_1_tsf_0_attn2', 'down_1_attentions_1_tsf_0_ff', 'down_1_attentions_1_tsf_0_block', 'down_1_resnets_0_conv1', 'down_1_resnets_0_conv2', 'down_1_resnets_0_block', 'down_1_resnets_1_conv1', 'down_1_resnets_1_conv2', 'down_1_resnets_1_block', 'down_2_attentions_0_tsf_0_attn1', 'down_2_attentions_0_tsf_0_attn2', 'down_2_attentions_0_tsf_0_ff', 'down_2_attentions_0_tsf_0_block', 'down_2_attentions_1_tsf_0_attn1', 'down_2_attentions_1_tsf_0_attn2', 'down_2_attentions_1_tsf_0_ff', 'down_2_attentions_1_tsf_0_block', 'down_2_resnets_0_conv1', 'down_2_resnets_0_conv2', 'down_2_resnets_0_block', 'down_2_resnets_1_conv1', 'down_2_resnets_1_conv2', 'down_2_resnets_1_block', 'down_3_resnets_0_conv1', 'down_3_resnets_0_conv2', 'down_3_resnets_0_block', 'down_3_resnets_1_conv1', 'down_3_resnets_1_conv2', 'down_3_resnets_1_block', 'up_0_resnets_0_conv1', 'up_0_resnets_0_conv2', 'up_0_resnets_0_block', 'up_0_resnets_1_conv1', 'up_0_resnets_1_conv2', 'up_0_resnets_1_block', 'up_0_resnets_2_conv1', 'up_0_resnets_2_conv2', 'up_0_resnets_2_block', 'up_1_attentions_0_tsf_0_attn1', 'up_1_attentions_0_tsf_0_attn2', 'up_1_attentions_0_tsf_0_ff', 'up_1_attentions_0_tsf_0_block', 'up_1_attentions_1_tsf_0_attn1', 'up_1_attentions_1_tsf_0_attn2', 'up_1_attentions_1_tsf_0_ff', 'up_1_attentions_1_tsf_0_block', 'up_1_attentions_2_tsf_0_attn1', 'up_1_attentions_2_tsf_0_attn2', 'up_1_attentions_2_tsf_0_ff', 'up_1_attentions_2_tsf_0_block', 'up_1_resnets_0_conv1', 'up_1_resnets_0_conv2', 'up_1_resnets_0_block', 'up_1_resnets_1_conv1', 'up_1_resnets_1_conv2', 'up_1_resnets_1_block', 'up_1_resnets_2_conv1', 'up_1_resnets_2_conv2', 'up_1_resnets_2_block', 'up_2_attentions_0_tsf_0_attn1', 'up_2_attentions_0_tsf_0_attn2', 'up_2_attentions_0_tsf_0_ff', 'up_2_attentions_0_tsf_0_block', 'up_2_attentions_1_tsf_0_attn1', 'up_2_attentions_1_tsf_0_attn2', 'up_2_attentions_1_tsf_0_ff', 'up_2_attentions_1_tsf_0_block', 'up_2_attentions_2_tsf_0_attn1', 'up_2_attentions_2_tsf_0_attn2', 'up_2_attentions_2_tsf_0_ff', 'up_2_attentions_2_tsf_0_block', 'up_2_resnets_0_conv1', 'up_2_resnets_0_conv2', 'up_2_resnets_0_block', 'up_2_resnets_1_conv1', 'up_2_resnets_1_conv2', 'up_2_resnets_1_block', 'up_2_resnets_2_conv1', 'up_2_resnets_2_conv2', 'up_2_resnets_2_block', 'up_3_attentions_0_tsf_0_attn1', 'up_3_attentions_0_tsf_0_attn2', 'up_3_attentions_0_tsf_0_ff', 'up_3_attentions_0_tsf_0_block', 'up_3_attentions_1_tsf_0_attn1', 'up_3_attentions_1_tsf_0_attn2', 'up_3_attentions_1_tsf_0_ff', 'up_3_attentions_1_tsf_0_block', 'up_3_attentions_2_tsf_0_attn1', 'up_3_attentions_2_tsf_0_attn2', 'up_3_attentions_2_tsf_0_ff', 'up_3_attentions_2_tsf_0_block', 'up_3_resnets_0_conv1', 'up_3_resnets_0_conv2', 'up_3_resnets_0_block', 'up_3_resnets_1_conv1', 'up_3_resnets_1_conv2', 'up_3_resnets_1_block', 'up_3_resnets_2_conv1', 'up_3_resnets_2_conv2', 'up_3_resnets_2_block']
+SD_KEY_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = ['down_0_attentions_0_tsf_0_attn1', 'down_0_attentions_0_tsf_0_attn2', 'down_0_attentions_0_tsf_0_ff', 'down_0_attentions_0_tsf_0_block', 'down_0_attentions_1_tsf_0_attn1', 'down_0_attentions_1_tsf_0_attn2', 'down_0_attentions_1_tsf_0_ff', 'down_0_attentions_1_tsf_0_block', 'down_0_resnets_0_conv1', 'down_0_resnets_0_conv2', 'down_0_resnets_0_block', 'down_0_resnets_1_conv1', 'down_0_resnets_1_conv2', 'down_0_resnets_1_block', 'down_1_attentions_0_tsf_0_attn1', 'down_1_attentions_0_tsf_0_attn2', 'down_1_attentions_0_tsf_0_ff', 'down_1_attentions_0_tsf_0_block', 'down_1_attentions_1_tsf_0_attn1', 'down_1_attentions_1_tsf_0_attn2', 'down_1_attentions_1_tsf_0_ff', 'down_1_attentions_1_tsf_0_block', 'down_1_resnets_0_conv1', 'down_1_resnets_0_conv2', 'down_1_resnets_0_block', 'down_1_resnets_1_conv1', 'down_1_resnets_1_conv2', 'down_1_resnets_1_block', 'down_2_attentions_0_tsf_0_attn1', 'down_2_attentions_0_tsf_0_attn2', 'down_2_attentions_0_tsf_0_ff', 'down_2_attentions_0_tsf_0_block', 'down_2_attentions_1_tsf_0_attn1', 'down_2_attentions_1_tsf_0_attn2', 'down_2_attentions_1_tsf_0_ff', 'down_2_attentions_1_tsf_0_block', 'down_2_resnets_0_conv1', 'down_2_resnets_0_conv2', 'down_2_resnets_0_block', 'down_2_resnets_1_conv1', 'down_2_resnets_1_conv2', 'down_2_resnets_1_block', 'down_3_resnets_0_conv1', 'down_3_resnets_0_conv2', 'down_3_resnets_0_block', 'down_3_resnets_1_conv1', 'down_3_resnets_1_conv2', 'down_3_resnets_1_block', 'mid_attentions_0_tsf_0_attn1', 'mid_attentions_0_tsf_0_attn2', 'mid_attentions_0_tsf_0_ff', 'mid_attentions_0_tsf_0_block', 'mid_resnets_0_conv1', 'mid_resnets_0_conv2', 'mid_resnets_0_block', 'mid_resnets_1_conv1', 'mid_resnets_1_conv2', 'mid_resnets_1_block', 'up_0_resnets_0_conv1', 'up_0_resnets_0_conv2', 'up_0_resnets_0_block', 'up_0_resnets_1_conv1', 'up_0_resnets_1_conv2', 'up_0_resnets_1_block', 'up_0_resnets_2_conv1', 'up_0_resnets_2_conv2', 'up_0_resnets_2_block', 'up_1_attentions_0_tsf_0_attn1', 'up_1_attentions_0_tsf_0_attn2', 'up_1_attentions_0_tsf_0_ff', 'up_1_attentions_0_tsf_0_block', 'up_1_attentions_1_tsf_0_attn1', 'up_1_attentions_1_tsf_0_attn2', 'up_1_attentions_1_tsf_0_ff', 'up_1_attentions_1_tsf_0_block', 'up_1_attentions_2_tsf_0_attn1', 'up_1_attentions_2_tsf_0_attn2', 'up_1_attentions_2_tsf_0_ff', 'up_1_attentions_2_tsf_0_block', 'up_1_resnets_0_conv1', 'up_1_resnets_0_conv2', 'up_1_resnets_0_block', 'up_1_resnets_1_conv1', 'up_1_resnets_1_conv2', 'up_1_resnets_1_block', 'up_1_resnets_2_conv1', 'up_1_resnets_2_conv2', 'up_1_resnets_2_block', 'up_2_attentions_0_tsf_0_attn1', 'up_2_attentions_0_tsf_0_attn2', 'up_2_attentions_0_tsf_0_ff', 'up_2_attentions_0_tsf_0_block', 'up_2_attentions_1_tsf_0_attn1', 'up_2_attentions_1_tsf_0_attn2', 'up_2_attentions_1_tsf_0_ff', 'up_2_attentions_1_tsf_0_block', 'up_2_attentions_2_tsf_0_attn1', 'up_2_attentions_2_tsf_0_attn2', 'up_2_attentions_2_tsf_0_ff', 'up_2_attentions_2_tsf_0_block', 'up_2_resnets_0_conv1', 'up_2_resnets_0_conv2', 'up_2_resnets_0_block', 'up_2_resnets_1_conv1', 'up_2_resnets_1_conv2', 'up_2_resnets_1_block', 'up_2_resnets_2_conv1', 'up_2_resnets_2_conv2', 'up_2_resnets_2_block', 'up_3_attentions_0_tsf_0_attn1', 'up_3_attentions_0_tsf_0_attn2', 'up_3_attentions_0_tsf_0_ff', 'up_3_attentions_0_tsf_0_block', 'up_3_attentions_1_tsf_0_attn1', 'up_3_attentions_1_tsf_0_attn2', 'up_3_attentions_1_tsf_0_ff', 'up_3_attentions_1_tsf_0_block', 'up_3_attentions_2_tsf_0_attn1', 'up_3_attentions_2_tsf_0_attn2', 'up_3_attentions_2_tsf_0_ff', 'up_3_attentions_2_tsf_0_block', 'up_3_resnets_0_conv1', 'up_3_resnets_0_conv2', 'up_3_resnets_0_block', 'up_3_resnets_1_conv1', 'up_3_resnets_1_conv2', 'up_3_resnets_1_block', 'up_3_resnets_2_conv1', 'up_3_resnets_2_conv2', 'up_3_resnets_2_block']
 
 MODEL_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = partial(StableDiffusion, model_id="CompVis/stable-diffusion-v1-4")
 LAYER_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = 8
 RES_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = (512, 512)
-SD_KEY_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = ['down_0_attentions_0_tsf_0_attn1', 'down_0_attentions_0_tsf_0_attn2', 'down_0_attentions_0_tsf_0_ff', 'down_0_attentions_0_tsf_0_block', 'down_0_attentions_1_tsf_0_attn1', 'down_0_attentions_1_tsf_0_attn2', 'down_0_attentions_1_tsf_0_ff', 'down_0_attentions_1_tsf_0_block', 'down_0_resnets_0_conv1', 'down_0_resnets_0_conv2', 'down_0_resnets_0_block', 'down_0_resnets_1_conv1', 'down_0_resnets_1_conv2', 'down_0_resnets_1_block', 'down_1_attentions_0_tsf_0_attn1', 'down_1_attentions_0_tsf_0_attn2', 'down_1_attentions_0_tsf_0_ff', 'down_1_attentions_0_tsf_0_block', 'down_1_attentions_1_tsf_0_attn1', 'down_1_attentions_1_tsf_0_attn2', 'down_1_attentions_1_tsf_0_ff', 'down_1_attentions_1_tsf_0_block', 'down_1_resnets_0_conv1', 'down_1_resnets_0_conv2', 'down_1_resnets_0_block', 'down_1_resnets_1_conv1', 'down_1_resnets_1_conv2', 'down_1_resnets_1_block', 'down_2_attentions_0_tsf_0_attn1', 'down_2_attentions_0_tsf_0_attn2', 'down_2_attentions_0_tsf_0_ff', 'down_2_attentions_0_tsf_0_block', 'down_2_attentions_1_tsf_0_attn1', 'down_2_attentions_1_tsf_0_attn2', 'down_2_attentions_1_tsf_0_ff', 'down_2_attentions_1_tsf_0_block', 'down_2_resnets_0_conv1', 'down_2_resnets_0_conv2', 'down_2_resnets_0_block', 'down_2_resnets_1_conv1', 'down_2_resnets_1_conv2', 'down_2_resnets_1_block', 'down_3_resnets_0_conv1', 'down_3_resnets_0_conv2', 'down_3_resnets_0_block', 'down_3_resnets_1_conv1', 'down_3_resnets_1_conv2', 'down_3_resnets_1_block', 'up_0_resnets_0_conv1', 'up_0_resnets_0_conv2', 'up_0_resnets_0_block', 'up_0_resnets_1_conv1', 'up_0_resnets_1_conv2', 'up_0_resnets_1_block', 'up_0_resnets_2_conv1', 'up_0_resnets_2_conv2', 'up_0_resnets_2_block', 'up_1_attentions_0_tsf_0_attn1', 'up_1_attentions_0_tsf_0_attn2', 'up_1_attentions_0_tsf_0_ff', 'up_1_attentions_0_tsf_0_block', 'up_1_attentions_1_tsf_0_attn1', 'up_1_attentions_1_tsf_0_attn2', 'up_1_attentions_1_tsf_0_ff', 'up_1_attentions_1_tsf_0_block', 'up_1_attentions_2_tsf_0_attn1', 'up_1_attentions_2_tsf_0_attn2', 'up_1_attentions_2_tsf_0_ff', 'up_1_attentions_2_tsf_0_block', 'up_1_resnets_0_conv1', 'up_1_resnets_0_conv2', 'up_1_resnets_0_block', 'up_1_resnets_1_conv1', 'up_1_resnets_1_conv2', 'up_1_resnets_1_block', 'up_1_resnets_2_conv1', 'up_1_resnets_2_conv2', 'up_1_resnets_2_block', 'up_2_attentions_0_tsf_0_attn1', 'up_2_attentions_0_tsf_0_attn2', 'up_2_attentions_0_tsf_0_ff', 'up_2_attentions_0_tsf_0_block', 'up_2_attentions_1_tsf_0_attn1', 'up_2_attentions_1_tsf_0_attn2', 'up_2_attentions_1_tsf_0_ff', 'up_2_attentions_1_tsf_0_block', 'up_2_attentions_2_tsf_0_attn1', 'up_2_attentions_2_tsf_0_attn2', 'up_2_attentions_2_tsf_0_ff', 'up_2_attentions_2_tsf_0_block', 'up_2_resnets_0_conv1', 'up_2_resnets_0_conv2', 'up_2_resnets_0_block', 'up_2_resnets_1_conv1', 'up_2_resnets_1_conv2', 'up_2_resnets_1_block', 'up_2_resnets_2_conv1', 'up_2_resnets_2_conv2', 'up_2_resnets_2_block', 'up_3_attentions_0_tsf_0_attn1', 'up_3_attentions_0_tsf_0_attn2', 'up_3_attentions_0_tsf_0_ff', 'up_3_attentions_0_tsf_0_block', 'up_3_attentions_1_tsf_0_attn1', 'up_3_attentions_1_tsf_0_attn2', 'up_3_attentions_1_tsf_0_ff', 'up_3_attentions_1_tsf_0_block', 'up_3_attentions_2_tsf_0_attn1', 'up_3_attentions_2_tsf_0_attn2', 'up_3_attentions_2_tsf_0_ff', 'up_3_attentions_2_tsf_0_block', 'up_3_resnets_0_conv1', 'up_3_resnets_0_conv2', 'up_3_resnets_0_block', 'up_3_resnets_1_conv1', 'up_3_resnets_1_conv2', 'up_3_resnets_1_block', 'up_3_resnets_2_conv1', 'up_3_resnets_2_conv2', 'up_3_resnets_2_block']
+SD_KEY_DICT["Diffusion(CompVis/stable-diffusion-v1-4)"] = ['down_0_attentions_0_tsf_0_attn1', 'down_0_attentions_0_tsf_0_attn2', 'down_0_attentions_0_tsf_0_ff', 'down_0_attentions_0_tsf_0_block', 'down_0_attentions_1_tsf_0_attn1', 'down_0_attentions_1_tsf_0_attn2', 'down_0_attentions_1_tsf_0_ff', 'down_0_attentions_1_tsf_0_block', 'down_0_resnets_0_conv1', 'down_0_resnets_0_conv2', 'down_0_resnets_0_block', 'down_0_resnets_1_conv1', 'down_0_resnets_1_conv2', 'down_0_resnets_1_block', 'down_1_attentions_0_tsf_0_attn1', 'down_1_attentions_0_tsf_0_attn2', 'down_1_attentions_0_tsf_0_ff', 'down_1_attentions_0_tsf_0_block', 'down_1_attentions_1_tsf_0_attn1', 'down_1_attentions_1_tsf_0_attn2', 'down_1_attentions_1_tsf_0_ff', 'down_1_attentions_1_tsf_0_block', 'down_1_resnets_0_conv1', 'down_1_resnets_0_conv2', 'down_1_resnets_0_block', 'down_1_resnets_1_conv1', 'down_1_resnets_1_conv2', 'down_1_resnets_1_block', 'down_2_attentions_0_tsf_0_attn1', 'down_2_attentions_0_tsf_0_attn2', 'down_2_attentions_0_tsf_0_ff', 'down_2_attentions_0_tsf_0_block', 'down_2_attentions_1_tsf_0_attn1', 'down_2_attentions_1_tsf_0_attn2', 'down_2_attentions_1_tsf_0_ff', 'down_2_attentions_1_tsf_0_block', 'down_2_resnets_0_conv1', 'down_2_resnets_0_conv2', 'down_2_resnets_0_block', 'down_2_resnets_1_conv1', 'down_2_resnets_1_conv2', 'down_2_resnets_1_block', 'down_3_resnets_0_conv1', 'down_3_resnets_0_conv2', 'down_3_resnets_0_block', 'down_3_resnets_1_conv1', 'down_3_resnets_1_conv2', 'down_3_resnets_1_block', 'mid_attentions_0_tsf_0_attn1', 'mid_attentions_0_tsf_0_attn2', 'mid_attentions_0_tsf_0_ff', 'mid_attentions_0_tsf_0_block', 'mid_resnets_0_conv1', 'mid_resnets_0_conv2', 'mid_resnets_0_block', 'mid_resnets_1_conv1', 'mid_resnets_1_conv2', 'mid_resnets_1_block', 'up_0_resnets_0_conv1', 'up_0_resnets_0_conv2', 'up_0_resnets_0_block', 'up_0_resnets_1_conv1', 'up_0_resnets_1_conv2', 'up_0_resnets_1_block', 'up_0_resnets_2_conv1', 'up_0_resnets_2_conv2', 'up_0_resnets_2_block', 'up_1_attentions_0_tsf_0_attn1', 'up_1_attentions_0_tsf_0_attn2', 'up_1_attentions_0_tsf_0_ff', 'up_1_attentions_0_tsf_0_block', 'up_1_attentions_1_tsf_0_attn1', 'up_1_attentions_1_tsf_0_attn2', 'up_1_attentions_1_tsf_0_ff', 'up_1_attentions_1_tsf_0_block', 'up_1_attentions_2_tsf_0_attn1', 'up_1_attentions_2_tsf_0_attn2', 'up_1_attentions_2_tsf_0_ff', 'up_1_attentions_2_tsf_0_block', 'up_1_resnets_0_conv1', 'up_1_resnets_0_conv2', 'up_1_resnets_0_block', 'up_1_resnets_1_conv1', 'up_1_resnets_1_conv2', 'up_1_resnets_1_block', 'up_1_resnets_2_conv1', 'up_1_resnets_2_conv2', 'up_1_resnets_2_block', 'up_2_attentions_0_tsf_0_attn1', 'up_2_attentions_0_tsf_0_attn2', 'up_2_attentions_0_tsf_0_ff', 'up_2_attentions_0_tsf_0_block', 'up_2_attentions_1_tsf_0_attn1', 'up_2_attentions_1_tsf_0_attn2', 'up_2_attentions_1_tsf_0_ff', 'up_2_attentions_1_tsf_0_block', 'up_2_attentions_2_tsf_0_attn1', 'up_2_attentions_2_tsf_0_attn2', 'up_2_attentions_2_tsf_0_ff', 'up_2_attentions_2_tsf_0_block', 'up_2_resnets_0_conv1', 'up_2_resnets_0_conv2', 'up_2_resnets_0_block', 'up_2_resnets_1_conv1', 'up_2_resnets_1_conv2', 'up_2_resnets_1_block', 'up_2_resnets_2_conv1', 'up_2_resnets_2_conv2', 'up_2_resnets_2_block', 'up_3_attentions_0_tsf_0_attn1', 'up_3_attentions_0_tsf_0_attn2', 'up_3_attentions_0_tsf_0_ff', 'up_3_attentions_0_tsf_0_block', 'up_3_attentions_1_tsf_0_attn1', 'up_3_attentions_1_tsf_0_attn2', 'up_3_attentions_1_tsf_0_ff', 'up_3_attentions_1_tsf_0_block', 'up_3_attentions_2_tsf_0_attn1', 'up_3_attentions_2_tsf_0_attn2', 'up_3_attentions_2_tsf_0_ff', 'up_3_attentions_2_tsf_0_block', 'up_3_resnets_0_conv1', 'up_3_resnets_0_conv2', 'up_3_resnets_0_block', 'up_3_resnets_1_conv1', 'up_3_resnets_1_conv2', 'up_3_resnets_1_block', 'up_3_resnets_2_conv1', 'up_3_resnets_2_conv2', 'up_3_resnets_2_block']
 
 class StableDiffusion3(nn.Module):
     def __init__(self, total_time_steps=50, timestep=10, return_flat_dict=True):
@@ -1327,14 +1349,226 @@ class StableDiffusion3(nn.Module):
         }
         
         if self.return_flat_dict or return_flat_dict:
-            out_dict = {f'{k}_{i}': [v] for k, values in out_dict.items() for i, v in enumerate(values)}
+#            out_dict = {f'{k}_{i}': [v] for k, values in out_dict.items() for i, v in enumerate(values)}
+            out_dict = {}
+            for i_layer in range(len(attn_outputs)):
+                out_dict[f'attn_{i_layer}'] = [attn_outputs[i_layer]]
+                out_dict[f'mlp_{i_layer}'] = [mlp_outputs[i_layer]]
+                out_dict[f'block_{i_layer}'] = [block_outputs[i_layer]]
         
         return out_dict
 
 MODEL_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = partial(StableDiffusion3, total_time_steps=50, timestep=10)
 LAYER_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = 24
 RES_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = (1024, 1024)
-SD_KEY_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = ['attn_0', 'attn_1', 'attn_2', 'attn_3', 'attn_4', 'attn_5', 'attn_6', 'attn_7', 'attn_8', 'attn_9', 'attn_10', 'attn_11', 'attn_12', 'attn_13', 'attn_14', 'attn_15', 'attn_16', 'attn_17', 'attn_18', 'attn_19', 'attn_20', 'attn_21', 'attn_22', 'attn_23', 'mlp_0', 'mlp_1', 'mlp_2', 'mlp_3', 'mlp_4', 'mlp_5', 'mlp_6', 'mlp_7', 'mlp_8', 'mlp_9', 'mlp_10', 'mlp_11', 'mlp_12', 'mlp_13', 'mlp_14', 'mlp_15', 'mlp_16', 'mlp_17', 'mlp_18', 'mlp_19', 'mlp_20', 'mlp_21', 'mlp_22', 'mlp_23', 'block_0', 'block_1', 'block_2', 'block_3', 'block_4', 'block_5', 'block_6', 'block_7', 'block_8', 'block_9', 'block_10', 'block_11', 'block_12', 'block_13', 'block_14', 'block_15', 'block_16', 'block_17', 'block_18', 'block_19', 'block_20', 'block_21', 'block_22', 'block_23']
+SD_KEY_DICT["Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)"] = ['attn_0', 'mlp_0', 'block_0', 'attn_1', 'mlp_1', 'block_1', 'attn_2', 'mlp_2', 'block_2', 'attn_3', 'mlp_3', 'block_3', 'attn_4', 'mlp_4', 'block_4', 'attn_5', 'mlp_5', 'block_5', 'attn_6', 'mlp_6', 'block_6', 'attn_7', 'mlp_7', 'block_7', 'attn_8', 'mlp_8', 'block_8', 'attn_9', 'mlp_9', 'block_9', 'attn_10', 'mlp_10', 'block_10', 'attn_11', 'mlp_11', 'block_11', 'attn_12', 'mlp_12', 'block_12', 'attn_13', 'mlp_13', 'block_13', 'attn_14', 'mlp_14', 'block_14', 'attn_15', 'mlp_15', 'block_15', 'attn_16', 'mlp_16', 'block_16', 'attn_17', 'mlp_17', 'block_17', 'attn_18', 'mlp_18', 'block_18', 'attn_19', 'mlp_19', 'block_19', 'attn_20', 'mlp_20', 'block_20', 'attn_21', 'mlp_21', 'block_21', 'attn_22', 'mlp_22', 'block_22', 'attn_23', 'mlp_23', 'block_23']
+
+
+
+
+class LISA(nn.Module):
+
+    def __init__(self, prompt_str='where is the object?'):
+        super().__init__()
+        try :
+            import lisa
+        except ImportError:
+            raise ImportError("Please install lisa from \n `pip install git+https://github.com/huzeyann/LISA.git`")
+            
+        from transformers import AutoTokenizer
+        from lisa.model.LISA import LISAForCausalLM
+
+        version = "xinlai/LISA-7B-v1"
+        model_max_length = 512
+        tokenizer = AutoTokenizer.from_pretrained(
+            version,
+            cache_dir=None,
+            model_max_length=model_max_length,
+            padding_side="right",
+            use_fast=False,
+        )
+        tokenizer.pad_token = tokenizer.unk_token
+        seg_token_idx = tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
+
+        vision_tower = "openai/clip-vit-large-patch14"
+        model = LISAForCausalLM.from_pretrained(
+            version, low_cpu_mem_usage=True, vision_tower=vision_tower, seg_token_idx=seg_token_idx,
+            torch_dtype=torch.bfloat16,
+        )
+
+        model.config.eos_token_id = tokenizer.eos_token_id
+        model.config.bos_token_id = tokenizer.bos_token_id
+        model.config.pad_token_id = tokenizer.pad_token_id
+
+        model.get_model().initialize_vision_modules(model.get_model().config)
+        vision_tower = model.get_model().get_vision_tower()
+        vision_tower.to(dtype=torch.bfloat16)
+
+        model = model.to(dtype=torch.bfloat16)
+
+        def expand_hw(tensor):
+            hw = np.sqrt(tensor.shape[-2]).astype(int)
+            return rearrange(tensor, "b (h w) c -> b h w c", h=hw)
+
+        def new_forward(
+            self, queries: Tensor, keys: Tensor, query_pe: Tensor, key_pe: Tensor
+        ) -> Tuple[Tensor, Tensor]:
+            self.input_keys = expand_hw(keys.clone())
+            # print("forward", queries.shape, keys.shape, query_pe.shape, key_pe.shape)
+            # Self attention block
+            if self.skip_first_layer_pe:
+                queries = self.self_attn(q=queries, k=queries, v=queries)
+            else:
+                q = queries + query_pe
+                attn_out = self.self_attn(q=q, k=q, v=queries)
+                queries = queries + attn_out
+            queries = self.norm1(queries)
+
+            # Cross attention block, tokens attending to image embedding
+            q = queries + query_pe
+            k = keys + key_pe
+            attn_out = self.cross_attn_token_to_image(q=q, k=k, v=keys)
+            queries = queries + attn_out
+            queries = self.norm2(queries)
+
+            # MLP block
+            mlp_out = self.mlp(queries)
+            queries = queries + mlp_out
+            queries = self.norm3(queries)
+
+            # Cross attention block, image embedding attending to tokens
+            q = queries + query_pe
+            k = keys + key_pe
+            attn_out = self.cross_attn_image_to_token(q=k, k=q, v=queries)
+            
+            self.attn_output = expand_hw(attn_out.clone())
+            
+            keys = keys + attn_out
+            keys = self.norm4(keys)
+            
+            self.block_output = expand_hw(keys.clone())
+            # print("forward, block_output", queries.shape, keys.shape)
+
+
+            return queries, keys
+
+        setattr(model.model.visual_model.mask_decoder.transformer.layers[0].__class__, "forward", new_forward)
+        setattr(model.model.visual_model.mask_decoder.transformer.layers[0].__class__, "__call__", new_forward)
+
+        import math
+        def new_final_forward(self, q: Tensor, k: Tensor, v: Tensor) -> Tensor:
+            # Input projections
+            q = self.q_proj(q)
+            k = self.k_proj(k)
+            v = self.v_proj(v)
+
+            # Separate into heads
+            q = self._separate_heads(q, self.num_heads)
+            k = self._separate_heads(k, self.num_heads)
+            v = self._separate_heads(v, self.num_heads)
+
+            # Attention
+            _, _, _, c_per_head = q.shape
+            attn = q @ k.permute(0, 1, 3, 2)  # B x N_heads x N_tokens x N_tokens
+            attn = attn / math.sqrt(c_per_head)
+            attn = torch.softmax(attn, dim=-1)
+
+            # Get output
+            out = attn @ v
+            out = self._recombine_heads(out)
+            out = self.out_proj(out)
+            
+            self.attn_output = out.clone()
+            # print("final_forward", q.shape, k.shape, v.shape, out.shape)
+
+            return out
+
+        setattr(model.model.visual_model.mask_decoder.transformer.final_attn_token_to_image.__class__, "forward", new_final_forward)
+        setattr(model.model.visual_model.mask_decoder.transformer.final_attn_token_to_image.__class__, "__call__", new_final_forward)
+        
+        self.model = model
+        self.tokenizer = tokenizer
+        self.vision_tower = vision_tower
+        self.prompt_str = prompt_str
+        
+    def forward(self, images, input_str=None):
+        
+        from lisa.model.llava import conversation as conversation_lib
+        from lisa.model.llava.mm_utils import tokenizer_image_token
+        from lisa.utils.utils import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
+                                DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX)
+
+        input_str = input_str if input_str is not None else self.prompt_str
+
+        # Model Inference
+        conv = conversation_lib.conv_templates['llava_v1'].copy()
+        conv.messages = []
+
+        prompt = input_str
+        prompt = DEFAULT_IMAGE_TOKEN + "\n" + prompt
+
+        use_mm_start_end = True
+        if use_mm_start_end:
+            replace_token = (
+                DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
+            )
+            prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
+
+        conv.append_message(conv.roles[0], prompt)
+        conv.append_message(conv.roles[1], "")
+        prompt = conv.get_prompt()
+
+
+        input_ids = tokenizer_image_token(prompt, self.tokenizer, return_tensors="pt")
+        input_ids = input_ids.unsqueeze(0).to(images.device)
+        # print("input_ids", input_ids.shape, input_ids)
+
+        # resize to 224
+        image_clip = F.interpolate(images, size=(224, 224), mode="bilinear", align_corners=False)
+        image_clip = image_clip.bfloat16()
+
+        image = images.bfloat16()
+        
+        
+        resize_list = [(1024, 1024)]
+        original_size_list = [(1024, 1024)]
+        
+        outs = {}
+        for i_image in range(image.shape[0]):
+            output_ids, pred_masks = self.model.evaluate(
+                image_clip[i_image].unsqueeze(0),
+                image[i_image].unsqueeze(0),
+                input_ids,
+                resize_list,
+                original_size_list,
+                max_new_tokens=512,
+                tokenizer=self.tokenizer,
+            )
+            output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
+
+            text_output = self.tokenizer.decode(output_ids, skip_special_tokens=False)
+            text_output = text_output.replace("\n", "").replace("  ", " ")
+            text_output = text_output.split("ASSISTANT: ")[-1]
+            
+            num_layers = len(self.model.model.visual_model.mask_decoder.transformer.layers)
+            for i_layer in range(num_layers):
+                layer = self.model.model.visual_model.mask_decoder.transformer.layers[i_layer]
+                if i_image == 0:
+                    outs[f"dec_{i_layer}_input"] = []
+                    outs[f"dec_{i_layer}_attn"] = []
+                    outs[f"dec_{i_layer}_block"] = []
+                outs[f"dec_{i_layer}_input"].append(layer.input_keys.clone())
+                outs[f"dec_{i_layer}_attn"].append(layer.attn_output.clone())
+                outs[f"dec_{i_layer}_block"].append(layer.block_output.clone())
+                # print(f"Layer {i_layer} done")
+                # print(f"shape: {layer.attn_output.shape}")
+        outs = {k: [torch.cat(v, 0)] for k, v in outs.items()}
+        return outs
+
+MODEL_DICT["LISA(xinlai/LISA-7B-v1)"] = partial(LISA, prompt_str='where is the object?')
+LAYER_DICT["LISA(xinlai/LISA-7B-v1)"] = 2
+RES_DICT["LISA(xinlai/LISA-7B-v1)"] = (1024, 1024)
+
 
 def download_all_models():
     for model_name in MODEL_DICT:
@@ -1359,7 +1593,7 @@ MODEL_NAMES = list(MODEL_DICT.keys())
 def list_models():
     return MODEL_NAMES
 
-def load_model(model_name: Literal[tuple(MODEL_NAMES)], quite=False):
+def load_model(model_name, quite=False):
     if model_name not in MODEL_DICT:
         raise ValueError(f"Model `{model_name}` not found. Please choose from: {MODEL_NAMES}")
     model = MODEL_DICT[model_name]()
@@ -1398,5 +1632,4 @@ def extract_features(images: torch.Tensor, model: nn.Module,
     outputs = torch.cat(outputs, dim=0)
 
     return outputs
-
 
