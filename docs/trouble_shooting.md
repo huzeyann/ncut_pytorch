@@ -25,7 +25,7 @@ sudo apt-get install build-essential
 
 Step2: install `rustc` ([https://rustup.rs/](https://rustup.rs/)), use command:
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && . "$HOME/.cargo/env"
 # press enter to install
 ```
 ```shell

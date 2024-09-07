@@ -34,8 +34,19 @@
 
 In case of `pip` install failed, please try install the build dependencies
 
+Option A:
 <div style="text-align:">
     <pre><code class="language-shell">sudo apt-get update && sudo apt-get install build-essential cargo rustc -y</code></pre>
+</div>
+
+Option B:
+<div style="text-align:">
+    <pre><code class="language-shell">conda install rust -c conda-forge</code></pre>
+</div>
+
+Option C:
+<div style="text-align:">
+    <pre><code class="language-shell">curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && . "$HOME/.cargo/env"</code></pre>
 </div>
 
 
