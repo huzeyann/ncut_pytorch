@@ -103,7 +103,7 @@ Just plugin features extracted from any pre-trained model and ready to go. NCUT 
 
 ## Installation & Quick Start
 
-PyPI install, our package is based on PyTorch, please [install PyTorch](https://pytorch.org/get-started/locally/) first
+`ncut-pytorch` is available via `pip`, our package is based on PyTorch, please [Install PyTorch](https://pytorch.org/get-started/locally/) first
 
 <div style="text-align:">
     <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
@@ -131,6 +131,10 @@ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvi
 </div>
 
 </details>
+
+If you running into trouble when installing `ncut-pytorch`, please see [Install Trouble Shooting](touble_shooting.md)
+
+---
 
 Minimal example on how to run NCUT, more examples in [Tutorial](tutorials.md) and [Gallery](gallery.md).
 

@@ -94,26 +94,19 @@ For visualization purpose, t-SNE or UMAP is applied on the NCUT eigenvectors. Ou
 
 <div style="text-align:left;">
     <pre><code>
-<span style="color: #008000;"># balanced speed and quality</span>
+<span style="color: #008000;"># fast, for small-scale</span>
 X_3d, rgb = <span style="color: #FF6D00;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, perplexity=<span style="color: #A020F0;">150</span>)
 X_3d, rgb = <span style="color: #FF6D00;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">300</span>, n_neighbors=<span style="color: #A020F0;">150</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
+
+<span style="color: #008000;"># balanced speed and quality, for medium-scale</span>
+X_3d, rgb = <span style="color: #FF6D00;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">1000</span>, perplexity=<span style="color: #A020F0;">250</span>)
+X_3d, rgb = <span style="color: #FF6D00;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">1000</span>, n_neighbors=<span style="color: #A020F0;">250</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
 
 <span style="color: #008000;"># extreme quality, much slower</span>
 X_3d, rgb = <span style="color: #FF6D00;">rgb_from_tsne_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, perplexity=<span style="color: #A020F0;">500</span>)
 X_3d, rgb = <span style="color: #FF6D00;">rgb_from_umap_3d</span>(eigvecs, num_samples=<span style="color: #A020F0;">10000</span>, n_neighbors=<span style="color: #A020F0;">500</span>, min_dist=<span style="color: #A020F0;">0.1</span>)
     </code></pre>
 </div>
-
-
-Please see [Tutorial - Coloring](coloring.md) for a full comparison of coloring methods:
-
-||Pros|Cons|
-|---|---|---|
-|t-SNE(3D)|make fuller use of the color space|slow for large samples|
-|UMAP(3D)|fast for large samples|holes in the color space; slow for small samples|
-|UMAP(sphere)|can be plotted in 2D&3D|do not use the full color space|
-|t-SNE(2D)|can be plotted in 2D|do not use the full color space|
-|UMAP(2D)|can be plotted in 2D|do not use the full color space|
 
 
 ## Rotate the RGB Cube
@@ -124,6 +117,19 @@ Human perception is not uniform on the RGB color space -- green vs. yellow is le
 <div style="text-align: center;">
 <img src="../images/color_rotation.png" style="width:100%;">
 </div>
+
+If a perceptually uniform colormap is preferred, unfortunately we don't find a perfect perceptually uniform colormap in 3D, but there are great perceptually uniform colormaps in 2D (see [pycolormap-2d](https://pypi.org/project/pycolormap-2d/)). However, the downside is that 2D colormap don't use the full color space, and 2D t-SNE/UMAP can be underwhelming.
+
+Please see [Tutorial - Coloring](coloring.md) for a full comparison of coloring methods:
+
+||Pros|Cons|
+|---|---|---|
+|t-SNE(3D)|make fuller use of the color space|slow for large samples|
+|UMAP(3D)|fast for large samples|holes in the color space; slow for small samples|
+|UMAP(sphere)|can be plotted in 2D&3D|do not use the full color space|
+|t-SNE(2D)|can be plotted in 2D, use perceptually uniform colormap|do not use the full color space|
+|UMAP(2D)|can be plotted in 2D, use perceptually uniform colormap|do not use the full color space|
+
 
 ## Recursive NCUT
 

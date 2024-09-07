@@ -16,11 +16,14 @@
 
 ## Installation & Quick Start
 
-PyPI install, our package is based on PyTorch, please [install PyTorch](https://pytorch.org/get-started/locally/) first
+`ncut-pytorch` is available via `pip`, our package is based on PyTorch, please [Install PyTorch](https://pytorch.org/get-started/locally/) first
 
 ```shell
 pip install ncut-pytorch
 ```
+
+If you running into trouble when installing `ncut-pytorch`, please see [Install Trouble Shooting](https://ncut-pytorch.readthedocs.io/en/latest/touble_shooting/)
+
 
 
 Minimal example on how to run NCUT:
