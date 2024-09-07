@@ -101,40 +101,33 @@ Just plugin features extracted from any pre-trained model and ready to go. NCUT 
 
 ---
 
-## Installation & Quick Start
+## Installation
 
-`ncut-pytorch` is available via `pip`, our package is based on PyTorch, please [Install PyTorch](https://pytorch.org/get-started/locally/) first
+#### 1. Install PyTorch
+
+<div style="text-align:">
+<pre><code class="language-shell">conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+</code></pre>
+</div>
+
+#### 2. Install `ncut-pytorch`
 
 <div style="text-align:">
     <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
 </div>
 
 
+#### Trouble Shooting
 
-
-<details>
-<summary>
-
-How to install PyTorch (click to expand):
-
-</summary>
-
-Install PyTorch by pip (for CPU only) or conda (for GPU)
+In case of `pip` install failed, please try install the build dependencies
 
 <div style="text-align:">
-<pre><code class="language-shell">
-# for cpu only
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-# for gpu
-conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-</code></pre>
+    <pre><code class="language-shell">sudo apt-get update && sudo apt-get install build-essential cargo rustc -y</code></pre>
 </div>
 
-</details>
-
-If you running into trouble when installing `ncut-pytorch`, please see [Install Trouble Shooting](touble_shooting.md)
-
 ---
+
+## Quick Start
 
 Minimal example on how to run NCUT, more examples in [Tutorial](tutorials.md) and [Gallery](gallery.md).
 

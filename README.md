@@ -16,15 +16,31 @@
 
 ---
 
-## Installation & Quick Start
+## Installation
 
-`ncut-pytorch` is available via `pip`, our package is based on PyTorch, please [Install PyTorch](https://pytorch.org/get-started/locally/) first
+#### 1. Install PyTorch
 
-```shell
-pip install ncut-pytorch
-```
+<div style="text-align:">
+<pre><code class="language-shell">conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+</code></pre>
+</div>
 
-If you running into trouble when installing `ncut-pytorch`, please see [Install Trouble Shooting](https://ncut-pytorch.readthedocs.io/en/latest/trouble_shooting/)
+#### 2. Install `ncut-pytorch`
+
+<div style="text-align:">
+    <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
+</div>
+
+
+#### Trouble Shooting
+
+In case of `pip` install failed, please try install the build dependencies
+
+<div style="text-align:">
+    <pre><code class="language-shell">sudo apt-get update && sudo apt-get install build-essential cargo rustc -y</code></pre>
+</div>
+
+## Quick Start
 
 
 Minimal example on how to run NCUT:
