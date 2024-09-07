@@ -33,7 +33,7 @@
 pip install ncut-pytorch
 ```
 
-If you running into trouble when installing `ncut-pytorch`, please see [Install Trouble Shooting](https://ncut-pytorch.readthedocs.io/en/latest/touble_shooting/)
+If you running into trouble when installing `ncut-pytorch`, please see [Install Trouble Shooting](https://ncut-pytorch.readthedocs.io/en/latest/trouble_shooting/)
 
 
 Minimal example on how to run NCUT:
