@@ -16,15 +16,6 @@
 
 ---
 
-## NCUT: Nyström Normalized Cut
-
-**Normalized Cut**, aka. spectral clustering, is a graphical method to analyze data grouping in the affinity eigenvector space. It has been widely used for unsupervised segmentation in the 2000s.
-
-**Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
-
-
----
-
 ## Installation & Quick Start
 
 `ncut-pytorch` is available via `pip`, our package is based on PyTorch, please [Install PyTorch](https://pytorch.org/get-started/locally/) first
