@@ -1,7 +1,7 @@
 
 
 
-### Error installing the dependency `fpsample`
+### Error installing from `pip`
 
 `fpsample` is a dependency for `ncut-pytorch`, if you running into the issue like this image, please try the following steps.
 
@@ -9,7 +9,7 @@
 <img src="../images/rust_error_fpsample.png" style="width:100%;">
 </div>
 
-Step1: (**optional**) make sure CC compiler is installed by installing `build-essential`
+Step1: (**optional**) make sure CC compiler is installed by installing `build-essential`. you can skip this step if `cc --version` is working on your machine.
 
 ```shell
 sudo apt-get update

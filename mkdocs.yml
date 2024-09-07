@@ -50,11 +50,11 @@ plugins:
 
 nav:
   - Overview & Install: index.md
-  - Install Trouble Shotting: trouble_shooting.md
+  - Install Trouble Shooting: trouble_shooting.md
+  - Backbones: backbones.md
   - Gallery: gallery.md
   - How NCUT Works: how_ncut_works.md 
   - NCUT and t-SNE/UMAP: compare.md
-  - Backbones: backbones.md
   - Tutorial 1 - Quick Start: tutorials.md
   - Tutorial 2 - Parameters: parameters.md
   - Tutorial 3 - Add Nodes: add_nodes.md
