@@ -10,7 +10,7 @@ hide:
 	src="https://fun-quetzal-whole.ngrok-free.app/"
 	frameborder="0"
 	width="100%"
-	height="1000"
+	height="1600"
 ></iframe>
 
 ## This demo is hosted at UPenn
@@ -26,7 +26,7 @@ HuggingFace
 
 ---
 
-## Hosting this demo software locally
+## How to host this demo yourself
 
 Step 1. Install [Docker](https://www.docker.com/) and [Nvidia-docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) plugin.
 
@@ -46,7 +46,7 @@ docker run -it -p 7860:7860 --platform=linux/amd64 --gpus all \
 	registry.hf.space/huzey-ncut-pytorch:latest python app.py
 ```
 
-`HF_ACCESS_TOKEN` is only needed if you need access to restricted models (Llama, SDv3), please see [Backbones](backbones.md).
+`HF_ACCESS_TOKEN` can be left blank, only fill it if you need access to restricted models (Llama, SDv3), please see [Backbones](backbones.md).
 
 Step 3. Use the printed out link to access your local demo.
 
