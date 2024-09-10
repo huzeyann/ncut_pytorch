@@ -57,7 +57,7 @@ This demo is hosted at UPenn, **password is:**
 </script>
 
 <iframe
-	src="https://that-black-mahine-under-my-desk-please-dont-kick-it.loca.lt/"
+	src="https://click-on-the-smile-on-about-page-to-unlock-secret.loca.lt/"
 	frameborder="0"
 	width="100%"
 	height="1600"
