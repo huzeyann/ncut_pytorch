@@ -39,7 +39,7 @@ This demo is hosted at UPenn, **password is:**
 	158.130.50.41
 	<span class="tooltip" id="tooltip">Copied!</span>
 </span>
-<a href="https://that-black-mahine-under-my-desk-please-dont-kick-it.loca.lt/" target="_blank" >open demo in new tab</a>
+<a href="https://click-on-the-smile-on-about-page-to-unlock-secret.loca.lt/" target="_blank" >open demo in new tab</a>
 
 <script>
 	function copyToClipboard(text) {
