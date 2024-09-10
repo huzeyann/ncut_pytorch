@@ -751,7 +751,7 @@ LAYER_DICT["CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"] = 24
 RES_DICT["CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"] = (448, 448)
 
 class MAE(nn.Module):
-    def __init__(self, size='base', **kwargs):
+    def __init__(self, size='base', pos_size=(42, 42), **kwargs):
         super().__init__(**kwargs)
 
         try:
@@ -795,7 +795,7 @@ class MAE(nn.Module):
         
         # resample the patch embeddings to 56x56, take 896x896 input
         pos_embed = self.mae_encoder.pos_embed[0]
-        pos_embed = resample_position_embeddings(pos_embed, 42, 42)
+        pos_embed = resample_position_embeddings(pos_embed, *pos_size)
         self.mae_encoder.pos_embed = nn.Parameter(pos_embed.unsqueeze(0))
         self.mae_encoder.img_size = (672, 672)
         self.mae_encoder.patch_embed.img_size = (672, 672)
@@ -839,7 +839,7 @@ RES_DICT["MAE(vit_base)"] = (672, 672)
 MODEL_DICT["MAE(vit_large)"] = partial(MAE, size='large')
 LAYER_DICT["MAE(vit_large)"] = 24
 RES_DICT["MAE(vit_large)"] = (672, 672)
-MODEL_DICT["MAE(vit_huge)"] = partial(MAE, size='huge')
+MODEL_DICT["MAE(vit_huge)"] = partial(MAE, size='huge', pos_size=(48, 48))
 LAYER_DICT["MAE(vit_huge)"] = 32
 RES_DICT["MAE(vit_huge)"] = (672, 672)
 
