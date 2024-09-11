@@ -155,7 +155,22 @@ eigenvectors2, eigenvalues2 = <span style="color: #FF6D00;">NCUT</span>(num_eig=
 1. Eigenvectors with small eigenvalues are amplified -- we didn't take eigenvalue but only took eigenvectors in each iteration. This could be beneficial if we picked a good eigenvector number, if too much eigenvectors are picked, the noise will gets amplified. Less or no recursion is better for whole-object segmentation.
 2. Affinity is amplified in each iteration. When used recursive NCUT with `affinity_focal_gamma < 1`, each iteration will clean up the affinity graph and amplify the strong connections.
 
-The following example applied NCUT to 300 images, recursion 1 take 100 eigenvectors, recursion 2 take 50 eigenvectors, recursion 3 take 20 eigenvectors. 
+
+<div style="text-align: center;">
+<img src="../images/rec_ncut.jpg" style="width:100%;">
+<p>Recursive NCUT with affinity_focal_gamma=0.5
+</p>
+</div>
+
+
+<div style="text-align: center;">
+<img src="../images/rec_ncut10.jpg" style="width:100%;">
+<p>Recursive NCUT with affinity_focal_gamma=1.0
+</p>
+</div>
+
+
+<!-- The following example applied NCUT to 300 images, recursion 1 take 100 eigenvectors, recursion 2 take 50 eigenvectors, recursion 3 take 20 eigenvectors. 
 
 <div style="text-align: center;">
 <img src="../images/recursion_L1.jpg" style="width:100%;">
@@ -167,4 +182,4 @@ The following example applied NCUT to 300 images, recursion 1 take 100 eigenvect
 
 <div style="text-align: center;">
 <img src="../images/recursion_L3.jpg" style="width:100%;">
-</div>
+</div> -->
