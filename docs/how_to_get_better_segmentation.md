@@ -1,14 +1,5 @@
 # How to Get Better Segmentation from NCUT
 
-Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
-
-<script
-	type="module"
-	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
-></script>
-
-<gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
-
 
 ## Pick Number of Eigenvectors
 
@@ -183,3 +174,17 @@ eigenvectors2, eigenvalues2 = <span style="color: #FF6D00;">NCUT</span>(num_eig=
 <div style="text-align: center;">
 <img src="../images/recursion_L3.jpg" style="width:100%;">
 </div> -->
+
+---
+
+## Play Ground
+
+Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
+
+<script
+	type="module"
+	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
+></script>
+
+<gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
+
