@@ -370,6 +370,61 @@ for i, ax in enumerate(axs):
 # plt.suptitle('Full graph Ncut\n col1 is connectivity (after proximity threshold), col2-7 are eigenvectors', y=-0.1)
 plt.suptitle('My approximation w/o indirect connection\n col1 is connectivity on sampled nodes (after proximity threshold), col2-7 are eigenvectors', y=-0.1)
 # plt.suptitle('Original Nystrom cut w/ indirect connection \n col1 is connectivity on sampled nodes (after proximity threshold), col2-7 are eigenvectors', y=-0.1)
+# %%
+# Calculate global vmin and vmax for the first and second eigenvectors
+vmin1 = min(eigen_vector[:, 1].min(), eigen_vector[sample_indices, 1].min())
+vmax1 = max(eigen_vector[:, 1].max(), eigen_vector[sample_indices, 1].max())
+vmin2 = min(eigen_vector[:, 2].min(), eigen_vector[sample_indices, 2].min())
+vmax2 = max(eigen_vector[:, 2].max(), eigen_vector[sample_indices, 2].max())
+
+# Create a 2x2 plot
+fig, axs = plt.subplots(1, 2, figsize=(8, 3))
+
+# Plot the eigenvector for sampled dots
+ax = axs[0]
+ax.scatter(all_dots[:, 0], all_dots[:, 1], c='grey', s=50, alpha=0.2)
+sc = ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], c=eigen_vector[sample_indices, 1], cmap='coolwarm', s=50, alpha=0.9, vmin=vmin1, vmax=vmax1)
+ax.set_title('Eigenvector (Sampled Dots)')
+ax.set_xlabel('X1')
+ax.set_ylabel('X2')
+ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], facecolors='none', edgecolors='k', s=60)
+ax.set_xticks([])
+ax.set_yticks([])
+
+# Plot the eigenvector for KNN propagated
+ax = axs[1]
+sc = ax.scatter(all_dots[:, 0], all_dots[:, 1], c=eigen_vector[:, 1], cmap='coolwarm', s=50, alpha=0.9, vmin=vmin1, vmax=vmax1)
+ax.set_title('Eigenvector (KNN propagated)')
+ax.set_xlabel('X1')
+ax.set_ylabel('X2')
+ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], facecolors='none', edgecolors='k', s=60)
+ax.set_xticks([])
+ax.set_yticks([])
+
+# # Plot the second eigenvector for sampled dots
+# ax = axs[1, 0]
+# ax.scatter(all_dots[:, 0], all_dots[:, 1], c='grey', s=50, alpha=0.2)
+# sc = ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], c=eigen_vector[sample_indices, 2], cmap='coolwarm', s=50, alpha=0.9, vmin=vmin2, vmax=vmax2)
+# ax.set_title('Second Eigenvector (Sampled Dots)')
+# ax.set_xlabel('X1')
+# ax.set_ylabel('X2')
+# ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], facecolors='none', edgecolors='k', s=60)
+# ax.set_xticks([])
+# ax.set_yticks([])
+
+# # Plot the second eigenvector for KNN propagated
+# ax = axs[1, 1]
+# sc = ax.scatter(all_dots[:, 0], all_dots[:, 1], c=eigen_vector[:, 2], cmap='coolwarm', s=50, alpha=0.9, vmin=vmin2, vmax=vmax2)
+# ax.set_title('Second Eigenvector (KNN propagated)')
+# ax.set_xlabel('X1')
+# ax.set_ylabel('X2')
+# ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], facecolors='none', edgecolors='k', s=60)
+# ax.set_xticks([])
+# ax.set_yticks([])
+
+# plt.tight_layout()
+plt.show()
+
 
 # %%
 import seaborn as sns

@@ -370,6 +370,10 @@ Given that \( B \) has dimensions \( (N-n) \times n \), $N$ is large, directly s
 
 ### K-Nearest Neighbors (KNN) Propagation
 
+<div style="text-align: center;">
+<img src="../images/knn_propagate.png" style="width:80%;">
+</div>
+
 After computing the eigenvectors \( \mathbf{X}' \in \mathbb{R}^{n \times C} \) on the sub-sampled graph \( S = A + \left({D_{\text{r}}}^{-1} B'\right) \left(B' {D_{\text{c}}}^{-1}\right)^\top \in \mathbb{R}^{n \times n} \) using the Ncut formulation, the next step is to propagate these eigenvectors to the full graph. Let \( \mathbf{\tilde{X}} \in \mathbb{R}^{N \times C} \) be the approximated eigenvectors for the full graph, where \( N \) is the total number of nodes. The eigenvector approximation \( \mathbf{\tilde{X}}_i \) for each node \( i \leq N \) in the full graph is obtained by averaging the eigenvectors \( \mathbf{X}'_k \) of the top K-nearest neighbors from the subgraph:
 
 \[
