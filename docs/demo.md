@@ -34,12 +34,21 @@ hide:
 	}
 </style>
 
-This demo is hosted at UPenn, **password is:** 
+This demo is hosted at UPenn 
+
+<a href="https://fun-quetzal-whole.ngrok-free.app/" target="_blank" >Link1</a> 
+
+<a href="https://click-on-the-smile-on-about-page-to-unlock-secret.loca.lt/" target="_blank" >Link2</a> **password is:** 
 <span class="copy-code" onclick="copyToClipboard('158.130.50.41')">
 	158.130.50.41
 	<span class="tooltip" id="tooltip">Copied!</span>
 </span>
-<a href="https://click-on-the-smile-on-about-page-to-unlock-secret.loca.lt/" target="_blank" >open demo in new tab</a>
+
+<a href="http://158.130.50.41:7860/" target="_blank" >Link3</a> (for UPenn internal network)
+
+<a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">
+HuggingFace
+</a>
 
 <script>
 	function copyToClipboard(text) {
@@ -58,17 +67,13 @@ This demo is hosted at UPenn, **password is:**
 
 
 <iframe
-	src="https://click-on-the-smile-on-about-page-to-unlock-secret.loca.lt/"
+	src="https://fun-quetzal-whole.ngrok-free.app/"
 	frameborder="0"
 	width="100%"
 	height="1600"
 ></iframe>
 
 
-Open this demo at 
-<a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">
-HuggingFace
-</a>
 <!-- <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
 🤗 HuggingFace Demo
 </a> -->
