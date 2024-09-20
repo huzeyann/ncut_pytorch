@@ -13,7 +13,7 @@ Image taken from [Spectral Clustering: Step-by-step derivation of the spectral c
 ---
 
 ### The Basic Idea
-Spectral clustering works by embedding the data points $F \in \mathbb{R}^{N \times D}$ into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph $W \in \mathbb{R}^{N \times N}$. The data is then clustered in this new space embedded by $k$ eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$.
+Spectral clustering works by embedding the data points $F \in \mathbb{R}^{N \times 768}$ into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph $W \in \mathbb{R}^{N \times N}$. The data is then clustered in this new space embedded by $k$ eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$.
 
 <div style="text-align: center;">
 <img src="../images/spectral_tsne_how.png" style="width:80%;">
@@ -23,7 +23,7 @@ Spectral clustering works by embedding the data points $F \in \mathbb{R}^{N \tim
 Given a set of data points, spectral clustering first constructs a similarity graph. Each node represents a data point, and edges represent the similarity between data points. The similarity graph can be represented by an adjacency matrix \( W \), where each element \( W_{ij} \) represents the similarity between data points \( i \) and \( j \).
 
 
-Take cosine distance for example, let $F \in \mathbb{R}^{N \times D}$ be the input features (from a backbone image model), $N$ is number of pixels, $D$ is feature dimension. Feature vectors $f_i, f_j \in \mathbb{R}^D$, the cosine similarity between $f_i$ and $f_j$ is defined as:
+Take cosine distance for example, let $F \in \mathbb{R}^{N \times 768}$ be the input features (from a backbone image model), $N$ is number of pixels, $768$ is feature dimension. Feature vectors $f_i, f_j \in \mathbb{R}^{768}$, the cosine similarity between $f_i$ and $f_j$ is defined as:
 
 $$W_{ij} = \text{cosine}(f_i, f_j) = \frac{f_i \cdot f_j}{|f_i| |f_j|}$$
 
@@ -43,7 +43,7 @@ $$
 D_{ii} = \sum_{j=0}^{N} W_{ij}
 $$
 
-The unnormalized graph Laplacian is defined as:
+The unnormalized [graph Laplacian](https://en.wikipedia.org/wiki/Laplacian_matrix) is:
 
 \[
 L = D - W
@@ -332,7 +332,7 @@ We use a tree-based QuickFPS algorithm developed in
 
     QuickFPS: Architecture and Algorithm Co-Design for Farthest Point Sampling in Large-Scale Point Cloud, Han, Meng and Wang, Liang and Xiao, Limin and Zhang, Hao and Zhang, Chenhao and Xu, Xiangrong and Zhu, Jianfeng, 2023
 
-As a side note for speed, for high-dimensional input model features $F \in \mathbb{R}^{N \times D}$ where $D$ is feature dimension, FPS can be computationally expensive for large $D$. To mitigate this, Principal Component Analysis (PCA) is used to reduce the dimensionality of the features to $F' \in \mathbb{R}^{N \times 5}$. PCA is only applied in the FPS sampling step, but not to the affinity graph $W$.
+As a side note for speed, for high-dimensional input model features $F \in \mathbb{R}^{N \times 768}$ where $768$ is feature dimension, FPS can be computationally expensive for large $768$. To mitigate this, Principal Component Analysis (PCA) is used to reduce the dimensionality of the features to $F' \in \mathbb{R}^{N \times 8}$. PCA is only applied in the FPS sampling step, but not to the affinity graph $W$.
 
 ### Accounting for Indirect Connections
 
@@ -369,7 +369,7 @@ This example shows when indirect connection is important. In the bottom example,
 
 #### Reduce Computation Loads for Indirect Connections
 
-Given that \( B \) has dimensions \( (N-n) \times n \), $N$ is large, directly storing and computing with \( B \) can be prohibitively expensive. To overcome this, we reduce the number of unsampled nodes by applying PCA. If the feature size is \( D \), let \( F_A \in \mathbb{R}^{n \times D} \) be the feature matrix for the sampled nodes, and \( F_B \in \mathbb{R}^{(N-n) \times D} \) be the feature matrix for the unsampled nodes. After applying PCA, $m$ is the PCA-ed dimension, the reduced feature matrix \( F_B' \in \mathbb{R}^{m \times D} \) represents the unsampled nodes, where \( m \ll (N-n) \). Thus, \( B' = d(F_A, F_{B'}) \) becomes a matrix of size \( \mathbb{R}^{m \times n} \), significantly reduce computation loads and memory usage.
+Given that \( B \) has dimensions \( (N-n) \times n \), $N$ is large, directly storing and computing with \( B \) can be prohibitively expensive. To overcome this, we reduce the number of unsampled nodes by applying PCA. If the feature size is \( 768 \), let \( F_A \in \mathbb{R}^{n \times 768} \) be the feature matrix for the sampled nodes, and \( F_B \in \mathbb{R}^{(N-n) \times 768} \) be the feature matrix for the unsampled nodes. After applying PCA, $m$ is the PCA-ed dimension, the reduced feature matrix \( F_B' \in \mathbb{R}^{m \times 768} \) represents the unsampled nodes, where \( m \ll (N-n) \). Thus, \( B' = d(F_A, F_{B'}) \) becomes a matrix of size \( \mathbb{R}^{m \times n} \), significantly reduce computation loads and memory usage.
 
 
 ### K-Nearest Neighbors (KNN) Propagation
@@ -405,7 +405,7 @@ eigvectors, eigvalues = NCUT(num_eig=100, device='cuda:0').fit_transform(data)
 <img src="../images/spectral_tsne_how.png" style="width:80%;">
 </div>
 
-The input image features \( F \in \mathbb{R}^{N \times D} \) are embedded into eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \), where \( N \) is the number of pixels, \( D \) is the feature dimension, and \( k \) is the number of eigenvectors. We use t-SNE or UMAP on the eigenvectors for visualization. 
+The input image features \( F \in \mathbb{R}^{N \times 768} \) are embedded into eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \), where \( N \) is the number of pixels, \( 768 \) is the feature dimension, and \( k \) is the number of eigenvectors. We use t-SNE or UMAP on the eigenvectors for visualization. 
 
 3D t-SNE is computed on eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \), resulting in a color matrix \( \mathbb{R}^{N \times 3} \). RGB values are assigned to each pixel based on its 3D t-SNE embedding.
 
@@ -424,7 +424,7 @@ Alternatively, in the old days before t-SNE comes out, K-means clustering are ap
 
 t-SNE and UMAP can be slow for large-scale graphs. We applied the same Nystrom-like approximation: (1) FPS sub-samples a subset of nodes, (2) t-SNE is computed on the sampled nodes, and (3) KNN propagates the colors from sampled to unsampled nodes.
 
-For extra speed-up, we found FPS sub-sampling (euclidean) on eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \) more effective than on the original features \( F \in \mathbb{R}^{N \times D} \), because the distribution of eigenvectors. Thus, the Nystrom approximation for t-SNE requires fewer samples to perform well (we recommend 300 samples for t-SNE, 10,000 for NCUT). Note that small sampling works well for t-SNE only on eigenvectors but not on the original features. 
+For extra speed-up, we found FPS sub-sampling (euclidean) on eigenvectors \( \mathbf{x} \in \mathbb{R}^{N \times k} \) more effective than on the original features \( F \in \mathbb{R}^{N \times 768} \), because the distribution of eigenvectors. Thus, the Nystrom approximation for t-SNE requires fewer samples to perform well (we recommend 300 samples for t-SNE, 10,000 for NCUT). Note that small sampling works well for t-SNE only on eigenvectors but not on the original features. 
 t-SNE with small sampling is fast on CPU, then the expensive KNN propagation step computes in GPU.
 
 ```py

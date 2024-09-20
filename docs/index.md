@@ -5,17 +5,31 @@
 </div>
 
 
-<div style="display: flex; justify-content: center; margin-top: 20px;">
+<div style="display: flex; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
 
-<a href="https://github.com/huzeyann/ncut_pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #007BFF; color: white; padding: 10px; border-radius: 5px; margin-right: 5%;">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" style="width: 24px; height: 24px; vertical-align: middle;"/> GitHub
-</a>
+  <a href="https://github.com/huzeyann/ncut_pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #007BFF; color: white; padding: 10px; border-radius: 5px; margin-right: 2%; margin-bottom: 10px;">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" style="width: 24px; height: 24px; vertical-align: middle;"/> GitHub
+  </a>
 
-<a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-🤗 HuggingFace Demo
-</a>
+  <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 2%; margin-bottom: 10px;">
+    🤗 Demo
+  </a>
+
+  <div style="width: 30%; text-align: center; background-color: #6C757D; color: white; padding: 10px 20px; border-radius: 5px; margin-bottom: 10px;">
+    📝 Paper (Coming)
+  </div>
 
 </div>
+
+<style>
+  @media (max-width: 768px) {
+    div[style*="display: flex"] a,
+    div[style*="display: flex"] div {
+      width: 100%;
+      margin-right: 0;
+    }
+  }
+</style>
 
 <div style="width: 60%; text-align: center; margin:0 auto;">
     <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
