@@ -24,63 +24,6 @@ import numpy as np
 N_FRAMES = 600
 
 
-class SAM(torch.nn.Module):
-    def __init__(self, checkpoint="/data/sam_model/sam_vit_b_01ec64.pth", **kwargs):
-        super().__init__(**kwargs)
-        from segment_anything import sam_model_registry, SamPredictor
-        from segment_anything.modeling.sam import Sam
-
-        sam: Sam = sam_model_registry["vit_b"](checkpoint=checkpoint)
-
-        from segment_anything.modeling.image_encoder import (
-            window_partition,
-            window_unpartition,
-        )
-
-        def new_block_forward(self, x: torch.Tensor) -> torch.Tensor:
-            shortcut = x
-            x = self.norm1(x)
-            # Window partition
-            if self.window_size > 0:
-                H, W = x.shape[1], x.shape[2]
-                x, pad_hw = window_partition(x, self.window_size)
-
-            x = self.attn(x)
-            # Reverse window partition
-            if self.window_size > 0:
-                x = window_unpartition(x, self.window_size, pad_hw, (H, W))
-            self.attn_output = x.clone()
-
-            x = shortcut + x
-            mlp_outout = self.mlp(self.norm2(x))
-            self.mlp_output = mlp_outout.clone()
-            x = x + mlp_outout
-            self.block_output = x.clone()
-
-            return x
-
-        # setattr(sam.image_encoder.__class__, "forward", new_forward)
-        setattr(sam.image_encoder.blocks[0].__class__, "forward", new_block_forward)
-
-        self.image_encoder = sam.image_encoder
-        self.image_encoder.eval()
-        self.image_encoder = self.image_encoder.cuda()
-
-    @torch.no_grad()
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        with torch.no_grad():
-            x = torch.nn.functional.interpolate(x, size=(1024, 1024), mode="bilinear")
-        out = self.image_encoder(x)
-
-        attn_outputs, mlp_outputs, block_outputs = [], [], []
-        for i, blk in enumerate(self.image_encoder.blocks):
-            # attn_outputs.append(blk.attn_output)
-            # mlp_outputs.append(blk.mlp_output)
-            block_outputs.append(blk.block_output)
-
-        return block_outputs
-
-
 def transform_images(frames, size=(1024, 1024)):
     resized = []
     length = len(frames)
@@ -88,7 +31,7 @@ def transform_images(frames, size=(1024, 1024)):
         frame = frames[i]
         # image = Image.fromarray((frame * 255).astype(np.uint8))
         image = Image.fromarray(frame)
-        image = image.resize(size, Image.ANTIALIAS)
+        image = image.resize(size, Image.Resampling.LANCZOS)
         image = np.array(image) / 255.0
         resized.append(np.array(image))
     frames = np.stack(resized, axis=0)
@@ -119,18 +62,21 @@ def read_video(video_path: str) -> torch.Tensor:
             frames = np.append(frames, last_frame.reshape(1, *last_frame.shape), axis=0)
     return frames
 
+from ncut_pytorch.backbone import load_model
+
 
 @torch.no_grad()
-def video_sam_feature(video_path, checkpoint="/data/sam_model/sam_vit_b_01ec64.pth"):
+def video_sam_feature(video_path):
     frames = read_video(video_path)
 
-    feat_extractor = SAM(checkpoint=checkpoint)
+    feat_extractor = load_model('SAM(sam_vit_b)')
+    feat_extractor = feat_extractor.eval().cuda()
 
-    attn_outputs, mlp_outputs, block_outputs = [], [], []
+    block_outputs = []
     for i in range(frames.shape[0]):
         frame = frames[i]
         frame = transform_images([frame])
-        block_output = feat_extractor(frame.cuda())
+        block_output = feat_extractor(frame.cuda())['block']
         block_outputs.append(block_output[-1].cpu())
     block_outputs = torch.stack(block_outputs)
     return block_outputs
@@ -150,6 +96,8 @@ features = torch.cat(features, dim=0)
 # %%
 print(features.shape)
 # %%
+features = features.squeeze(1)
+# %%
 num_nodes = np.prod(features.shape[:-1])
 print("Number of nodes:", num_nodes)
 
@@ -157,10 +105,10 @@ print("Number of nodes:", num_nodes)
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
 
 eigvectors, eigenvalues = NCUT(
-    num_eig=100, num_sample=30000, device="cuda:0"
+    num_eig=100, num_sample=10000, device="cuda:0"
 ).fit_transform(features.reshape(-1, features.shape[-1]))
 # %%
-_, rgb = rgb_from_tsne_3d(eigvectors, num_sample=50000, perplexity=500, knn=10, device="cuda:0")
+_, rgb = rgb_from_tsne_3d(eigvectors, num_sample=1000, perplexity=500, knn=10, device="cuda:0")
 
 
 # %%
