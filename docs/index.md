@@ -53,6 +53,7 @@
 </p>
 </div>
 
+## Demo
 
 Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
 
@@ -117,13 +118,13 @@ Just plugin features extracted from any pre-trained model and ready to go. NCUT 
 </div>
 
 
-#### Trouble Shooting
+#### Installation Trouble Shooting
 
-In case of `pip` install failed, please try install the build dependencies
+In case of `pip` install <a style="color: red;">error</a>, please try install the build dependencies.
 
 Option A:
 <div style="text-align:">
-    <pre><code class="language-shell">sudo apt-get update && sudo apt-get install build-essential cargo rustc -y</code></pre>
+    <pre style="display: inline;"><code class="language-shell">sudo apt-get update && sudo apt-get install build-essential cargo rustc -y</code></pre>
 </div>
 
 Option B:

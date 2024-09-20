@@ -1,5 +1,5 @@
 
-
+`pip install ncut-pytorch`
 
 ### Error installing from `pip`
 
