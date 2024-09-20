@@ -39,6 +39,10 @@ The resulting matrix $W = \text{cosine}(F, F)$ is an $\mathbb{R}^{N \times N}$ m
 
 The degree matrix \( D \) is a diagonal matrix where each element \( D_{ii} \) is the sum of the similarities of node \( i \) to all other nodes.
 
+$$
+D_{ii} = \sum_{j=0}^{N} W_{ij}
+$$
+
 The unnormalized graph Laplacian is defined as:
 
 \[
@@ -111,7 +115,7 @@ x_i =
 The cut value \( \text{cut}(A, B) \) can be rewritten in terms of \( \mathbf{x} \) as:
 
 \[
-\text{cut}(A, B) = \frac{1}{4} \sum_{i,j} W_{ij} (x_i - x_j)^2 = \frac{1}{4} \mathbf{x}^\top L \mathbf{x}
+\text{cut}(A, B) = \frac{1}{4} \sum_{i,j} W_{ij} (x_i - x_j)^2 = \mathbf{x}^\top L \mathbf{x}
 \]
 
 Where \( L = D - W \) is the unnormalized graph Laplacian.
@@ -152,13 +156,13 @@ The eigenvector approach is derived from the relaxation of the original NP-hard 
 L \mathbf{y} = \lambda D \mathbf{y}
 \]
 
-We are effectively minimizing the Rayleigh quotient:
+We are effectively minimizing the [Rayleigh quotient](https://en.wikipedia.org/wiki/Rayleigh_quotient):
 
 \[
 \frac{\mathbf{y}^\top L \mathbf{y}}{\mathbf{y}^\top D \mathbf{y}} = \frac{\mathbf{y}^\top D^{-1/2} L D^{-1/2} \mathbf{y}}{\mathbf{y}^\top  \mathbf{y}}
 \]
 
-The Rayleigh quotient directly reflecting the Ncut objective.
+The Rayleigh quotient directly reflecting the Ncut objective. The solution of Rayleigh quotient is eigenvectors
 
 \[
 \text{Ncut}(A, B) = \frac{\mathbf{x}^\top L \mathbf{x}}{\mathbf{x}^\top D \mathbf{x}} = \frac{\mathbf{x}^\top D^{-1/2} L D^{-1/2} \mathbf{x}}{\mathbf{x}^\top \mathbf{x}}
