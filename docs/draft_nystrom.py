@@ -384,7 +384,7 @@ fig, axs = plt.subplots(1, 2, figsize=(8, 3))
 ax = axs[0]
 ax.scatter(all_dots[:, 0], all_dots[:, 1], c='grey', s=50, alpha=0.2)
 sc = ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], c=eigen_vector[sample_indices, 1], cmap='coolwarm', s=50, alpha=0.9, vmin=vmin1, vmax=vmax1)
-ax.set_title('Eigenvector (Sampled Dots)')
+ax.set_title('Solved Eigenvector')
 ax.set_xlabel('X1')
 ax.set_ylabel('X2')
 ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], facecolors='none', edgecolors='k', s=60)
@@ -394,7 +394,7 @@ ax.set_yticks([])
 # Plot the eigenvector for KNN propagated
 ax = axs[1]
 sc = ax.scatter(all_dots[:, 0], all_dots[:, 1], c=eigen_vector[:, 1], cmap='coolwarm', s=50, alpha=0.9, vmin=vmin1, vmax=vmax1)
-ax.set_title('Eigenvector (KNN propagated)')
+ax.set_title('Propagated Eigenvector')
 ax.set_xlabel('X1')
 ax.set_ylabel('X2')
 ax.scatter(all_dots[sample_indices, 0], all_dots[sample_indices, 1], facecolors='none', edgecolors='k', s=60)
