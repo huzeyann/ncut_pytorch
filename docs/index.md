@@ -53,6 +53,19 @@
 </p>
 </div>
 
+<div class="warning" style='padding:0.1em; background-color:#E9D8FD; color:#69337A'>
+<span>
+<p style='margin-top:1em; text-align:center'>
+<b>PROCEDURE <a href="./how_ncut_works">How NCUT Works</a></b></p>
+<p style='margin-left:1em;'>
+1. <b>Feature Extraction</b>: extract feature for every image frame.</br>
+2. <b>NCUT</b>: compute 100 NCUT eigenvectors, each node is a latent-pixel. </br>
+3. <b>spectral-tSNE</b>: reduce 100 eigenvectors to 3D, plot as RGB image.  </br>
+</p>
+</p></span>
+</div>
+
+
 
 
 

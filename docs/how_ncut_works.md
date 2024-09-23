@@ -1,5 +1,26 @@
 # How NCUT works
 
+<div class="warning" style='padding:0.1em; background-color:#E9D8FD; color:#69337A'>
+<span>
+<p style='margin-top:1em; text-align:center'>
+<b>PROCEDURE <a href="./how_ncut_works">How NCUT Works</a></b></p>
+<p style='margin-left:1em;'>
+1. <b>Feature Extraction</b>: extract feature for every image frame or text token.</br>
+2. <b>NCUT</b>: compute k NCUT eigenvectors, each node is a latent-pixel or text token. </br>
+3. <b>spectral-tSNE</b>: reduce k eigenvectors to 3D, plot as RGB image.  </br>
+</p>
+</p></span>
+</div>
+
+This Guide covers:
+
+- How **NCUT** works, in math and coding example
+
+- Scale up NCUT with **Nystrom approximation**
+
+- **spectral-tSNE**: Plot NCUT eigenvectors as RGB image
+
+
 ## Normalized Cuts and Spectral Clustering
 
 Spectral clustering is a powerful technique for clustering data based on the eigenvectors (spectrum) of a similarity matrix derived from the data. The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value.
@@ -134,7 +155,7 @@ The Ncut problem can thus be rewritten as:
 \text{Ncut}(A, B) = \frac{\mathbf{x}^\top L \mathbf{x}}{\mathbf{x}^\top D \mathbf{x}}
 \]
 
-Minimizing this directly is NP-hard. However, it can be relaxed into a generalized eigenvalue problem. By relaxing the constraint that \( x_i \) takes only discrete values (1 or -1), we allow \( \mathbf{x} \) to take real values, and the problem becomes finding the eigenvector corresponding to the second smallest eigenvalue of the generalized eigenvalue problem:
+Minimizing this directly is NP-hard. However, it can be relaxed into a generalized eigenvalue problem, because the above eq is close to the [Rayleigh quotient](https://en.wikipedia.org/wiki/Rayleigh_quotient) which is minimized by solving eigenvectors. By relaxing the constraint that \( x_i \) takes only discrete values (1 or -1), we allow \( \mathbf{x} \) to take real values, and the problem becomes finding the eigenvector corresponding to the second smallest eigenvalue of the generalized eigenvalue problem:
 
 \[
 L \mathbf{y} = \lambda D \mathbf{y}
