@@ -18,7 +18,7 @@ class Llama(nn.Module):
         try: 
             import transformers
         except ImportError:
-            raise ImportError("Please install transformers package: pip install transformers")
+            raise ImportError("Please install transformers package: \n pip install transformers==4.44.2")
         
         access_token = os.getenv("HF_ACCESS_TOKEN")
         if access_token is None:

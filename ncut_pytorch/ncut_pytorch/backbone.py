@@ -137,7 +137,7 @@ class SAM(torch.nn.Module):
             Import Error: {e}
 
             Please install segment_anything from https://github.com/facebookresearch/segment-anything.git
-            pip install git+ttps://github.com/facebookresearch/segment-anything.git
+            pip install git+https://github.com/facebookresearch/segment-anything.git
             """
             raise ImportError(s)
 
@@ -543,9 +543,11 @@ class OpenCLIPViT(nn.Module):
             Import Error: {e}
 
             Please install open-clip-torch to use this model.
-            pip install open-clip-torch
+            pip install open-clip-torch==2.20.0
             """
             raise ImportError(s)
+        
+        
         
         model, _, _ = open_clip.create_model_and_transforms(version, pretrained=pretrained)
         
@@ -598,6 +600,10 @@ class OpenCLIPViT(nn.Module):
             attn_outputs.append(block.attn_output)
             mlp_outputs.append(block.mlp_output)
             block_outputs.append(block.block_output)
+            shape = block.attn_output.shape
+            if len(shape) != 4 or shape[1] != shape[2]:
+                raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install open-clip-torch==2.20.0`")
+
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
@@ -629,7 +635,7 @@ class CLIPConvnext(nn.Module):
             Import Error: {e}
 
             Please install open-clip-torch to use this model.
-            pip install open-clip-torch
+            pip install open-clip-torch==2.20.0
             """
             raise ImportError(s)
     
@@ -664,6 +670,10 @@ class CLIPConvnext(nn.Module):
         for stage in self.model.visual.trunk.stages:
             for block in stage.blocks:
                 block_outputs.append(block.block_output)
+                shape = block.block_output.shape
+                if len(shape) != 4 or shape[1] != shape[2]:
+                    raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install open-clip-torch==2.20.0`")
+
         return {
             'block': block_outputs
         }
@@ -691,7 +701,7 @@ class EVA02(nn.Module):
             Import Error: {e}
 
             Please install timm to use this model.
-            pip install timm
+            pip install timm==0.9.2
             """
             raise ImportError(s)
         
@@ -737,6 +747,9 @@ class EVA02(nn.Module):
         attn_outputs = [block.attn_output for block in self.model.blocks]
         mlp_outputs = [block.mlp_output for block in self.model.blocks]
         block_outputs = [block.block_output for block in self.model.blocks]
+        shape = attn_outputs[0].shape
+        if len(shape) != 4 or shape[1] != shape[2]:
+            raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install timm==0.9.2`")
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
@@ -761,7 +774,7 @@ class MAE(nn.Module):
             Import Error: {e}
 
             Please install timm to use this model.
-            pip install timm
+            pip install timm==0.9.2
             """
             raise ImportError(s)
         
@@ -825,6 +838,9 @@ class MAE(nn.Module):
         attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae_encoder.blocks]
         mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae_encoder.blocks]
         block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae_encoder.blocks]
+        shape = attn_outputs[0].shape
+        if len(shape) != 4 or shape[1] != shape[2]:
+            raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install timm==0.9.2`")
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
@@ -855,10 +871,10 @@ class ImageNet(nn.Module):
             Import Error: {e}
 
             Please install timm to use this model.
-            pip install timm
+            pip install timm==0.9.2
             """
             raise ImportError(s)
-            return
+            
         
         model = timm.create_model(
             'vit_base_patch16_224.augreg2_in21k_ft_in1k',
@@ -900,6 +916,9 @@ class ImageNet(nn.Module):
         attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.model.blocks]
         mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.model.blocks]
         block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.model.blocks]
+        shape = attn_outputs[0].shape
+        if len(shape) != 4 or shape[1] != shape[2]:
+            raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install timm==0.9.2`")
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
@@ -923,7 +942,7 @@ class StableDiffusion(nn.Module):
             from diffusers import DDPMScheduler
             from diffusers import StableDiffusionPipeline
         except ImportError:
-            raise ImportError("Please install diffusers to use this class. \n pip install diffusers")
+            raise ImportError("Please install diffusers to use this class. \n pip install diffusers==0.30.2")
         
         self.timestep = timestep
         self.positive_prompt = positive_prompt
@@ -1218,7 +1237,9 @@ class StableDiffusion(nn.Module):
         out_dict = {k.replace('_output', ''): v for k, v in out_dict.items()}
         # add the layer dimension to be consistent with other models
         out_dict = {k: [v] for k, v in out_dict.items()}
-        
+        shape = out_dict[out_dict.keys()[0]][0].shape
+        if len(shape) != 4 or shape[1] != shape[2]:
+            raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install diffusers==0.30.2`")
         return out_dict
     
 MODEL_DICT["Diffusion(stabilityai/stable-diffusion-2)"] = partial(StableDiffusion, model_id="stabilityai/stable-diffusion-2")
@@ -1237,7 +1258,7 @@ class StableDiffusion3(nn.Module):
         try:
             from diffusers import StableDiffusion3Pipeline
         except ImportError:
-            raise ImportError("Please install the diffusers package by running `pip install diffusers`")
+            raise ImportError("Please install the diffusers package by running `pip install diffusers==0.30.2`")
         
         access_token = os.getenv("HF_ACCESS_TOKEN")
         if access_token is None:
@@ -1347,6 +1368,9 @@ class StableDiffusion3(nn.Module):
             'mlp': mlp_outputs,
             'block': block_outputs
         }
+        shape = out_dict['attn'][0].shape
+        if len(shape) != 4 or shape[1] != shape[2]:
+            raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install diffusers==0.30.2`")
         
         if self.return_flat_dict or return_flat_dict:
 #            out_dict = {f'{k}_{i}': [v] for k, values in out_dict.items() for i, v in enumerate(values)}
