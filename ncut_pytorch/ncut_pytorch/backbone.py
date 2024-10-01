@@ -464,6 +464,33 @@ class DiNO(nn.Module):
             hw = np.sqrt(x.shape[1]).astype(int)
             x = rearrange(x, "b (h w) c -> b h w c", h=hw)
             return x
+        
+        def remove_cls_and_reshape_qkv(x):
+            x = x.clone()
+            # x [B, Heads, N, C]
+            x = x[:, :, 1:]
+            hw = np.sqrt(x.shape[2]).astype(int)
+            x = rearrange(x, "b d (h w) c -> b h w d c", h=hw)
+            return x
+    
+        def new_attn_forward(self, x):
+            B, N, C = x.shape
+            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+            q, k, v = qkv[0], qkv[1], qkv[2]
+            self.__q = remove_cls_and_reshape_qkv(q.clone())
+            self.__k = remove_cls_and_reshape_qkv(k.clone())
+            self.__v = remove_cls_and_reshape_qkv(v.clone())
+
+            attn = (q @ k.transpose(-2, -1)) * self.scale
+            attn = attn.softmax(dim=-1)
+            attn = self.attn_drop(attn)
+
+            x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+            x = self.proj(x)
+            x = self.proj_drop(x)
+            return x, attn
+        
+        setattr(model.blocks[0].attn.__class__, "forward", new_attn_forward)
 
         def new_forward(self, x, return_attention=False):
             y, attn = self.attn(self.norm1(x))
@@ -488,10 +515,16 @@ class DiNO(nn.Module):
         attn_outputs = [block.attn_output for block in self.model.blocks]
         mlp_outputs = [block.mlp_output for block in self.model.blocks]
         block_outputs = [block.block_output for block in self.model.blocks]
+        k = [block.attn.__k for block in self.model.blocks]
+        q = [block.attn.__q for block in self.model.blocks]
+        v = [block.attn.__v for block in self.model.blocks]
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
-            'block': block_outputs
+            'block': block_outputs,
+            'k': k,
+            'q': q,
+            'v': v,
         }
             
 MODEL_DICT["DiNO(dino_vits8_896)"] = partial(DiNO, ver="dino_vits8")
@@ -577,7 +610,21 @@ class OpenCLIPViT(nn.Module):
             
             k_x = self.ln_1_kv(k_x) if hasattr(self, "ln_1_kv") and k_x is not None else None
             v_x = self.ln_1_kv(v_x) if hasattr(self, "ln_1_kv") and v_x is not None else None
-
+            
+            # dirty patch for q k v, don't work for all cases
+            qkv = q_x.clone()
+            qkv_w = self.attn.in_proj_weight
+            qkv_b = self.attn.in_proj_bias
+            w_q, w_k, w_v = qkv_w.chunk(3)
+            b_q, b_k, b_v = qkv_b.chunk(3)
+            self.q_x = remove_cls_and_reshape(F.linear(qkv, w_q, b_q))
+            self.k_x = remove_cls_and_reshape(F.linear(qkv, w_k, b_k))
+            self.v_x = remove_cls_and_reshape(F.linear(qkv, w_v, b_v))
+            num_heads = self.attn.num_heads
+            self.q_x = rearrange(self.q_x, "b h w (d c) -> b h w d c", d=num_heads)
+            self.k_x = rearrange(self.k_x, "b h w (d c) -> b h w d c", d=num_heads)
+            self.v_x = rearrange(self.v_x, "b h w (d c) -> b h w d c", d=num_heads)
+            
             attn_output = self.attention(q_x=self.ln_1(q_x), k_x=k_x, v_x=v_x, attn_mask=attn_mask)
             self.attn_output = remove_cls_and_reshape(attn_output.clone())
             x = q_x + self.ls_1(attn_output)
@@ -596,18 +643,21 @@ class OpenCLIPViT(nn.Module):
     def forward(self, x):
         out = self.model(x)
         attn_outputs, mlp_outputs, block_outputs = [], [], []
+        k, q, v = [], [], []
         for block in self.model.visual.transformer.resblocks:
             attn_outputs.append(block.attn_output)
             mlp_outputs.append(block.mlp_output)
             block_outputs.append(block.block_output)
-            shape = block.attn_output.shape
-            if len(shape) != 4 or shape[1] != shape[2]:
-                raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install open-clip-torch==2.20.0`")
-
+            k.append(block.k_x)
+            q.append(block.q_x)
+            v.append(block.v_x)
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
-            'block': block_outputs
+            'block': block_outputs,
+            'k': k,
+            'q': q,
+            'v': v,
         }
 
 MODEL_DICT["CLIP(ViT-B-16/openai)"] = partial(OpenCLIPViT, version='ViT-B-16', pretrained='openai')
@@ -816,6 +866,43 @@ class MAE(nn.Module):
         self.mae_encoder.requires_grad_(False)
         self.mae_encoder.eval()
         
+        def remove_cls_and_reshape_qkv(x):
+            x = x.clone()
+            # x [B, Heads, N, C]
+            x = x[:, :, 1:]
+            hw = np.sqrt(x.shape[2]).astype(int)
+            x = rearrange(x, "b d (h w) c -> b h w d c", h=hw)
+            return x
+
+        def new_attn_forward(self, x):
+            B, N, C = x.shape
+            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+            q, k, v = qkv.unbind(0)
+            q, k = self.q_norm(q), self.k_norm(k)
+            
+            self.__q = remove_cls_and_reshape_qkv(q.clone())
+            self.__k = remove_cls_and_reshape_qkv(k.clone())
+            self.__v = remove_cls_and_reshape_qkv(v.clone())
+
+            if self.fused_attn:
+                x = F.scaled_dot_product_attention(
+                    q, k, v,
+                    dropout_p=self.attn_drop.p,
+                )
+            else:
+                q = q * self.scale
+                attn = q @ k.transpose(-2, -1)
+                attn = attn.softmax(dim=-1)
+                attn = self.attn_drop(attn)
+                x = attn @ v
+
+            x = x.transpose(1, 2).reshape(B, N, C)
+            x = self.proj(x)
+            x = self.proj_drop(x)
+            return x
+        
+        setattr(self.mae_encoder.blocks[0].attn.__class__, "forward", new_attn_forward)        
+        
         def forward(self, x):
             self.saved_attn_node = self.ls1(self.attn(self.norm1(x)))
             x = x + self.saved_attn_node.clone()
@@ -838,13 +925,16 @@ class MAE(nn.Module):
         attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae_encoder.blocks]
         mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae_encoder.blocks]
         block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae_encoder.blocks]
-        shape = attn_outputs[0].shape
-        if len(shape) != 4 or shape[1] != shape[2]:
-            raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install timm==0.9.2`")
+        k = [block.attn.__k for block in self.mae_encoder.blocks]
+        q = [block.attn.__q for block in self.mae_encoder.blocks]
+        v = [block.attn.__v for block in self.mae_encoder.blocks]
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
-            'block': block_outputs
+            'block': block_outputs,
+            'k': k,
+            'q': q,
+            'v': v,
         }
         
         
