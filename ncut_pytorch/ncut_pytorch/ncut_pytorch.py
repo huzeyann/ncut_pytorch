@@ -350,7 +350,7 @@ def nystrom_ncut(
     eigen_vector = propagate_knn(
         eigen_vector,
         features,
-        sampled_indices,
+        sampled_features,
         knn,
         chunk_size=matmul_chunk_size,
         device=device,
