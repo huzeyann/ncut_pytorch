@@ -3,7 +3,9 @@ hide:
   - toc
 ---
 
-## Images
+# Model Gallery
+
+## Image
 
 <p style="text-align: center;">
 

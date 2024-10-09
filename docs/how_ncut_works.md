@@ -48,6 +48,10 @@ Take cosine distance for example, let $F \in \mathbb{R}^{N \times 768}$ be the i
 
 $$W_{ij} = \text{cosine}(f_i, f_j) = \frac{f_i \cdot f_j}{|f_i| |f_j|}$$
 
+<div style="text-align: center;">
+    <img src="../images/affinity_patch.jpg" style="width:75%;">
+</div>
+
 where $|f|$ denotes the Euclidean norm of a vector $f$.
 
 In matrix form, this can be written as:

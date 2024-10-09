@@ -50,11 +50,22 @@ plugins:
           path: [.]
 
 nav:
-  - Overview:
+  - Install & Quick Start:
     - Install & Quick Start: index.md
     - How NCUT Works: how_ncut_works.md 
-    - Gallery: gallery.md
     - NCUT and t-SNE/UMAP: compare.md
+
+  - Gallery:
+    - Gallery - Dataset: gallery_dataset.md
+    - Gallery - Model: gallery.md
+    - Gallery - Application: gallery_application.md
+
+  - Guides:
+    - How to Get Better Segmentation: how_to_get_better_segmentation.md
+    - Aligned NCUT: alignedcut_vs_ncut.md
+    - Memory Usage: memory_usage.md
+    - Speed and Performance: speed_and_performance.md
+    - Gradient of NCUT: gradient_of_ncut.md
 
   - Tutorials:
     - Tutorial 1 - Quick Start: tutorials.md
@@ -62,12 +73,6 @@ nav:
     - Tutorial 3 - Add Nodes: add_nodes.md
     - Tutorial 4 - Mixing Data: mixing_data.md
     - Tutorial 5 - Coloring: coloring.md
-  - Guides:
-    - How to Get Better Segmentation: how_to_get_better_segmentation.md
-    - Make NCUT Aligned: alignedcut_vs_ncut.md
-    - Memory Usage: memory_usage.md
-    - Speed and Performance: speed_and_performance.md
-    - Gradient of NCUT: gradient_of_ncut.md
   
   - API References:
     - NCUT APIs: api_reference.md

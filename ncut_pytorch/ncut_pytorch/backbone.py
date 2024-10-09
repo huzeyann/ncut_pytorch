@@ -1327,7 +1327,7 @@ class StableDiffusion(nn.Module):
         out_dict = {k.replace('_output', ''): v for k, v in out_dict.items()}
         # add the layer dimension to be consistent with other models
         out_dict = {k: [v] for k, v in out_dict.items()}
-        shape = out_dict[out_dict.keys()[0]][0].shape
+        shape = out_dict[list(out_dict.keys())[0]][0].shape
         if len(shape) != 4 or shape[1] != shape[2]:
             raise RuntimeError(f"Unexpected feature shape: {shape}, expected (B, H, W, C), please make sure to install `pip install diffusers==0.30.2`")
         return out_dict
