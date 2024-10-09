@@ -158,7 +158,7 @@ def eigenvector_to_rgb(
     perplexity=150,
     n_neighbors=150,
     min_distance=0.1,
-    metric="euclidean",
+    metric="cosine",
     device=None,
     q=0.95,
     knn=10,
@@ -174,7 +174,7 @@ def eigenvector_to_rgb(
         perplexity (int): perplexity for t-SNE, increase for more global structure
         n_neighbors (int): number of neighbors for UMAP, increase for more global structure
         min_distance (float): minimum distance for UMAP
-        metric (str): distance metric, default 'euclidean'
+        metric (str): distance metric, default 'cosine'
         device (str): device to use for computation, if None, will not change device
         q (float): quantile for RGB normalization, default 0.95. lower q results in more sharp colors
         knn (int): number of KNN for propagating eigenvectors from subgraph to full graph,
@@ -486,7 +486,7 @@ def rgb_from_tsne_3d(
     features,
     num_sample=300,
     perplexity=150,
-    metric="euclidean",
+    metric="cosine",
     device=None,
     seed=0,
     q=0.95,
@@ -543,7 +543,7 @@ def rgb_from_tsne_2d(
     features,
     num_sample=300,
     perplexity=150,
-    metric="euclidean",
+    metric="cosine",
     device=None,
     seed=0,
     q=0.95,
@@ -601,7 +601,7 @@ def rgb_from_umap_2d(
     num_sample=300,
     n_neighbors=150,
     min_dist=0.1,
-    metric="euclidean",
+    metric="cosine",
     device=None,
     seed=0,
     q=0.95,
@@ -653,7 +653,7 @@ def rgb_from_umap_sphere(
     num_sample=300,
     n_neighbors=150,
     min_dist=0.1,
-    metric="euclidean",
+    metric="cosine",
     device=None,
     seed=0,
     q=0.95,
@@ -710,7 +710,7 @@ def rgb_from_umap_3d(
     num_sample=300,
     n_neighbors=150,
     min_dist=0.1,
-    metric="euclidean",
+    metric="cosine",
     device=None,
     seed=0,
     q=0.95,
