@@ -13,7 +13,7 @@
 
 **Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
 
-<video src="https://ncut-pytorch.readthedocs.io/en/latest/images/ncut_video_sam_264_small.mp4"></video>
+https://ncut-pytorch.readthedocs.io/en/latest/images/ncut_video_sam_264_small.mp4
 
 <div align="center">
   Video: NCUT applied to image encoder features from Segment Anything Model.
