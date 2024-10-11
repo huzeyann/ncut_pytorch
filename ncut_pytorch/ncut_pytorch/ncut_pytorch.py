@@ -19,6 +19,7 @@ class NCUT:
         indirect_connection=True,
         indirect_pca_dim=100,
         device=None,
+        move_output_to_cpu=False,
         eig_solver="svd_lowrank",
         normalize_features=True,
         matmul_chunk_size=8096,
@@ -42,6 +43,7 @@ class NCUT:
             indirect_pca_dim (int): when compute indirect connection, PCA to reduce the node dimension,
             device (str): device to use for eigen computation,
                 move to GPU to speeds up a bit (~5x faster)
+            move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
             eig_solver (str): eigen decompose solver, ['svd_lowrank', 'lobpcg', 'svd', 'eigh'].
             normalize_features (bool): normalize input features before computing affinity matrix
             matmul_chunk_size (int): chunk size for large-scale matrix multiplication
@@ -79,6 +81,7 @@ class NCUT:
         self.indirect_connection = indirect_connection
         self.indirect_pca_dim = indirect_pca_dim
         self.device = device
+        self.move_output_to_cpu = move_output_to_cpu
         self.eig_solver = eig_solver
         self.normalize_features = normalize_features
         self.matmul_chunk_size = matmul_chunk_size
@@ -133,6 +136,7 @@ class NCUT:
             chunk_size=self.matmul_chunk_size,
             device=self.device,
             use_tqdm=self.verbose,
+            move_output_to_cpu=self.move_output_to_cpu,
         )
         if self.make_orthogonal:
             eigen_vector = gram_schmidt(eigen_vector)
@@ -531,6 +535,7 @@ def rgb_from_tsne_3d(
         features[subgraph_indices],
         knn=knn,
         device=device,
+        move_output_to_cpu=True,
     )
 
     X_3d = embedding.cpu().numpy()
@@ -588,6 +593,7 @@ def rgb_from_tsne_2d(
         features[subgraph_indices],
         knn=knn,
         device=device,
+        move_output_to_cpu=True,
     )
 
     X_2d = embedding.cpu().numpy()
@@ -640,6 +646,7 @@ def rgb_from_umap_2d(
         features[subgraph_indices],
         knn=knn,
         device=device,
+        move_output_to_cpu=True,
     )
 
     X_2d = embedding.cpu().numpy()
@@ -693,6 +700,7 @@ def rgb_from_umap_sphere(
         features[subgraph_indices],
         knn=knn,
         device=device,
+        move_output_to_cpu=True,
     )
 
     x = np.sin(embedding[:, 0]) * np.cos(embedding[:, 1])
@@ -749,6 +757,7 @@ def rgb_from_umap_3d(
         features[subgraph_indices],
         knn=knn,
         device=device,
+        move_output_to_cpu=True,
     )
 
     rgb = rgb_from_3d_rgb_cube(torch.tensor(X_3d), q=q)
@@ -989,6 +998,7 @@ def propagate_knn(
     chunk_size=8096,
     device=None,
     use_tqdm=False,
+    move_output_to_cpu=False,
 ):
     """A generic function to propagate new nodes using KNN.
     
@@ -1021,6 +1031,7 @@ def propagate_knn(
             subgraph_features,
             chunk_size=chunk_size,
             device=device,
+            move_output_to_cpu=move_output_to_cpu,
         )
 
     # used in nystrom_ncut
@@ -1062,7 +1073,9 @@ def propagate_knn(
 
         _V = _A @ subgraph_output
 
-        V_list.append(_V.cpu())
+        if move_output_to_cpu:
+            _V = _V.cpu()
+        V_list.append(_V)
 
     subgraph_output = torch.cat(V_list, dim=0)
 
@@ -1075,6 +1088,7 @@ def propagate_nearest(
     subgraph_features,
     chunk_size=8096,
     device=None,
+    move_output_to_cpu=False,
 ):
     device = subgraph_output.device if device is None else device
 
@@ -1087,7 +1101,7 @@ def propagate_nearest(
         _v = inp_features[i:end].to(device)
         _A = _v @ subgraph_features.T
         # keep top1 for each row
-        top_idx = _A.argmax(dim=-1).cpu()
+        top_idx = _A.argmax(dim=-1)
         _V = subgraph_output[top_idx]
         V_list.append(_V)
 

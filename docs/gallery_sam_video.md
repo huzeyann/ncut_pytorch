@@ -179,11 +179,17 @@ make_video_from_images(save_dir, "/workspace/output/ncut_video_sam.mp4")
 
 </details>
 
-This video example use image model without temporal dimension
+This video example use features from Segment Anything Model:
 
-1. extract image feature for every frame, independently
+1. for every frame, extract image features, shape `[B, T, H, W, C]`
 
-2. concatenate all the image features and compute NCUT
+2. concatenate all the frames and pixels, shape `[B*T*H*W, C]`
+
+3. compute 100 NCUT eigenvectors, shape `[B*T*H*W, 100]`
+
+4. use spectral-tSNE to reduce 100 eigenvectors to 3D, shape `[B*T*H*W, 3]`
+
+5. plot the 3D as RGB
 
 
 <div  style="text-align: center;">
