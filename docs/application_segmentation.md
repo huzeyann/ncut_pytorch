@@ -82,7 +82,7 @@ tsne_rgb = tsne_rgb.reshape(-1, 64, 64, 3) # (B, H, W, 3)
 ```
 
 
-### Click on a Point
+## One Point Prompt
 
 ``` py linenums="1"
 x1, x2 = 34, 46
@@ -114,7 +114,7 @@ masks = get_mask(eigvectors, clicked_eigvec, threshold=0.5, gamma=1.0, denoise=T
       heading_level: 3
 
 
-### Results
+### Results: One point
 
 ``` py linenums="1"
 import matplotlib.pyplot as plt
@@ -129,4 +129,140 @@ for i in range(4):
 
 <div style="text-align: center;">
 <img src="../images/ego4d_mask.jpg" alt="ego4d_mask.jpg" style="width:100%;">
+</div>
+
+## Multiple Points Prompt
+
+```py linenums="1"
+
+clicks = []  # (i_img, x1, x2)
+clicks.append((0, 34, 46))
+clicks.append((0, 50, 43))
+clicks.append((0, 60, 20))
+clicks.append((0, 61, 29))
+clicks.append((0, 45, 20))
+clicks.append((1, 59, 32))
+clicks.append((1, 60, 55))
+clicks.append((1, 52, 30))
+clicks.append((1, 50, 15))
+clicks.append((1, 45, 55))
+
+import matplotlib.pyplot as plt
+# display 2 images
+fig, axs = plt.subplots(1, 2, figsize=(16, 8))
+axs[0].imshow(tsne_rgb[0])
+axs[1].imshow(tsne_rgb[1])
+for i_img, x1, x2 in clicks:
+    axs[i_img].scatter(x2, x1, c='red', s=100, label='clicked pixel', edgecolors='black')
+
+axs[0].legend()
+axs[1].legend()
+plt.show()
+```
+
+<div style="text-align: center;">
+<img src="../images/ego4d_multi_click.jpg" alt="ego4d_multi_click.jpg" style="width:100%;">
+</div>
+
+### How to combine multiple points
+
+Run segmentation separately for every point, then do a | (or) operation to merge the masks.
+
+```py linenums="1"
+masks = []
+for i_img, x1, x2 in clicks:    
+    masks.append(get_mask(eigvectors, eigvectors[i_img, x1, x2], threshold=0.7, gamma=1.0, denoise=True, denoise_area_th=8))
+mask = np.stack(masks)
+mask = mask.sum(0) > 0
+```
+
+
+### Results: Multiple Point
+
+```py linenums="1"
+fig, axs = plt.subplots(2, 4, figsize=(16, 8))
+for i in range(4):
+    axs[0, i].imshow(mask[i])
+    axs[0, i].axis('off')
+    axs[1, i].imshow(tsne_rgb[i])
+    axs[1, i].axis('off')
+```
+
+<div style="text-align: center;">
+<img src="../images/ego4d_multi_mask.jpg" alt="ego4d_multi_mask.jpg" style="width:100%;">
+</div>
+
+
+## Negative Point Prompt
+
+
+```py linenums="1"
+negative_clicks = []
+negative_clicks.append((0, 35, 15))
+negative_clicks.append((0, 25, 22))
+negative_clicks.append((1, 26, 10))
+
+fig, axs = plt.subplots(1, 2, figsize=(16, 8))
+axs[0].imshow(tsne_rgb[0])
+axs[1].imshow(tsne_rgb[1])
+for i_img, x1, x2 in clicks:
+    axs[i_img].scatter(x2, x1, c='red', s=100, label='clicked pixel', edgecolors='black')
+for i_img, x1, x2 in negative_clicks:
+    axs[i_img].scatter(x2, x1, c='blue', s=100, label='negative clicked pixel', edgecolors='black')
+axs[0].legend()
+axs[1].legend()
+plt.show()
+```
+
+<div style="text-align: center;">
+<img src="../images/ego4d_multi_click_neg.jpg" alt="ego4d_multi_click_neg.jpg" style="width:100%;">
+</div>
+
+
+### How to combine negative points
+
+Run segmentation separately for every point, then do a 'not' operation to merge the positive and negative mask.
+
+
+``` py linenums="1"
+positive_masks, negative_masks = [], []
+for i_img, x1, x2 in clicks:    
+    mask = get_mask(eigvectors, eigvectors[i_img, x1, x2], threshold=0.7, gamma=1.0, denoise=True, denoise_area_th=10)
+    positive_masks.append(mask)
+for i_img, x1, x2 in negative_clicks:
+    mask = get_mask(eigvectors, eigvectors[i_img, x1, x2], threshold=0.99, gamma=1.0, denoise=False)
+    negative_masks.append(mask)
+positive_mask = np.stack(positive_masks).sum(0) > 0
+negative_mask = np.stack(negative_masks).sum(0) > 0
+final_mask = positive_mask & ~negative_mask
+```
+
+### Results: Negative Point
+
+``` py linenums="1"
+fig, axs = plt.subplots(2, 4, figsize=(16, 8))
+for i in range(4):
+    axs[0, i].imshow(final_mask[i])
+    axs[0, i].axis('off')
+    axs[1, i].imshow(tsne_rgb[i])
+    axs[1, i].axis('off')
+```
+
+<div style="text-align: center;">
+<img src="../images/ego4d_multi_mask_neg.jpg" alt="ego4d_multi_mask_neg.jpg" style="width:100%;">
+</div>
+
+<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
+        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
+            <div>
+                <h2 style="margin: 0;">The complete code for this tutorial</h2>
+                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
+            </div>
+        </div>
+        <div style="padding: 15px; background-color: #fff;">
+            <p style="margin: 0; color: #333;"></p>
+        </div>
+    </a>
 </div>
