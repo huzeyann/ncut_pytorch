@@ -36,7 +36,7 @@ hide:
 
 This demo is hosted at UPenn 
 
-<a href="https://fun-quetzal-whole.ngrok-free.app/" target="_blank" >Link1</a> 
+<a href="https://remarkably-ready-leopard.ngrok-free.app/" target="_blank" >Link1</a> 
 
 <a href="https://click-on-the-smile-on-about-page-to-unlock-secret.loca.lt/" target="_blank" >Link2</a> **password is:** 
 <span class="copy-code" onclick="copyToClipboard('158.130.50.41')">
@@ -67,7 +67,7 @@ HuggingFace
 
 
 <iframe
-	src="https://fun-quetzal-whole.ngrok-free.app/"
+	src="https://remarkably-ready-leopard.ngrok-free.app/"
 	frameborder="0"
 	width="100%"
 	height="1600"
