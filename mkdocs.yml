@@ -73,6 +73,7 @@ nav:
     - Tutorial 3 - Add Nodes: add_nodes.md
     - Tutorial 4 - Mixing Data: mixing_data.md
     - Tutorial 5 - Coloring: coloring.md
+    - Application - Point Prompting: application_segmentation.md
   
   - API References:
     - NCUT APIs: api_reference.md

@@ -902,6 +902,15 @@ def check_if_normalized(x, n=1000):
     flag = torch.allclose(torch.norm(_x, dim=-1), torch.ones(n, device=x.device))
     return flag
 
+def quantile_min_max(x, q1=0.01, q2=0.99, n_sample=10000):
+    if x.shape[0] > n_sample:
+        np.random.seed(0)
+        random_idx = np.random.choice(x.shape[0], n_sample, replace=False)
+        vmin, vmax = x[random_idx].quantile(q1), x[random_idx].quantile(q2)
+    else:
+        vmin, vmax = x.quantile(q1), x.quantile(q2)
+    return vmin, vmax
+
 
 def quantile_normalize(x, q=0.95):
     """normalize each dimension of x to [0, 1], take 95-th percentage, this robust to outliers
@@ -924,11 +933,7 @@ def quantile_normalize(x, q=0.95):
     # quantile makes the normalization robust to outliers
     if isinstance(x, np.ndarray):
         x = torch.tensor(x)
-    if len(x) > 1e6:
-        _x = x[torch.randperm(len(x))[: int(1e6)]]
-    else:
-        _x = x
-    vmax, vmin = _x.quantile(q), _x.quantile(1 - q)
+    vmax, vmin = quantile_min_max(x, q, 1 - q)
     x = (x - vmin) / (vmax - vmin)
     x = x.clamp(0, 1)
     return x
@@ -1110,6 +1115,8 @@ def propagate_nearest(
     return subgraph_output
 
 
+# wrapper functions for adding new nodes to existing graph
+
 def propagate_eigenvectors(
     eigenvectors,
     features,
@@ -1231,3 +1238,117 @@ def propagate_rgb_color(
     )
 
     return new_rgb
+
+
+# application: get segmentation mask fron a reference eigenvector (point prompt)
+
+def _transform_heatmap(heatmap, gamma=1.0):
+    """Transform the heatmap using gamma, normalize and min-max normalization.
+
+    Args:
+        heatmap (torch.Tensor): distance heatmap, shape (B, H, W)
+        gamma (float, optional): scaling factor, higher means smaller mask. Defaults to 1.0.
+
+    Returns:
+        torch.Tensor: transformed heatmap, shape (B, H, W)
+    """
+    # normalize the heatmap
+    heatmap = (heatmap - heatmap.mean()) / heatmap.std()
+    heatmap = torch.exp(heatmap)
+    # transform the heatmap using gamma
+    # large gamma means more focus on the high values, hence smaller mask
+    heatmap = 1 / heatmap ** gamma
+    # min-max normalization [0, 1]
+    vmin, vmax = quantile_min_max(heatmap.flatten())
+    heatmap = (heatmap - vmin) / (vmax - vmin)
+    return heatmap
+
+
+def _clean_mask(mask, min_area=500):
+    """clean the binary mask by removing small connected components.
+    
+    Args:
+    - mask: A numpy image of a binary mask with 255 for the object and 0 for the background.
+    - min_area: Minimum area for a connected component to be considered valid (default 500).
+    
+    Returns:
+    - bounding_boxes: List of bounding boxes for valid objects (x, y, width, height).
+    - cleaned_pil_mask: A Pillow image of the cleaned mask, with small components removed.
+    """
+    
+    import cv2
+    # Find connected components in the cleaned mask
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+
+    # Initialize an empty mask to store the final cleaned mask
+    final_cleaned_mask = np.zeros_like(mask)
+
+    # Collect bounding boxes for components that are larger than the threshold and update the cleaned mask
+    bounding_boxes = []
+    for i in range(1, num_labels):  # Skip label 0 (background)
+        x, y, w, h, area = stats[i]
+        if area >= min_area:
+            # Add the bounding box of the valid component
+            bounding_boxes.append((x, y, w, h))
+            # Keep the valid components in the final cleaned mask
+            final_cleaned_mask[labels == i] = 255
+
+    return final_cleaned_mask, bounding_boxes
+
+
+def get_mask(
+        all_eigvecs : torch.Tensor, prompt_eigvec: torch.Tensor, 
+        threshold : float=0.5, gamma : float=1.0, 
+        denoise : bool=True, denoise_area_th : int=3):
+    """Segmentation mask from one prompt eigenvector (at a clicked latent pixel).
+        </br> The mask is computed by measuring the cosine similarity between the clicked eigenvector and all the eigenvectors in the latent space.
+        </br> 1. Compute the cosine similarity between the clicked eigenvector and all the eigenvectors in the latent space.
+        </br> 2. Transform the heatmap, normalize and apply scaling (gamma).
+        </br> 3. Threshold the heatmap to get the mask.
+        </br> 4. Optionally denoise the mask by removing small connected components
+        
+    Args:
+        all_eigvecs (torch.Tensor): (B, H, W, num_eig)
+        prompt_eigvec (torch.Tensor): (num_eig,)
+        threshold (float, optional): mask threshold, higher means smaller mask. Defaults to 0.5.
+        gamma (float, optional): mask scaling factor, higher means smaller mask. Defaults to 1.0.
+        denoise (bool, optional): mask denoising flag. Defaults to True.
+        denoise_area_th (int, optional): mask denoising area threshold. higher means more aggressive denoising. Defaults to 3.
+    
+    Returns:
+        np.ndarray: masks (B, H, W), 1 for object, 0 for background
+        
+    Examples:
+        >>> all_eigvecs = torch.randn(10, 64, 64, 20)
+        >>> prompt_eigvec = all_eigvecs[0, 32, 32]  # center pixel
+        >>> masks = get_mask(all_eigvecs, prompt_eigvec, threshold=0.5, gamma=1.0, denoise=True, denoise_area_th=3)
+        >>> # masks.shape = (10, 64, 64)
+    """
+    
+    # normalize the eigenvectors to unit norm, to compute cosine similarity
+    if not check_if_normalized(all_eigvecs.reshape(-1, all_eigvecs.shape[-1])):
+        all_eigvecs = F.normalize(all_eigvecs, p=2, dim=-1)
+        
+    prompt_eigvec = F.normalize(prompt_eigvec, p=2, dim=-1)
+    
+    # compute the cosine similarity
+    cos_sim = all_eigvecs @ prompt_eigvec.unsqueeze(-1)  # (B, H, W, 1)
+    cos_sim = cos_sim.squeeze(-1)  # (B, H, W)
+    
+    heatmap = 1 - cos_sim
+    
+    # transform the heatmap, normalize and apply scaling (gamma)
+    heatmap = _transform_heatmap(heatmap, gamma=gamma)
+    
+    masks = heatmap > threshold
+    masks = masks.cpu().numpy().astype(np.uint8)
+    
+    if denoise:
+        cleaned_masks = []
+        for mask in masks:
+            cleaned_mask, _ = _clean_mask(mask, min_area=denoise_area_th)
+            cleaned_masks.append(cleaned_mask)
+        cleaned_masks = np.stack(cleaned_masks)
+        return cleaned_masks
+    
+    return masks

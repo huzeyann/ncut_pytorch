@@ -96,3 +96,8 @@
 ::: ncut_pytorch.ncut
     options:
       heading_level: 3
+
+## Application: Segmentation
+::: ncut_pytorch.get_mask
+    options:
+      heading_level: 3

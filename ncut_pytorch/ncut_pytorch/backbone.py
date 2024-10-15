@@ -453,10 +453,11 @@ LAYER_DICT["DiNOv2(dinov2_vitg14)"] = 40
 RES_DICT["DiNOv2(dinov2_vitg14)"] = (672, 672)
 
 class DiNO(nn.Module):
-    def __init__(self, ver="dino_vitb8"):
+    def __init__(self, ver="dino_vitb8", save_qkv=False):
         super().__init__()
         model = torch.hub.load('facebookresearch/dino:main', ver)
         model = model.eval()
+        self.save_qkv = save_qkv
 
         def remove_cls_and_reshape(x):
             x = x.clone()
@@ -465,33 +466,6 @@ class DiNO(nn.Module):
             x = rearrange(x, "b (h w) c -> b h w c", h=hw)
             return x
         
-        def remove_cls_and_reshape_qkv(x):
-            x = x.clone()
-            # x [B, Heads, N, C]
-            x = x[:, :, 1:]
-            hw = np.sqrt(x.shape[2]).astype(int)
-            x = rearrange(x, "b d (h w) c -> b h w d c", h=hw)
-            return x
-    
-        def new_attn_forward(self, x):
-            B, N, C = x.shape
-            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-            q, k, v = qkv[0], qkv[1], qkv[2]
-            self.__q = remove_cls_and_reshape_qkv(q.clone())
-            self.__k = remove_cls_and_reshape_qkv(k.clone())
-            self.__v = remove_cls_and_reshape_qkv(v.clone())
-
-            attn = (q @ k.transpose(-2, -1)) * self.scale
-            attn = attn.softmax(dim=-1)
-            attn = self.attn_drop(attn)
-
-            x = (attn @ v).transpose(1, 2).reshape(B, N, C)
-            x = self.proj(x)
-            x = self.proj_drop(x)
-            return x, attn
-        
-        setattr(model.blocks[0].attn.__class__, "forward", new_attn_forward)
-
         def new_forward(self, x, return_attention=False):
             y, attn = self.attn(self.norm1(x))
             self.attn_output = remove_cls_and_reshape(y.clone())
@@ -510,21 +484,59 @@ class DiNO(nn.Module):
         self.model.eval()
         self.model.requires_grad_(False)
         
+        if save_qkv:
+            self.enable_save_qkv()
+    
+    def enable_save_qkv(self):
+        def remove_cls_and_reshape_qkv(x):
+            x = x.clone()
+            # x [B, Heads, N, C]
+            x = x[:, :, 1:]
+            hw = np.sqrt(x.shape[2]).astype(int)
+            x = rearrange(x, "b d (h w) c -> b h w d c", h=hw)
+            return x
+
+        def new_attn_forward(self, x):
+            B, N, C = x.shape
+            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+            q, k, v = qkv[0], qkv[1], qkv[2]
+            self.__q = remove_cls_and_reshape_qkv(q.clone())
+            self.__k = remove_cls_and_reshape_qkv(k.clone())
+            self.__v = remove_cls_and_reshape_qkv(v.clone())
+
+            attn = (q @ k.transpose(-2, -1)) * self.scale
+            attn = attn.softmax(dim=-1)
+            attn = self.attn_drop(attn)
+
+            x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+            x = self.proj(x)
+            x = self.proj_drop(x)
+            return x, attn
+        
+        setattr(self.model.blocks[0].attn.__class__, "forward", new_attn_forward)
+        self.save_qkv = True
+        
     def forward(self, x):
         out = self.model(x)
         attn_outputs = [block.attn_output for block in self.model.blocks]
         mlp_outputs = [block.mlp_output for block in self.model.blocks]
         block_outputs = [block.block_output for block in self.model.blocks]
-        k = [block.attn.__k for block in self.model.blocks]
-        q = [block.attn.__q for block in self.model.blocks]
-        v = [block.attn.__v for block in self.model.blocks]
+        if self.save_qkv:
+            k = [block.attn.__k for block in self.model.blocks]
+            q = [block.attn.__q for block in self.model.blocks]
+            v = [block.attn.__v for block in self.model.blocks]
+            return {
+                'attn': attn_outputs,
+                'mlp': mlp_outputs,
+                'block': block_outputs,
+                'k': k,
+                'q': q,
+                'v': v,
+            }
         return {
             'attn': attn_outputs,
             'mlp': mlp_outputs,
             'block': block_outputs,
-            'k': k,
-            'q': q,
-            'v': v,
         }
             
 MODEL_DICT["DiNO(dino_vits8_896)"] = partial(DiNO, ver="dino_vits8")
@@ -567,7 +579,7 @@ def resample_position_embeddings(embeddings, h, w):
 
 
 class OpenCLIPViT(nn.Module):
-    def __init__(self, version='ViT-B-16', pretrained='laion2b_s34b_b88k'):
+    def __init__(self, version='ViT-B-16', pretrained='laion2b_s34b_b88k', save_qkv=False):
         super().__init__()
         try:
             import open_clip
@@ -580,6 +592,7 @@ class OpenCLIPViT(nn.Module):
             """
             raise ImportError(s)
         
+        self.save_qkv = save_qkv
         
         
         model, _, _ = open_clip.create_model_and_transforms(version, pretrained=pretrained)
@@ -594,6 +607,39 @@ class OpenCLIPViT(nn.Module):
             raise ValueError(f"Unsupported version: {version}")
         model.visual.positional_embedding = nn.Parameter(positional_embedding)
         
+        def new_forward(
+                self,
+                q_x: torch.Tensor,
+                k_x: Optional[torch.Tensor] = None,
+                v_x: Optional[torch.Tensor] = None,
+                attn_mask: Optional[torch.Tensor] = None,
+        ):
+            def remove_cls_and_reshape(x):
+                x = x.clone()
+                x = x[1:]
+                hw = np.sqrt(x.shape[0]).astype(int)
+                x = rearrange(x, "(h w) b c -> b h w c", h=hw)
+                return x
+            
+            k_x = self.ln_1_kv(k_x) if hasattr(self, "ln_1_kv") and k_x is not None else None
+            v_x = self.ln_1_kv(v_x) if hasattr(self, "ln_1_kv") and v_x is not None else None
+                        
+            attn_output = self.attention(q_x=self.ln_1(q_x), k_x=k_x, v_x=v_x, attn_mask=attn_mask)
+            self.attn_output = remove_cls_and_reshape(attn_output.clone())
+            x = q_x + self.ls_1(attn_output)
+            mlp_output = self.mlp(self.ln_2(x))
+            self.mlp_output = remove_cls_and_reshape(mlp_output.clone())
+            x = x + self.ls_2(mlp_output)    
+            self.block_output = remove_cls_and_reshape(x.clone())
+            return x
+
+
+        setattr(model.visual.transformer.resblocks[0].__class__, "forward", new_forward)
+        
+        self.model = model
+        self.model.eval()
+        
+    def enable_save_qkv(self):
         def new_forward(
                 self,
                 q_x: torch.Tensor,
@@ -633,32 +679,40 @@ class OpenCLIPViT(nn.Module):
             x = x + self.ls_2(mlp_output)    
             self.block_output = remove_cls_and_reshape(x.clone())
             return x
-
-
-        setattr(model.visual.transformer.resblocks[0].__class__, "forward", new_forward)
         
-        self.model = model
-        self.model.eval()
-    
+        setattr(self.model.visual.transformer.resblocks[0].__class__, "forward", new_forward)
+        self.save_qkv = True
+            
     def forward(self, x):
         out = self.model(x)
         attn_outputs, mlp_outputs, block_outputs = [], [], []
-        k, q, v = [], [], []
-        for block in self.model.visual.transformer.resblocks:
-            attn_outputs.append(block.attn_output)
-            mlp_outputs.append(block.mlp_output)
-            block_outputs.append(block.block_output)
-            k.append(block.k_x)
-            q.append(block.q_x)
-            v.append(block.v_x)
-        return {
-            'attn': attn_outputs,
-            'mlp': mlp_outputs,
-            'block': block_outputs,
-            'k': k,
-            'q': q,
-            'v': v,
-        }
+        if self.save_qkv:
+            k, q, v = [], [], []
+            for block in self.model.visual.transformer.resblocks:
+                attn_outputs.append(block.attn_output)
+                mlp_outputs.append(block.mlp_output)
+                block_outputs.append(block.block_output)
+                k.append(block.k_x)
+                q.append(block.q_x)
+                v.append(block.v_x)
+            return {
+                'attn': attn_outputs,
+                'mlp': mlp_outputs,
+                'block': block_outputs,
+                'k': k,
+                'q': q,
+                'v': v,
+            }
+        else:
+            for block in self.model.visual.transformer.resblocks:
+                attn_outputs.append(block.attn_output)
+                mlp_outputs.append(block.mlp_output)
+                block_outputs.append(block.block_output)
+            return {
+                'attn': attn_outputs,
+                'mlp': mlp_outputs,
+                'block': block_outputs
+            }
 
 MODEL_DICT["CLIP(ViT-B-16/openai)"] = partial(OpenCLIPViT, version='ViT-B-16', pretrained='openai')
 LAYER_DICT["CLIP(ViT-B-16/openai)"] = 12
@@ -814,7 +868,7 @@ LAYER_DICT["CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"] = 24
 RES_DICT["CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)"] = (448, 448)
 
 class MAE(nn.Module):
-    def __init__(self, size='base', pos_size=(42, 42), **kwargs):
+    def __init__(self, size='base', pos_size=(42, 42), save_qkv=False, **kwargs):
         super().__init__(**kwargs)
 
         try:
@@ -827,6 +881,8 @@ class MAE(nn.Module):
             pip install timm==0.9.2
             """
             raise ImportError(s)
+        
+        self.save_qkv = save_qkv
         
         if size == 'base':
             self.mae_encoder = timm.models.vision_transformer.VisionTransformer(patch_size=16, embed_dim=768, depth=12, num_heads=12)
@@ -865,7 +921,18 @@ class MAE(nn.Module):
 
         self.mae_encoder.requires_grad_(False)
         self.mae_encoder.eval()
+                
+        def forward(self, x):
+            self.saved_attn_node = self.ls1(self.attn(self.norm1(x)))
+            x = x + self.saved_attn_node.clone()
+            self.saved_mlp_node = self.ls2(self.mlp(self.norm2(x)))
+            x = x + self.saved_mlp_node.clone()
+            self.saved_block_output = x.clone()
+            return x
         
+        setattr(self.mae_encoder.blocks[0].__class__, "forward", forward)
+        
+    def enable_save_qkv(self):
         def remove_cls_and_reshape_qkv(x):
             x = x.clone()
             # x [B, Heads, N, C]
@@ -902,17 +969,8 @@ class MAE(nn.Module):
             return x
         
         setattr(self.mae_encoder.blocks[0].attn.__class__, "forward", new_attn_forward)        
-        
-        def forward(self, x):
-            self.saved_attn_node = self.ls1(self.attn(self.norm1(x)))
-            x = x + self.saved_attn_node.clone()
-            self.saved_mlp_node = self.ls2(self.mlp(self.norm2(x)))
-            x = x + self.saved_mlp_node.clone()
-            self.saved_block_output = x.clone()
-            return x
-        
-        setattr(self.mae_encoder.blocks[0].__class__, "forward", forward)
-        
+        self.save_qkv = True
+                
     def forward(self, x):
         out = self.mae_encoder.forward(x)
         def remove_cls_and_reshape(x):
@@ -922,20 +980,30 @@ class MAE(nn.Module):
             x = rearrange(x, "b (h w) c -> b h w c", h=hw)
             return x
         
-        attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae_encoder.blocks]
-        mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae_encoder.blocks]
-        block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae_encoder.blocks]
-        k = [block.attn.__k for block in self.mae_encoder.blocks]
-        q = [block.attn.__q for block in self.mae_encoder.blocks]
-        v = [block.attn.__v for block in self.mae_encoder.blocks]
-        return {
-            'attn': attn_outputs,
-            'mlp': mlp_outputs,
-            'block': block_outputs,
-            'k': k,
-            'q': q,
-            'v': v,
-        }
+        if self.save_qkv:
+            attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae_encoder.blocks]
+            mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae_encoder.blocks]
+            block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae_encoder.blocks]
+            k = [block.attn.__k for block in self.mae_encoder.blocks]
+            q = [block.attn.__q for block in self.mae_encoder.blocks]
+            v = [block.attn.__v for block in self.mae_encoder.blocks]
+            return {
+                'attn': attn_outputs,
+                'mlp': mlp_outputs,
+                'block': block_outputs,
+                'k': k,
+                'q': q,
+                'v': v,
+            }
+        else:
+            attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae_encoder.blocks]
+            mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae_encoder.blocks]
+            block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae_encoder.blocks]
+            return {
+                'attn': attn_outputs,
+                'mlp': mlp_outputs,
+                'block': block_outputs
+            }
         
         
 
