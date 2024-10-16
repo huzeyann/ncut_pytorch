@@ -25,12 +25,14 @@ This application output segmentation mask from input 1) all eigenvectors, and in
 Click to expand full code
 
 ``` py
+# pip install datasets
 from datasets import load_dataset
 ```
 
 </summary>
 
 ``` py linenums="1"
+# pip install datasets
 from datasets import load_dataset
 
 dataset = load_dataset('EgoThink/EgoThink', 'Activity', trust_remote_code=True)
