@@ -1018,6 +1018,94 @@ LAYER_DICT["MAE(vit_huge)"] = 32
 RES_DICT["MAE(vit_huge)"] = (672, 672)
 
 
+class ViTatInit(nn.Module):
+    def __init__(self, size='base', pos_size=(42, 42), load_patch_embed=False, load_first_block=False, **kwargs):
+        super().__init__(**kwargs)
+
+        try:
+            import timm
+        except ImportError as e:
+            s = f"""
+            Import Error: {e}
+
+            Please install timm to use this model.
+            pip install timm==0.9.2
+            """
+            raise ImportError(s)
+                
+        self.mae_encoder = timm.models.vision_transformer.VisionTransformer(patch_size=16, embed_dim=768, depth=12, num_heads=12)
+        if load_patch_embed or load_first_block:
+            sd = torch.hub.load_state_dict_from_url(
+                "https://dl.fbaipublicfiles.com/mae/pretrain/mae_pretrain_vit_base.pth"
+            )
+                
+            checkpoint_model = sd["model"]
+            filter_keys = []
+            if load_patch_embed:
+                filter_keys += ["patch_embed"]
+            if load_first_block:
+                filter_keys += ["blocks.0"]
+            filtered_sd = {}
+            for k, v in checkpoint_model.items():
+                if any([f in k for f in filter_keys]):
+                    filtered_sd[k] = v
+            checkpoint_model = filtered_sd
+
+            # load pre-trained model
+            msg = self.mae_encoder.load_state_dict(checkpoint_model, strict=False)
+        
+        # # resample the patch embeddings to 56x56, take 896x896 input
+        # pos_embed = self.mae_encoder.pos_embed[0]
+        # pos_embed = resample_position_embeddings(pos_embed, *pos_size)
+        # self.mae_encoder.pos_embed = nn.Parameter(pos_embed.unsqueeze(0))
+        # self.mae_encoder.img_size = (672, 672)
+        # self.mae_encoder.patch_embed.img_size = (672, 672)
+
+        self.mae_encoder.requires_grad_(False)
+        self.mae_encoder.eval()
+                
+        def forward(self, x):
+            self.saved_attn_node = self.ls1(self.attn(self.norm1(x)))
+            x = x + self.saved_attn_node.clone()
+            self.saved_mlp_node = self.ls2(self.mlp(self.norm2(x)))
+            x = x + self.saved_mlp_node.clone()
+            self.saved_block_output = x.clone()
+            return x
+        
+        setattr(self.mae_encoder.blocks[0].__class__, "forward", forward)
+        
+                
+    def forward(self, x):
+        out = self.mae_encoder.forward(x)
+        def remove_cls_and_reshape(x):
+            x = x.clone()
+            x = x[:, 1:]
+            hw = np.sqrt(x.shape[1]).astype(int)
+            x = rearrange(x, "b (h w) c -> b h w c", h=hw)
+            return x
+        
+        attn_outputs = [remove_cls_and_reshape(block.saved_attn_node) for block in self.mae_encoder.blocks]
+        mlp_outputs = [remove_cls_and_reshape(block.saved_mlp_node) for block in self.mae_encoder.blocks]
+        block_outputs = [remove_cls_and_reshape(block.saved_block_output) for block in self.mae_encoder.blocks]
+        return {
+            'attn': attn_outputs,
+            'mlp': mlp_outputs,
+            'block': block_outputs
+        }
+        
+MODEL_DICT["Rand(vit)"] = ViTatInit
+LAYER_DICT["Rand(vit)"] = 12
+RES_DICT["Rand(vit)"] = (224, 224)
+MODEL_DICT["Rand(vit_trained_patch_embed)"] = partial(ViTatInit, load_patch_embed=True)
+LAYER_DICT["Rand(vit_trained_patch_embed)"] = 12
+RES_DICT["Rand(vit_trained_patch_embed)"] = (224, 224)
+MODEL_DICT["Rand(vit_trained_first_block)"] = partial(ViTatInit, load_first_block=True)
+LAYER_DICT["Rand(vit_trained_first_block)"] = 12
+RES_DICT["Rand(vit_trained_first_block)"] = (224, 224)
+MODEL_DICT["Rand(vit_trained_patch_embed_first_block)"] = partial(ViTatInit, load_patch_embed=True, load_first_block=True)
+LAYER_DICT["Rand(vit_trained_patch_embed_first_block)"] = 12
+RES_DICT["Rand(vit_trained_patch_embed_first_block)"] = (224, 224)
+
 class ImageNet(nn.Module):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
