@@ -310,7 +310,8 @@ def nystrom_ncut(
 
     # compute affinity matrix on subgraph
     A = affinity_from_features(
-        sampled_features, affinity_focal_gamma=affinity_focal_gamma, distance=distance
+        sampled_features, affinity_focal_gamma=affinity_focal_gamma, 
+        distance=distance, normalize_features=normalize_features
     )
 
     not_sampled = torch.tensor(
@@ -334,6 +335,7 @@ def nystrom_ncut(
             feature_B,
             affinity_focal_gamma=affinity_focal_gamma,
             distance=distance,
+            normalize_features=normalize_features,
             fill_diagonal=False,
         )
         # P is 1-hop random walk matrix
