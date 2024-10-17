@@ -28,7 +28,7 @@ plt.show()
 all_dots = np.concatenate([X, line_points], axis=0)
 from ncut_pytorch import NCUT
 
-eigenvectors, eigenvalues = NCUT(10, distance='euclidean', normalize_features=False).fit_transform(torch.tensor(all_dots).float())
+eigenvectors, eigenvalues = NCUT(10, distance='rbf', normalize_features=False).fit_transform(torch.tensor(all_dots).float())
 fig, axs = plt.subplots(1, 6, figsize=(15, 2))
 for i, ax in enumerate(axs):
     vminmax = max(abs(eigenvectors[:, i].min()), abs(eigenvectors[:, i].max()))
@@ -44,7 +44,7 @@ for i, ax in enumerate(axs):
 all_dots = np.concatenate([X, line_points], axis=0) + 1000
 from ncut_pytorch import NCUT
 
-eigenvectors, eigenvalues = NCUT(10, distance='euclidean', normalize_features=False).fit_transform(torch.tensor(all_dots).float())
+eigenvectors, eigenvalues = NCUT(10, distance='rbf', normalize_features=False).fit_transform(torch.tensor(all_dots).float())
 fig, axs = plt.subplots(1, 6, figsize=(15, 2))
 for i, ax in enumerate(axs):
     vminmax = max(abs(eigenvectors[:, i].min()), abs(eigenvectors[:, i].max()))

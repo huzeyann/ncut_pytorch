@@ -136,6 +136,7 @@ class NCUT:
             features,
             self.subgraph_features,
             self.knn,
+            distance=self.distance,
             chunk_size=self.matmul_chunk_size,
             device=self.device,
             use_tqdm=self.verbose,
@@ -314,18 +315,20 @@ def nystrom_ncut(
         distance=distance, normalize_features=normalize_features
     )
 
-    not_sampled = torch.tensor(
-        list(set(range(features.shape[0])) - set(sampled_indices))
-    )
+    # check if all nodes are sampled, if so, no need for Nystrom approximation
+    all_indices = torch.zeros(features.shape[0], dtype=torch.bool)
+    all_indices[sampled_indices] = True
+    not_sampled = ~all_indices
+    
 
-    if len(not_sampled) == 0:
+    if not_sampled.sum() == 0:
         # if sampled all nodes, no need for nyström approximation
         eigen_vector, eigen_value = ncut(A, num_eig, eig_solver=eig_solver)
         return eigen_vector, eigen_value, sampled_indices
 
     # 1) PCA to reduce the node dimension for the not sampled nodes
     # 2) compute indirect connection on the PC nodes
-    if len(not_sampled) > 0 and indirect_connection:
+    if not_sampled.sum() > 0 and indirect_connection:
         indirect_pca_dim = min(indirect_pca_dim, min(*features.shape))
         U, S, V = torch.pca_lowrank(features[not_sampled].T, q=indirect_pca_dim)
         feature_B = (features[not_sampled].T @ V).T  # project to PCA space
@@ -361,6 +364,7 @@ def nystrom_ncut(
         features,
         sampled_features,
         knn,
+        distance=distance,
         chunk_size=matmul_chunk_size,
         device=device,
         use_tqdm=verbose,
@@ -421,7 +425,7 @@ def affinity_from_features(
     elif distance == "rbf":
         A = torch.cdist(features, features_B, p=2) ** 2
     else:
-        raise ValueError("distance should be 'cosine' or 'euclidean'")
+        raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
 
     if fill_diagonal:
         A[torch.arange(A.shape[0]), torch.arange(A.shape[0])] = 0
@@ -540,6 +544,7 @@ def rgb_from_tsne_3d(
         _subgraph_embed,
         features,
         features[subgraph_indices],
+        distance=metric,
         knn=knn,
         device=device,
         move_output_to_cpu=True,
@@ -598,6 +603,7 @@ def rgb_from_tsne_2d(
         _subgraph_embed,
         features,
         features[subgraph_indices],
+        distance=metric,
         knn=knn,
         device=device,
         move_output_to_cpu=True,
@@ -651,6 +657,7 @@ def rgb_from_umap_2d(
         _subgraph_embed,
         features,
         features[subgraph_indices],
+        distance=metric,
         knn=knn,
         device=device,
         move_output_to_cpu=True,
@@ -705,6 +712,7 @@ def rgb_from_umap_sphere(
         _subgraph_embed,
         features,
         features[subgraph_indices],
+        distance=metric,
         knn=knn,
         device=device,
         move_output_to_cpu=True,
@@ -762,6 +770,7 @@ def rgb_from_umap_3d(
         _subgraph_embed,
         features,
         features[subgraph_indices],
+        distance=metric,
         knn=knn,
         device=device,
         move_output_to_cpu=True,
@@ -1007,6 +1016,7 @@ def propagate_knn(
     inp_features,
     subgraph_features,
     knn=10,
+    distance="cosine",
     chunk_size=8096,
     device=None,
     use_tqdm=False,
@@ -1019,6 +1029,7 @@ def propagate_knn(
         inp_features (torch.Tensor): features from existing nodes, shape (new_num_samples, n_features)
         subgraph_features (torch.Tensor): features from subgraph, shape (num_sample, n_features)
         knn (int): number of KNN to propagate eigenvectors
+        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
         chunk_size (int): chunk size for matrix multiplication
         device (str): device to use for computation, if None, will not change device
         use_tqdm (bool): show progress bar when propagating eigenvectors from subgraph to full graph
@@ -1064,7 +1075,14 @@ def propagate_knn(
     for i in iterator:
         end = min(i + chunk_size, inp_features.shape[0])
         _v = inp_features[i:end].to(device)
-        _A = _v @ subgraph_features.T
+        if distance == 'cosine':
+            _A = _v @ subgraph_features.T
+        elif distance == 'euclidean':
+            _A = - torch.cdist(_v, subgraph_features, p=2)
+        elif distance == 'rbf':
+            _A = - torch.cdist(_v, subgraph_features, p=2) ** 2
+        else:
+            raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
 
         # keep topk KNN for each row
         topk_sim, topk_idx = _A.topk(knn, dim=-1, largest=True)
@@ -1098,6 +1116,7 @@ def propagate_nearest(
     subgraph_output,
     inp_features,
     subgraph_features,
+    distance="cosine",
     chunk_size=8096,
     device=None,
     move_output_to_cpu=False,
@@ -1111,7 +1130,14 @@ def propagate_nearest(
     for i in range(0, inp_features.shape[0], chunk_size):
         end = min(i + chunk_size, inp_features.shape[0])
         _v = inp_features[i:end].to(device)
-        _A = _v @ subgraph_features.T
+        if distance == 'cosine':
+            _A = _v @ subgraph_features.T
+        elif distance == 'euclidean':
+            _A = - torch.cdist(_v, subgraph_features, p=2)
+        elif distance == 'rbf':
+            _A = - torch.cdist(_v, subgraph_features, p=2) ** 2
+        else:
+            raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
         # keep top1 for each row
         top_idx = _A.argmax(dim=-1)
         _V = subgraph_output[top_idx]
