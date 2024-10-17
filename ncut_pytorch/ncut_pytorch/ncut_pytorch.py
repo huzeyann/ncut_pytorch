@@ -1,5 +1,6 @@
 # %%
 import logging
+from typing import Literal
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -10,21 +11,21 @@ class NCUT:
 
     def __init__(
         self,
-        num_eig=100,
-        knn=10,
-        affinity_focal_gamma=1.0,
-        num_sample=10000,
-        sample_method="farthest",
-        distance="cosine",
-        indirect_connection=True,
-        indirect_pca_dim=100,
-        device=None,
-        move_output_to_cpu=False,
-        eig_solver="svd_lowrank",
-        normalize_features=True,
-        matmul_chunk_size=8096,
-        make_orthogonal=False,
-        verbose=False,
+        num_eig : int = 100,
+        knn : int = 10,
+        affinity_focal_gamma : float = 1.0,
+        num_sample : int = 10000,
+        sample_method : Literal["farthest", "random"] = "farthest",
+        distance : Literal["cosine", "euclidean", "rbf"] = "cosine",
+        indirect_connection : bool = True,
+        indirect_pca_dim : int = 100,
+        device : str = None,
+        move_output_to_cpu : bool = False,
+        eig_solver : Literal["svd_lowrank", "lobpcg", "svd", "eigh"] = "svd_lowrank",
+        normalize_features : bool = True,
+        matmul_chunk_size : int = 8096,
+        make_orthogonal : bool = False,
+        verbose : bool = False,
     ):
         """
 
@@ -38,7 +39,7 @@ class NCUT:
                 reduce only if memory is not enough, increase for better approximation
             sample_method (str): subgraph sampling, ['farthest', 'random'].
                 farthest point sampling is recommended for better Nystrom-approximation accuracy
-            distance (str): distance metric for affinity matrix, ['cosine', 'euclidean'].
+            distance (str): distance metric for affinity matrix, ['cosine', 'euclidean', 'rbf'].
             indirect_connection (bool): include indirect connection in the Nystrom-like approximation
             indirect_pca_dim (int): when compute indirect connection, PCA to reduce the node dimension,
             device (str): device to use for eigen computation,
@@ -88,7 +89,7 @@ class NCUT:
         self.make_orthogonal = make_orthogonal
         self.verbose = verbose
 
-    def fit(self, features):
+    def fit(self, features : torch.Tensor):
         """Fit Nystrom Normalized Cut on the input features.
 
         Args:
@@ -97,6 +98,7 @@ class NCUT:
         Returns:
             (NCUT): self
         """
+        # save the eigenvectors solution on the sub-sampled graph, do not propagate to full graph yet
         self.subgraph_eigen_vector, self.eigen_value, self.subgraph_indices = (
             nystrom_ncut(
                 features,
@@ -118,7 +120,7 @@ class NCUT:
         self.subgraph_features = features[self.subgraph_indices]
         return self
 
-    def transform(self, features):
+    def transform(self, features : torch.Tensor):
         """Transform new features using the fitted Nystrom Normalized Cut.
 
         Args:
@@ -128,6 +130,7 @@ class NCUT:
             (torch.Tensor): eigen_vectors, shape (n_samples, num_eig)
             (torch.Tensor): eigen_values, sorted in descending order, shape (num_eig,)
         """
+        # propagate eigenvectors from subgraph to full graph
         eigen_vector = propagate_knn(
             self.subgraph_eigen_vector,
             features,
@@ -142,7 +145,7 @@ class NCUT:
             eigen_vector = gram_schmidt(eigen_vector)
         return eigen_vector, self.eigen_value
 
-    def fit_transform(self, features):
+    def fit_transform(self, features : torch.Tensor):
         """
 
         Args:
@@ -156,17 +159,17 @@ class NCUT:
 
 
 def eigenvector_to_rgb(
-    eigen_vector,
-    method="tsne_3d",
-    num_sample=300,
-    perplexity=150,
-    n_neighbors=150,
-    min_distance=0.1,
-    metric="cosine",
-    device=None,
-    q=0.95,
-    knn=10,
-    seed=0,
+    eigen_vector : torch.Tensor,
+    method : Literal["tsne_2d", "tsne_3d", "umap_sphere", "umap_2d", "umap_3d"] = "tsne_3d",
+    num_sample : int = 300,
+    perplexity : int = 150,
+    n_neighbors : int = 150,
+    min_distance : float = 0.1,
+    metric : Literal["cosine", "euclidean"] = "cosine",
+    device : str = None,
+    q : float = 0.95,
+    knn : int = 10,
+    seed : int = 0,
 ):
     """Use t-SNE or UMAP to convert eigenvectors (more than 3) to RGB color (3D RGB CUBE).
 
@@ -224,34 +227,34 @@ def eigenvector_to_rgb(
 
 
 def nystrom_ncut(
-    features,
-    num_eig=100,
-    num_sample=10000,
-    knn=10,
-    sample_method="farthest",
-    distance="cosine",
-    affinity_focal_gamma=1.0,
-    indirect_connection=True,
-    indirect_pca_dim=100,
-    device=None,
-    eig_solver="svd_lowrank",
-    normalize_features=True,
-    matmul_chunk_size=8096,
-    make_orthogonal=False,
-    verbose=False,
-    no_propagation=False,
+    features : torch.Tensor,
+    num_eig : int = 100,
+    num_sample : int = 10000,
+    knn : int = 10,
+    sample_method : Literal["farthest", "random"] = "farthest",
+    distance : Literal["cosine", "euclidean", "rbf"] = "cosine",
+    affinity_focal_gamma : float = 1.0,
+    indirect_connection : bool = True,
+    indirect_pca_dim : int = 100,
+    device : str = None,
+    eig_solver : Literal["svd_lowrank", "lobpcg", "svd", "eigh"] = "svd_lowrank",
+    normalize_features : bool = True,
+    matmul_chunk_size : int = 8096,
+    make_orthogonal : bool = True,
+    verbose : bool = False,
+    no_propagation : bool = False,
 ):
     """PyTorch implementation of Faster Nystrom Normalized cut.
 
     Args:
         features (torch.Tensor): feature matrix, shape (n_samples, n_features)
-        num_eig (int): default 20, number of top eigenvectors to return
-        num_sample (int): default 30000, number of samples for Nystrom-like approximation
-        knn (int): default 3, number of KNN for propagating eigenvectors from subgraph to full graph,
+        num_eig (int): default 100, number of top eigenvectors to return
+        num_sample (int): default 10000, number of samples for Nystrom-like approximation
+        knn (int): default 10, number of KNN for propagating eigenvectors from subgraph to full graph,
             smaller knn will result in more sharp eigenvectors,
         sample_method (str): sample method, 'farthest' (default) or 'random'
             'farthest' is recommended for better approximation
-        distance (str): distance metric, 'cosine' (default) or 'euclidean'
+        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
         affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the weak edge weights,
             resulting in more sharp eigenvectors, default 1.0
         indirect_connection (bool): include indirect connection in the subgraph, default True
@@ -369,12 +372,12 @@ def nystrom_ncut(
 
 
 def affinity_from_features(
-    features,
-    features_B=None,
-    affinity_focal_gamma=1.0,
-    distance="cosine",
-    normalize_features=True,
-    fill_diagonal=True,
+    features : torch.Tensor,
+    features_B : torch.Tensor = None,
+    affinity_focal_gamma : float = 1.0,
+    distance : Literal["cosine", "euclidean", "rbf"] = "cosine",
+    normalize_features : bool = True,
+    fill_diagonal : bool = True,
 ):
     """Compute affinity matrix from input features.
 
@@ -383,7 +386,7 @@ def affinity_from_features(
         feature_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
         affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the edge weights
             on weak connections, default 1.0
-        distance (str): distance metric, 'cosine' (default) or 'euclidean'.
+        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'.
         apply_normalize (bool): normalize input features before computing affinity matrix,
             default True
 
@@ -413,6 +416,8 @@ def affinity_from_features(
         A = 1 - features @ features_B.T
     elif distance == "euclidean":
         A = torch.cdist(features, features_B, p=2)
+    elif distance == "rbf":
+        A = torch.cdist(features, features_B, p=2) ** 2
     else:
         raise ValueError("distance should be 'cosine' or 'euclidean'")
 
@@ -426,9 +431,9 @@ def affinity_from_features(
 
 
 def ncut(
-    A,
-    num_eig=20,
-    eig_solver="svd_lowrank",
+    A : torch.Tensor,
+    num_eig : int = 100,
+    eig_solver : Literal["svd_lowrank", "lobpcg", "svd", "eigh"] = "svd_lowrank",
 ):
     """PyTorch implementation of Normalized cut without Nystrom-like approximation.
 
@@ -487,14 +492,14 @@ def ncut(
 
 
 def rgb_from_tsne_3d(
-    features,
-    num_sample=300,
-    perplexity=150,
-    metric="cosine",
-    device=None,
-    seed=0,
-    q=0.95,
-    knn=10,
+    features : torch.Tensor,
+    num_sample : int = 300,
+    perplexity : int = 150,
+    metric : Literal["cosine", "euclidean"] = "cosine",
+    device : str = None,
+    seed : int = 0,
+    q : float = 0.95,
+    knn : int = 10,
     **kwargs,
 ):
     """
