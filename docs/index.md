@@ -69,17 +69,6 @@
 
 **Demo Application**: Point-Prompting Segmentation tool for pseudo-labeling across multiple images. Try it in <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace</a> (Switch to the Tab "Application"). More Examples in [Gallery](gallery_application.md).
 
-<div  style="text-align: center;">
-<video width="90%" controls muted autoplay loop>
-  <source src="./images/point_prompt_264_comp.mp4" type="video/mp4">
-</video>
-<p>Video: Point-Prompting Segmentation, application of NCUT embedding. </br> Mask is produced by thresholding distance on NCUT eigenvectors.
-<a href="./application_segmentation">code</a>
-</p>
-</div>
-
-<!-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46): Real-time interactive point-prompting. -->
-</br>
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
@@ -89,6 +78,17 @@
 <a href="./alignedcut_vs_ncut">details</a>
 </p>
 </div>
+
+<div  style="text-align: center;">
+<video width="90%" controls muted autoplay loop>
+  <source src="./images/point_prompt_264_comp.mp4" type="video/mp4">
+</video>
+<p>Video: Point-Prompting Segmentation, application of NCUT embedding. </br> Mask is produced by thresholding distance on NCUT eigenvectors.
+<a href="./application_segmentation">code</a>
+</p>
+</div>
+<!-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46): Real-time interactive point-prompting. -->
+</br>
 
 ## Demo
 
