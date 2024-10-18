@@ -441,7 +441,7 @@ def affinity_from_features(
     if distance != "rbf":
         A = torch.exp(-A / affinity_focal_gamma)
     if distance == "rbf":
-        sigma = 2 * affinity_focal_gamma ** 2
+        sigma = 2 * affinity_focal_gamma * features.var(dim=0).sum()
         A = torch.exp(-A / sigma)
     return A
 
