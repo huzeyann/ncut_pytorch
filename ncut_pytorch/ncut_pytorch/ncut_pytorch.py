@@ -439,9 +439,10 @@ def affinity_from_features(
     # torch.exp make affinity matrix positive definite,
     # lower affinity_focal_gamma reduce the weak edge weights
     if distance != "rbf":
-        A = torch.exp(-((A / affinity_focal_gamma)))
+        A = torch.exp(-A / affinity_focal_gamma)
     if distance == "rbf":
-        A = torch.exp(-((A / 2 * affinity_focal_gamma ** 2)))
+        sigma = 2 * affinity_focal_gamma ** 2
+        A = torch.exp(-A / sigma)
     return A
 
 
