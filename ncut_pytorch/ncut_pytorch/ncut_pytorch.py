@@ -320,20 +320,20 @@ def nystrom_ncut(
     all_indices = torch.zeros(features.shape[0], dtype=torch.bool)
     all_indices[sampled_indices] = True
     not_sampled = ~all_indices
+    _n_not_sampled = not_sampled.sum()
     
 
-    if not_sampled.sum() == 0:
+    if _n_not_sampled == 0:
         # if sampled all nodes, no need for nyström approximation
         eigen_vector, eigen_value = ncut(A, num_eig, eig_solver=eig_solver)
         return eigen_vector, eigen_value, sampled_indices
 
     # 1) PCA to reduce the node dimension for the not sampled nodes
     # 2) compute indirect connection on the PC nodes
-    if not_sampled.sum() > 0 and indirect_connection:
+    if _n_not_sampled > 0 and indirect_connection:
         indirect_pca_dim = min(indirect_pca_dim, min(*features.shape))
         U, S, V = torch.pca_lowrank(features[not_sampled].T, q=indirect_pca_dim)
-        _n = features.shape[1]
-        S = S / math.sqrt(_n)
+        S = S / math.sqrt(_n_not_sampled)
         feature_B_T = U @ torch.diag(S)
         feature_B = feature_B_T.T
         feature_B = feature_B.to(device)

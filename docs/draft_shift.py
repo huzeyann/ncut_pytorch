@@ -56,3 +56,19 @@ for i, ax in enumerate(axs):
     # ax.set_xticks([])
     # ax.set_yticks([])
 # %%
+all_dots = np.concatenate([X, line_points], axis=0)
+from ncut_pytorch import NCUT
+
+eigenvectors, eigenvalues = NCUT(10, distance='rbf', normalize_features=False, num_sample=20).fit_transform(torch.tensor(all_dots).float())
+fig, axs = plt.subplots(1, 6, figsize=(15, 2))
+for i, ax in enumerate(axs):
+    vminmax = max(abs(eigenvectors[:, i].min()), abs(eigenvectors[:, i].max()))
+    ax.scatter(all_dots[:, 0], all_dots[:, 1], c=eigenvectors[:, i], cmap='coolwarm', s=50, alpha=0.9, vmin=-vminmax, vmax=vminmax)
+    ax.set_title(f'Eigenvalue={eigenvalues[i]:.2f}')
+    if i == 0:
+        ax.set_xlabel('X1')
+        ax.set_ylabel('X2')
+    # ax.set_xticks([])
+    # ax.set_yticks([])
+    
+# %%
