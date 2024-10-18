@@ -1,5 +1,6 @@
 # %%
 import logging
+import math
 from typing import Literal
 import torch
 import torch.nn.functional as F
@@ -332,7 +333,7 @@ def nystrom_ncut(
         indirect_pca_dim = min(indirect_pca_dim, min(*features.shape))
         U, S, V = torch.pca_lowrank(features[not_sampled].T, q=indirect_pca_dim)
         _n = features.shape[1]
-        S /= torch.sqrt(_n)
+        S = S / math.sqrt(_n)
         feature_B_T = U @ torch.diag(S)
         feature_B = feature_B_T.T
         feature_B = feature_B.to(device)
@@ -428,7 +429,7 @@ def affinity_from_features(
         A = torch.cdist(features, features_B, p=2)
     elif distance == "rbf":
         d = torch.cdist(features, features_B, p=2)
-        A = torch.pow(d, 2) * 2
+        A = torch.pow(d, 2)
     else:
         raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
 
@@ -437,7 +438,10 @@ def affinity_from_features(
 
     # torch.exp make affinity matrix positive definite,
     # lower affinity_focal_gamma reduce the weak edge weights
-    A = torch.exp(-((A / affinity_focal_gamma)))
+    if distance != "rbf":
+        A = torch.exp(-((A / affinity_focal_gamma)))
+    if distance == "rbf":
+        A = torch.exp(-((A / 2 * affinity_focal_gamma ** 2)))
     return A
 
 
@@ -835,7 +839,7 @@ def farthest_point_sampling(
     if features.shape[1] > 8:
         u, s, v = torch.pca_lowrank(features, q=8)
         _n = features.shape[0]
-        s /= torch.sqrt(_n)
+        s /= math.sqrt(_n)
         features = u @ torch.diag(s)
 
     h = min(h, int(np.log2(features.shape[0])))
