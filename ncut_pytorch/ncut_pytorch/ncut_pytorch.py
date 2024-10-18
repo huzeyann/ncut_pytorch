@@ -331,8 +331,12 @@ def nystrom_ncut(
     if not_sampled.sum() > 0 and indirect_connection:
         indirect_pca_dim = min(indirect_pca_dim, min(*features.shape))
         U, S, V = torch.pca_lowrank(features[not_sampled].T, q=indirect_pca_dim)
-        feature_B = (features[not_sampled].T @ V).T  # project to PCA space
+        _n = features.shape[1]
+        S /= torch.sqrt(_n)
+        feature_B_T = U @ torch.diag(S)
+        feature_B = feature_B_T.T
         feature_B = feature_B.to(device)
+        
         B = affinity_from_features(
             sampled_features,
             feature_B,
@@ -423,7 +427,8 @@ def affinity_from_features(
     elif distance == "euclidean":
         A = torch.cdist(features, features_B, p=2)
     elif distance == "rbf":
-        A = torch.cdist(features, features_B, p=2) ** 2
+        d = torch.cdist(features, features_B, p=2)
+        A = torch.pow(d, 2) * 2
     else:
         raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
 
@@ -829,7 +834,9 @@ def farthest_point_sampling(
     # PCA to reduce the dimension
     if features.shape[1] > 8:
         u, s, v = torch.pca_lowrank(features, q=8)
-        features = features @ v
+        _n = features.shape[0]
+        s /= torch.sqrt(_n)
+        features = u @ torch.diag(s)
 
     h = min(h, int(np.log2(features.shape[0])))
 
