@@ -226,7 +226,8 @@ Each subsequent eigenvector can be used to further partition the graph into subc
   <source src="../images/n_eigvecs.mp4" type="video/mp4">
 </video>
 <p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pixel (blue point).</br>
-Reduce `n_eig` hierarchical grow the object heatmap</p>
+Reduce `n_eig` hierarchical grow the object heatmap</br>
+try it at <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a> (switch to tab "PlayGround")
 </div>
 
 #### Example: Eigenvector Visualization
