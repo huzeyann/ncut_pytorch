@@ -48,7 +48,7 @@
 <video width="90%" controls muted autoplay loop>
   <source src="./images/ncut_video_sam_264_small.mp4" type="video/mp4">
 </video>
-<p>Video: NCUT applied to image encoder features from Segment Anything Model. </br> RGB color is 3D spectral-tSNE embedding of NCUT eigenvectors.
+<p>Video: NCUT applied to image encoder features from Segment Anything **Model**. </br> RGB color is 3D spectral-tSNE embedding of NCUT eigenvectors.
 <a href="./gallery_sam_video">code</a>
 </p>
 </div>
@@ -79,15 +79,6 @@
 </p>
 </div>
 
-<div  style="text-align: center;">
-<video width="90%" controls muted autoplay loop>
-  <source src="./images/point_prompt_264_comp.mp4" type="video/mp4">
-</video>
-<p>Video: Point-Prompting Segmentation, application of NCUT embedding. </br> Mask is produced by thresholding distance on NCUT eigenvectors.
-<a href="./application_segmentation">code</a>
-</p>
-</div>
-<!-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1gllutIdACcEHtJ81n_tGVNgR6fTupV46): Real-time interactive point-prompting. -->
 </br>
 
 ## Demo
@@ -287,6 +278,14 @@ Normalized cut offers two advantages:
 1. soft-cluster assignments as eigenvectors
 
 2. hierarchical clustering by varying the number of eigenvectors
+
+<div  style="text-align: center;">
+<video width="80%" controls muted autoplay loop>
+  <source src="./images/n_eigvecs.mp4" type="video/mp4">
+</video>
+<p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pixel (blue point).</br>
+Reduce `n_eig` hierarchical grow the object heatmap</p>
+</div>
 
 Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t-SNE, UMAP.
 

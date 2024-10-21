@@ -5,6 +5,15 @@ hide:
 
 # Application Gallery
 
+<div  style="text-align: center;">
+<video width="50%" controls muted autoplay loop>
+  <source src="../images/point_prompt_264_comp.mp4" type="video/mp4">
+</video>
+<p>Video: Point-Prompting Segmentation, application of NCUT embedding. </br> Mask is produced by thresholding distance on NCUT eigenvectors.
+<a href="./application_segmentation">code</a>
+</p>
+</div>
+
 This application output segmentation mask given prompt points, it work by computing and thresholding L2 distance on the NCUT embedding:
 
 1. Compute NCUT embedding, spectral-tSNE. Color is aligned across all images [Aligned NCUT](alignedcut_vs_ncut.md)

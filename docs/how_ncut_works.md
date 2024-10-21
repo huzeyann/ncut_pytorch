@@ -221,6 +221,13 @@ Each subsequent eigenvector can be used to further partition the graph into subc
 3. Use \( \mathbf{x}_2 \) (the Fiedler vector) to divide the graph into two clusters.
 4. For multi-way clustering, use the next eigenvectors \( \mathbf{x}_3, \mathbf{x}_4, \dots \) to further hierarchically subdivide these clusters.
 
+<div  style="text-align: center;">
+<video width="80%" controls muted autoplay loop>
+  <source src="../images/n_eigvecs.mp4" type="video/mp4">
+</video>
+<p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pixel (blue point).</br>
+Reduce `n_eig` hierarchical grow the object heatmap</p>
+</div>
 
 #### Example: Eigenvector Visualization
 

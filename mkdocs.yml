@@ -58,7 +58,7 @@ nav:
   - Gallery:
     - Gallery - Dataset: gallery_dataset.md
     - Gallery - Model: gallery.md
-    - Gallery - Application: gallery_application.md
+    - Application: gallery_application.md
 
   - Guides:
     - How to Get Better Segmentation: how_to_get_better_segmentation.md
