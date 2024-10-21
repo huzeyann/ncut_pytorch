@@ -79,16 +79,17 @@
 </p>
 </div>
 
-</br>
+<!-- ## Demo -->
 
-## Demo
+Please visit the <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around datasets and models.
 
-Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
 
+<!--
 <script
 	type="module"
 	src="https://gradio.s3-us-west-2.amazonaws.com/4.42.0/gradio.js"
 ></script>
+-->
 
 <gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
 
