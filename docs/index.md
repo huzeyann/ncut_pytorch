@@ -48,7 +48,7 @@
 <video width="90%" controls muted autoplay loop>
   <source src="./images/ncut_video_sam_264_small.mp4" type="video/mp4">
 </video>
-<p>Video: NCUT applied to image encoder features from Segment Anything **Model**. </br> RGB color is 3D spectral-tSNE embedding of NCUT eigenvectors.
+<p>Video: NCUT applied to image encoder features from Segment Anything Model. </br> RGB color is 3D spectral-tSNE embedding of NCUT eigenvectors.
 <a href="./gallery_sam_video">code</a>
 </p>
 </div>
