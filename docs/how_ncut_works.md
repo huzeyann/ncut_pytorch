@@ -23,7 +23,7 @@ This Guide covers:
 
 ## Normalized Cuts and Spectral Clustering
 
-Spectral clustering is a powerful technique for clustering data based on the eigenvectors (spectrum) of a similarity matrix derived from the data. The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value.
+Spectral clustering, or Normalized Cuts, clusters data based on the eigenvectors (spectrum) of a similarity matrix derived from the data. The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value.
 
 <div style="text-align: center;">
 <img src="../images/graph_cut.png" style="width:100%;">

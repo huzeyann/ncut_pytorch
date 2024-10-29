@@ -23,7 +23,7 @@ class NCUT:
         device : str = None,
         move_output_to_cpu : bool = False,
         eig_solver : Literal["svd_lowrank", "lobpcg", "svd", "eigh"] = "svd_lowrank",
-        normalize_features : bool = True,
+        normalize_features : bool = None,
         matmul_chunk_size : int = 8096,
         make_orthogonal : bool = False,
         verbose : bool = False,
@@ -47,7 +47,8 @@ class NCUT:
                 move to GPU to speeds up a bit (~5x faster)
             move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
             eig_solver (str): eigen decompose solver, ['svd_lowrank', 'lobpcg', 'svd', 'eigh'].
-            normalize_features (bool): normalize input features before computing affinity matrix
+            normalize_features (bool): normalize input features before computing affinity matrix,
+                default 'None' is True for cosine distance, False for euclidean distance and rbf
             matmul_chunk_size (int): chunk size for large-scale matrix multiplication
             make_orthogonal (bool): make eigenvectors orthogonal post-hoc
             verbose (bool): progress bar
@@ -240,7 +241,7 @@ def nystrom_ncut(
     indirect_pca_dim : int = 100,
     device : str = None,
     eig_solver : Literal["svd_lowrank", "lobpcg", "svd", "eigh"] = "svd_lowrank",
-    normalize_features : bool = True,
+    normalize_features : bool = None,
     matmul_chunk_size : int = 8096,
     make_orthogonal : bool = True,
     verbose : bool = False,
@@ -269,7 +270,7 @@ def nystrom_ncut(
             'svd_lowrank' is recommended for large scale graph, it's the fastest
             they correspond to torch.svd_lowrank, torch.lobpcg, torch.svd, torch.linalg.eigh
         normalize_features (bool): normalize input features before computing affinity matrix,
-            default True
+            default 'None' is True for cosine distance, False for euclidean distance and rbf
         matmul_chunk_size (int): chunk size for matrix multiplication
             large matrix multiplication is chunked to reduce memory usage,
             smaller chunk size will reduce memory usage but slower computation, default 8096
@@ -293,7 +294,13 @@ def nystrom_ncut(
             features.shape[0] > num_eig
         ), "number of nodes should be greater than num_eig"
 
-    features = features.clone()
+    assert distance in ["cosine", "euclidean", "rbf"], "distance should be 'cosine', 'euclidean', 'rbf'"
+    if normalize_features is None:
+        if distance in ["cosine"]:
+            normalize_features = True
+        if distance in ["euclidean", "rbf"]:
+            normalize_features = False
+    
     if normalize_features:
         # features need to be normalized for affinity matrix computation (cosine distance)
         features = torch.nn.functional.normalize(features, dim=-1)
@@ -387,7 +394,7 @@ def affinity_from_features(
     features_B : torch.Tensor = None,
     affinity_focal_gamma : float = 1.0,
     distance : Literal["cosine", "euclidean", "rbf"] = "cosine",
-    normalize_features : bool = True,
+    normalize_features : bool = False,
     fill_diagonal : bool = True,
 ):
     """Compute affinity matrix from input features.
@@ -398,16 +405,12 @@ def affinity_from_features(
         affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the edge weights
             on weak connections, default 1.0
         distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'.
-        apply_normalize (bool): normalize input features before computing affinity matrix,
-            default True
+        normalize_features (bool): normalize input features before computing affinity matrix
 
     Returns:
         (torch.Tensor): affinity matrix, shape (n_samples, n_samples)
     """
     # compute affinity matrix from input features
-    features = features.clone()
-    if features_B is not None:
-        features_B = features_B.clone()
 
     # if feature_B is not provided, compute affinity matrix on features x features
     # if feature_B is provided, compute affinity matrix on features x feature_B
@@ -857,7 +860,6 @@ def run_subgraph_sampling(
     max_draw=1000000,
     sample_method="farthest",
 ):
-    features = features.clone().detach()
     if num_sample > features.shape[0]:
         # if too many samples, use all samples and bypass Nystrom-like approximation
         logging.info(
@@ -873,13 +875,13 @@ def run_subgraph_sampling(
                 )
                 draw_indices = torch.randperm(features.shape[0])[:max_draw]
                 sampled_indices = farthest_point_sampling(
-                    features[draw_indices],
+                    features[draw_indices].detach(),
                     num_sample=num_sample,
                 )
                 sampled_indices = draw_indices[sampled_indices]
             else:
                 sampled_indices = farthest_point_sampling(
-                    features,
+                    features.detach(),
                     num_sample=num_sample,
                 )
         elif sample_method == "random":  # not recommended
