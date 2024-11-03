@@ -100,6 +100,14 @@ class NCUT:
         Returns:
             (NCUT): self
         """
+        _n = features.shape[0]
+        if self.num_sample >= _n:
+            logging.warning(
+                f"NCUT nystrom num_sample is larger than number of input samples, nyström approximation is not needed, settting num_sample={_n} and knn=1"
+            )
+            self.num_sample = _n
+            self.knn = 1
+        
         # save the eigenvectors solution on the sub-sampled graph, do not propagate to full graph yet
         self.subgraph_eigen_vector, self.eigen_value, self.subgraph_indices = (
             nystrom_ncut(
@@ -122,22 +130,25 @@ class NCUT:
         self.subgraph_features = features[self.subgraph_indices]
         return self
 
-    def transform(self, features : torch.Tensor):
+    def transform(self, features : torch.Tensor, knn : int = None):
         """Transform new features using the fitted Nystrom Normalized Cut.
 
         Args:
             features (torch.Tensor): new features, shape (n_samples, n_features)
-
+            knn (int): number of KNN for propagating eigenvectors from subgraph to full graph,
         Returns:
             (torch.Tensor): eigen_vectors, shape (n_samples, num_eig)
             (torch.Tensor): eigen_values, sorted in descending order, shape (num_eig,)
         """
+        
+        knn = self.knn if knn is None else knn
+        
         # propagate eigenvectors from subgraph to full graph
         eigen_vector = propagate_knn(
             self.subgraph_eigen_vector,
             features,
             self.subgraph_features,
-            self.knn,
+            knn,
             distance=self.distance,
             chunk_size=self.matmul_chunk_size,
             device=self.device,
@@ -860,7 +871,7 @@ def run_subgraph_sampling(
     max_draw=1000000,
     sample_method="farthest",
 ):
-    if num_sample > features.shape[0]:
+    if num_sample >= features.shape[0]:
         # if too many samples, use all samples and bypass Nystrom-like approximation
         logging.info(
             "num_sample is larger than total, bypass Nystrom-like approximation"
@@ -1153,8 +1164,10 @@ def propagate_nearest(
         else:
             raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
         # keep top1 for each row
-        top_idx = _A.argmax(dim=-1)
+        top_idx = _A.argmax(dim=-1).cpu()
         _V = subgraph_output[top_idx]
+        if move_output_to_cpu:
+            _V = _V.cpu()
         V_list.append(_V)
 
     subgraph_output = torch.cat(V_list, dim=0)
@@ -1287,6 +1300,72 @@ def propagate_rgb_color(
     return new_rgb
 
 
+# Multiclass Spectral Clustering, SX Yu, J Shi, 2003
+
+def _discretisation_eigenvector(eigen_vector):
+    # Function that discretizes rotated eigenvectors
+    n, k = eigen_vector.shape
+
+    # Find the maximum index along each row
+    _, J = torch.max(eigen_vector, dim=1)
+    Y = torch.zeros(n, k, device=eigen_vector.device).scatter_(1, J.unsqueeze(1), 1)
+
+    return Y
+
+def kway_ncut(eigen_vectors:torch.Tensor, max_iter=300):
+    """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
+
+    Args:
+        eigen_vectors (torch.Tensor): continuous eigenvectors from NCUT, shape (n, k)
+        max_iter (int, optional): Maximum number of iterations.
+
+    Returns:
+        torch.Tensor: Discretized eigenvectors, shape (n, k), each row is a one-hot vector.
+    """
+    # Normalize eigenvectors
+    n, k = eigen_vectors.shape
+    vm = torch.sqrt(torch.sum(eigen_vectors ** 2, dim=1))
+    eigen_vectors = eigen_vectors / vm.unsqueeze(1)
+
+    # Initialize R matrix with the first column from a random row of EigenVectors
+    R = torch.zeros(k, k, device=eigen_vectors.device)
+    R[:, 0] = eigen_vectors[torch.randint(0, n, (1,))].squeeze()
+
+    # Loop to populate R with k orthogonal directions
+    c = torch.zeros(n, device=eigen_vectors.device)
+    for j in range(1, k):
+        c += torch.abs(eigen_vectors @ R[:, j - 1])
+        _, i = torch.min(c, dim=0)
+        R[:, j] = eigen_vectors[i]
+
+    # Iterative optimization loop
+    last_objective_value = 0
+    exit_loop = False
+    nb_iterations_discretisation = 0
+
+    while not exit_loop:
+        nb_iterations_discretisation += 1
+
+        # Discretize the projected eigenvectors
+        eigenvectors_discrete = _discretisation_eigenvector(eigen_vectors @ R)
+
+        # SVD decomposition
+        U, S, Vh = torch.linalg.svd(eigenvectors_discrete.T @ eigen_vectors, full_matrices=False)
+        V = Vh.T
+
+        # Compute the Ncut value
+        ncut_value = 2 * (n - torch.sum(S))
+
+        # Check for convergence
+        if torch.abs(ncut_value - last_objective_value) < torch.finfo(torch.float32).eps or nb_iterations_discretisation > max_iter:
+            exit_loop = True
+        else:
+            last_objective_value = ncut_value
+            R = V @ U.T
+
+    return eigenvectors_discrete
+
+
 # application: get segmentation mask fron a reference eigenvector (point prompt)
 
 def _transform_heatmap(heatmap, gamma=1.0):
@@ -1399,3 +1478,4 @@ def get_mask(
         return cleaned_masks
     
     return masks
+

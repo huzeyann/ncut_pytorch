@@ -11,4 +11,5 @@ from .ncut_pytorch import (
 )
 from .ncut_pytorch import propagate_eigenvectors, propagate_rgb_color, propagate_knn
 from .ncut_pytorch import nystrom_ncut, affinity_from_features, ncut
+from .ncut_pytorch import kway_ncut
 from .ncut_pytorch import get_mask
