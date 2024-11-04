@@ -1312,7 +1312,7 @@ def _discretisation_eigenvector(eigen_vector):
 
     return Y
 
-def kway_ncut(eigen_vectors:torch.Tensor, max_iter=300):
+def kway_ncut(eigen_vectors:torch.Tensor, max_iter=300, return_rotation=False):
     """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
 
     Args:
@@ -1363,7 +1363,14 @@ def kway_ncut(eigen_vectors:torch.Tensor, max_iter=300):
             last_objective_value = ncut_value
             R = V @ U.T
 
+    if return_rotation:
+        return eigenvectors_discrete, R
+
     return eigenvectors_discrete
+
+
+def axis_align(eigen_vectors, max_iter=300):
+    return kway_ncut(eigen_vectors, max_iter=max_iter, return_rotation=True)
 
 
 # application: get segmentation mask fron a reference eigenvector (point prompt)
