@@ -91,12 +91,16 @@ class NCUT:
         self.make_orthogonal = make_orthogonal
         self.verbose = verbose
 
-    def fit(self, features : torch.Tensor):
+    def fit(self, 
+            features : torch.Tensor, 
+            precomputed_sampled_indices : torch.Tensor = None
+            ):
         """Fit Nystrom Normalized Cut on the input features.
 
         Args:
             features (torch.Tensor): input features, shape (n_samples, n_features)
-
+            precomputed_sampled_indices (torch.Tensor): precomputed sampled indices, shape (num_sample,)
+                override the sample_method, if not None
         Returns:
             (NCUT): self
         """
@@ -115,6 +119,7 @@ class NCUT:
                 num_eig=self.num_eig,
                 num_sample=self.num_sample,
                 sample_method=self.sample_method,
+                precomputed_sampled_indices=precomputed_sampled_indices,
                 distance=self.distance,
                 affinity_focal_gamma=self.affinity_focal_gamma,
                 indirect_connection=self.indirect_connection,
@@ -246,6 +251,7 @@ def nystrom_ncut(
     num_sample : int = 10000,
     knn : int = 10,
     sample_method : Literal["farthest", "random"] = "farthest",
+    precomputed_sampled_indices : torch.Tensor = None,
     distance : Literal["cosine", "euclidean", "rbf"] = "cosine",
     affinity_focal_gamma : float = 1.0,
     indirect_connection : bool = True,
@@ -268,6 +274,8 @@ def nystrom_ncut(
             smaller knn will result in more sharp eigenvectors,
         sample_method (str): sample method, 'farthest' (default) or 'random'
             'farthest' is recommended for better approximation
+        precomputed_sampled_indices (torch.Tensor): precomputed sampled indices, shape (num_sample,)
+            override the sample_method, if not None
         distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
         affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the weak edge weights,
             resulting in more sharp eigenvectors, default 1.0
@@ -316,11 +324,14 @@ def nystrom_ncut(
         # features need to be normalized for affinity matrix computation (cosine distance)
         features = torch.nn.functional.normalize(features, dim=-1)
 
-    sampled_indices = run_subgraph_sampling(
-        features,
-        num_sample=num_sample,
-        sample_method=sample_method,
-    )
+    if precomputed_sampled_indices is not None:
+        sampled_indices = precomputed_sampled_indices
+    else:
+        sampled_indices = run_subgraph_sampling(
+            features,
+            num_sample=num_sample,
+            sample_method=sample_method,
+        )
 
     sampled_features = features[sampled_indices]
     # move subgraph gpu to speed up
