@@ -164,17 +164,22 @@ class NCUT:
             eigen_vector = gram_schmidt(eigen_vector)
         return eigen_vector, self.eigen_value
 
-    def fit_transform(self, features : torch.Tensor):
+    def fit_transform(self, 
+                    features : torch.Tensor,
+                    precomputed_sampled_indices : torch.Tensor = None
+                    ):
         """
 
         Args:
             features (torch.Tensor): input features, shape (n_samples, n_features)
-
+            precomputed_sampled_indices (torch.Tensor): precomputed sampled indices, shape (num_sample,)
+                override the sample_method, if not None
+                
         Returns:
             (torch.Tensor): eigen_vectors, shape (n_samples, num_eig)
             (torch.Tensor): eigen_values, sorted in descending order, shape (num_eig,)
         """
-        return self.fit(features).transform(features)
+        return self.fit(features, precomputed_sampled_indices=precomputed_sampled_indices).transform(features)
 
 
 def eigenvector_to_rgb(
