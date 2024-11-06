@@ -1,5 +1,6 @@
 # Author: Huzheng Yang
 # %%
+import logging
 from typing import Literal, Optional, Tuple, Dict, Any
 from einops import rearrange
 import requests
@@ -451,6 +452,28 @@ RES_DICT["DiNOv2(dinov2_vitl14)"] = (672, 672)
 MODEL_DICT["DiNOv2(dinov2_vitg14)"] = partial(DiNOv2, ver="dinov2_vitg14", num_reg=1)
 LAYER_DICT["DiNOv2(dinov2_vitg14)"] = 40
 RES_DICT["DiNOv2(dinov2_vitg14)"] = (672, 672)
+
+class DVTDistillDiNOv2(DiNOv2):
+    def __init__(self, ver="dinov2_vitb14", num_reg=1):
+        super().__init__(ver=ver, num_reg=num_reg)
+        url = "https://huggingface.co/jjiaweiyang/DVT/resolve/main/imgnet_distilled/vit_base_patch14_dinov2.lvd142m.pth"
+        sd = torch.hub.load_state_dict_from_url(url, map_location='cpu')['model']
+        # clean up the state dict, remove the prefix 'model.'
+        new_sd = {}
+        for k, v in sd.items():
+            if k.startswith("model."):
+                new_sd[k[6:]] = v
+            else:
+                new_sd[k] = v
+        sd = new_sd
+        msg = self.dinov2.load_state_dict(sd, strict=False)
+        logging.warning(msg)
+        
+
+MODEL_DICT["DiNOv2[DVT](dinov2_vitb14_dvt_imgnet_distill)"] = DVTDistillDiNOv2
+LAYER_DICT["DiNOv2[DVT](dinov2_vitb14_dvt_imgnet_distill)"] = 12
+RES_DICT["DiNOv2[DVT](dinov2_vitb14_dvt_imgnet_distill)"] = (672, 672)
+
 
 class DiNO(nn.Module):
     def __init__(self, ver="dino_vitb8", save_qkv=False):
@@ -1902,4 +1925,11 @@ def extract_features(images: torch.Tensor, model: nn.Module,
     outputs = torch.cat(outputs, dim=0)
 
     return outputs
+
+if __name__ == "__main__":
+    model = DVTDistillDiNOv2()
+    inp = torch.randn(2, 3, 224, 224)
+    out = model(inp)
+    print(out.keys())
+    print(out['attn'][0].shape)
 

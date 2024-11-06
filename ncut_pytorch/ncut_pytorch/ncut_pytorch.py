@@ -347,7 +347,7 @@ def nystrom_ncut(
     # compute affinity matrix on subgraph
     A = affinity_from_features(
         sampled_features, affinity_focal_gamma=affinity_focal_gamma, 
-        distance=distance, normalize_features=normalize_features
+        distance=distance,
     )
 
     # check if all nodes are sampled, if so, no need for Nystrom approximation
@@ -377,7 +377,6 @@ def nystrom_ncut(
             feature_B,
             affinity_focal_gamma=affinity_focal_gamma,
             distance=distance,
-            normalize_features=normalize_features,
             fill_diagonal=False,
         )
         # P is 1-hop random walk matrix
@@ -421,7 +420,6 @@ def affinity_from_features(
     features_B : torch.Tensor = None,
     affinity_focal_gamma : float = 1.0,
     distance : Literal["cosine", "euclidean", "rbf"] = "cosine",
-    normalize_features : bool = False,
     fill_diagonal : bool = True,
 ):
     """Compute affinity matrix from input features.
@@ -444,10 +442,6 @@ def affinity_from_features(
     if features_B is not None:
         assert not fill_diagonal, "fill_diagonal should be False when feature_B is None"
     features_B = features if features_B is None else features_B
-
-    if normalize_features:
-        features = F.normalize(features, dim=-1)
-        features_B = F.normalize(features_B, dim=-1)
 
     if distance == "cosine":
         if not check_if_normalized(features):
