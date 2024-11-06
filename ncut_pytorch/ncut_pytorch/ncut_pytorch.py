@@ -1081,6 +1081,11 @@ def propagate_knn(
         
     """
     device = subgraph_output.device if device is None else device
+    if distance == 'cosine':
+        if check_if_normalized(inp_features):
+            inp_features = F.normalize(inp_features, dim=-1)
+        if check_if_normalized(subgraph_features):
+            subgraph_features = F.normalize(subgraph_features, dim=-1)
 
     if knn == 1:
         return propagate_nearest(
@@ -1157,7 +1162,12 @@ def propagate_nearest(
     move_output_to_cpu=False,
 ):
     device = subgraph_output.device if device is None else device
-
+    if distance == 'cosine':
+        if check_if_normalized(inp_features):
+            inp_features = F.normalize(inp_features, dim=-1)
+        if check_if_normalized(subgraph_features):
+            subgraph_features = F.normalize(subgraph_features, dim=-1)
+            
     # used in nystrom_tsne, equivalent to propagate_by_knn with knn=1
     # propagate tSNE from subgraph to full graph
     V_list = []
