@@ -104,9 +104,6 @@ class NCUT:
         self.subgraph_indices = None
         self.subgraph_features = None
 
-    # def _normalize(self, features: torch.Tensor):
-
-
     def fit(self,
             features: torch.Tensor,
             precomputed_sampled_indices: torch.Tensor = None
