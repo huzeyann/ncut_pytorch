@@ -375,6 +375,24 @@ def rgb_from_3d_rgb_cube(X_3d, q=0.95):
     return rgb
 
 
+def convert_to_lab_color(rgb, full_range=True):
+    from skimage import color
+    import copy
+
+    if isinstance(rgb, torch.Tensor):
+        rgb = rgb.cpu().numpy()
+    _rgb = copy.deepcopy(rgb)
+    _rgb[..., 0] = _rgb[..., 0] * 100
+    if full_range:
+        _rgb[..., 1] = _rgb[..., 1] * 255 - 128
+        _rgb[..., 2] = _rgb[..., 2] * 255 - 128
+    else:
+        _rgb[..., 1] = _rgb[..., 1] * 100 - 50
+        _rgb[..., 2] = _rgb[..., 2] * 100 - 50
+    lab_rgb = color.lab2rgb(_rgb)
+    return lab_rgb
+
+
 def rgb_from_2d_colormap(X_2d, q=0.95):
     xy = X_2d.clone()
     for i in range(2):
