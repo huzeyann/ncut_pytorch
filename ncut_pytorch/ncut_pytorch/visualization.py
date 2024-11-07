@@ -6,7 +6,7 @@ import torch
 from sklearn.base import BaseEstimator
 
 from .ncut_pytorch import propagate_knn, run_subgraph_sampling
-from .utils import quantile_normalize
+from .nystrom_utils import propagate_eigenvectors, quantile_normalize
 
 
 def _identity(X: torch.Tensor) -> torch.Tensor:
@@ -418,3 +418,49 @@ def rgb_from_2d_colormap(X_2d, q=0.95):
     rgb = cmap._cmap_data[x, y]
     rgb = torch.tensor(rgb, dtype=torch.float32) / 255
     return rgb
+
+
+def propagate_rgb_color(
+    rgb: torch.Tensor,
+    eigenvectors: torch.Tensor,
+    new_eigenvectors: torch.Tensor,
+    knn: int = 10,
+    num_sample: int = 300,
+    sample_method: Literal["farthest", "random"] = "farthest",
+    chunk_size: int = 8096,
+    device: str = None,
+    use_tqdm: bool = False,
+):
+    """Propagate RGB color to new nodes using KNN.
+    Args:
+        rgb (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
+        features (torch.Tensor): features from existing nodes, shape (n_samples, n_features)
+        new_features (torch.Tensor): features from new nodes, shape (n_new_samples, n_features)
+        knn (int): number of KNN to propagate RGB color, default 1
+        num_sample (int): number of samples for subgraph sampling, default 50000
+        sample_method (str): sample method, 'farthest' (default) or 'random'
+        chunk_size (int): chunk size for matrix multiplication, default 8096
+        device (str): device to use for computation, if None, will not change device
+        use_tqdm (bool): show progress bar when propagating RGB color from subgraph to full graph
+
+    Returns:
+        torch.Tensor: propagated RGB color for each data sample, shape (n_new_samples, 3)
+
+    Examples:
+        >>> old_rgb = torch.randn(3000, 3)
+        >>> old_eigenvectors = torch.randn(3000, 20)
+        >>> new_eigenvectors = torch.randn(200, 20)
+        >>> new_rgb = propagate_rgb_color(old_rgb, new_eigenvectors, old_eigenvectors)
+        >>> # new_eigenvectors.shape = (200, 3)
+    """
+    return propagate_eigenvectors(
+        eigenvectors=rgb,
+        features=eigenvectors,
+        new_features=new_eigenvectors,
+        knn=knn,
+        num_sample=num_sample,
+        sample_method=sample_method,
+        chunk_size=chunk_size,
+        device=device,
+        use_tqdm=use_tqdm,
+    )
