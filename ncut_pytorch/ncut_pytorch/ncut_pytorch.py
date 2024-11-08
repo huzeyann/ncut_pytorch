@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from .nystrom_utils import (
     run_subgraph_sampling,
     propagate_knn,
+    check_if_normalized,
 )
 
 
