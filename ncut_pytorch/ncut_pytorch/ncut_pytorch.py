@@ -10,21 +10,6 @@ import torch.nn.functional as F
 from .nystrom_utils import (
     run_subgraph_sampling,
     propagate_knn,
-    propagate_nearest,
-    propagate_eigenvectors,
-    quantile_normalize,
-    quantile_min_max,
-)
-from .visualization import (
-    eigenvector_to_rgb,
-    rgb_from_tsne_3d,
-    rgb_from_umap_sphere,
-    rgb_from_tsne_2d,
-    rgb_from_umap_3d,
-    rgb_from_umap_2d,
-    rotate_rgb_cube,
-    convert_to_lab_color,
-    get_mask
 )
 
 
@@ -595,3 +580,29 @@ def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False):
 
 def axis_align(eigen_vectors, max_iter=300):
     return kway_ncut(eigen_vectors, max_iter=max_iter, return_rotation=True)
+
+
+## for backward compatibility ##
+
+try:
+
+    from .nystrom_utils import (
+        propagate_nearest,
+        propagate_eigenvectors,
+        quantile_normalize,
+        quantile_min_max,
+    )
+    from .visualization import (
+        eigenvector_to_rgb,
+        rgb_from_tsne_3d,
+        rgb_from_umap_sphere,
+        rgb_from_tsne_2d,
+        rgb_from_umap_3d,
+        rgb_from_umap_2d,
+        rotate_rgb_cube,
+        convert_to_lab_color,
+        get_mask
+    )
+
+except ImportError:
+    print("some of viualization and nystrom_utils are not imported")
