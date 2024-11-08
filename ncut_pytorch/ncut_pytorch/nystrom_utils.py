@@ -9,10 +9,10 @@ import torch.nn.functional as F
 
 @torch.no_grad()
 def run_subgraph_sampling(
-    features,
-    num_sample=300,
-    max_draw=1000000,
-    sample_method="farthest",
+    features: torch.Tensor,
+    num_sample: int = 300,
+    max_draw: int = 1000000,
+    sample_method: Literal["farthest", "random"] = "farthest",
 ):
     if num_sample >= features.shape[0]:
         # if too many samples, use all samples and bypass Nystrom-like approximation
@@ -46,9 +46,9 @@ def run_subgraph_sampling(
 
 
 def farthest_point_sampling(
-    features,
-    num_sample=300,
-    h=9,
+    features: torch.Tensor,
+    num_sample: int = 300,
+    h: int = 9,
 ):
     try:
         import fpsample
@@ -73,15 +73,15 @@ def farthest_point_sampling(
 
 
 def propagate_knn(
-    subgraph_output,
-    inp_features,
-    subgraph_features,
-    knn=10,
-    distance="cosine",
-    chunk_size=8096,
-    device=None,
-    use_tqdm=False,
-    move_output_to_cpu=False,
+    subgraph_output: torch.Tensor,
+    inp_features: torch.Tensor,
+    subgraph_features: torch.Tensor,
+    knn: int = 10,
+    distance: Literal["cosine", "euclidean", "rbf"] = "cosine",
+    chunk_size: int = 8096,
+    device: str = None,
+    use_tqdm: bool = False,
+    move_output_to_cpu: bool = False,
 ):
     """A generic function to propagate new nodes using KNN.
 

@@ -14,7 +14,7 @@ from .visualization import (
     rotate_rgb_cube,
     convert_to_lab_color,
     propagate_rgb_color,
+    get_mask,
 )
 from .ncut_pytorch import nystrom_ncut, affinity_from_features, ncut
 from .ncut_pytorch import kway_ncut, axis_align
-from .ncut_pytorch import get_mask
