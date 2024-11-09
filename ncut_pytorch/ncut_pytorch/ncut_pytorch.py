@@ -602,7 +602,9 @@ try:
         rgb_from_umap_2d,
         rotate_rgb_cube,
         convert_to_lab_color,
-        get_mask
+        _transform_heatmap,
+        _clean_mask,
+        get_mask,
     )
 
 except ImportError:

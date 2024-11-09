@@ -602,32 +602,38 @@ class FPNDiNO(nn.Module):
     def forward(self, x):
         
         # iterate over different resolutions, extract features from each resolution
-        feature_list = []
+        feature_list1 = []
+        feature_list2 = []
         for res in self.resolutions:
-            x = F.interpolate(x, size=(res, res), mode='bicubic')
+            x = F.interpolate(x, size=(res, res), mode='nearest')
             feature = self.model1(x)
-            feature_list.append(feature)
+            feature_list1.append(feature)
             feature = self.model2(x)
-            feature_list.append(feature)
+            feature_list2.append(feature)
         
         # combine features from different resolutions, resize to the biggest feature map, and average
-        feature_keys = list(feature_list[0].keys())
-        n_layers = len(feature_list[0][feature_keys[0]])
+        feature_keys = list(feature_list1[0].keys())
+        n_layers = len(feature_list1[0][feature_keys[0]])
         combined_features = {key: [] for key in feature_keys}
         for key in feature_keys:
             for i_layer in range(n_layers):
-                _features = [f[key][i_layer] for f in feature_list]
-                max_size = max([f.shape[-2] for f in _features])
+                _features1 = [f[key][i_layer] for f in feature_list1]
+                _features2 = [f[key][i_layer] for f in feature_list2]
+                max_size = max([f.shape[-2] for f in _features1])
                 def resize_feat(feat):
                     feat = rearrange(feat, 'b h w c -> b c h w')
-                    feat = F.interpolate(feat, size=(max_size, max_size), mode='bicubic')
+                    feat = F.interpolate(feat, size=(max_size, max_size), mode='nearest')
                     feat = rearrange(feat, 'b c h w -> b h w c')
                     return feat
-                _features = [resize_feat(feat) for feat in _features]
-                _feature = torch.stack(_features, dim=1).mean(dim=1)
+                _features1 = [resize_feat(feat) for feat in _features1]
+                _features2 = [resize_feat(feat) for feat in _features2]
+                _feature1 = torch.stack(_features1, dim=1).mean(dim=1)
+                _feature2 = torch.stack(_features2, dim=1).mean(dim=1)
+                _feature = torch.cat([_feature1, _feature2], dim=-1)
                 combined_features[key].append(_feature)
         
         return combined_features  # return a dictionary of features, {'block': [layer1, layer2, ...], 'attn': ...}
+
 
 MODEL_DICT["DiNO[FPN_448]"] = partial(FPNDiNO, resolutions=[224, 448])
 LAYER_DICT["DiNO[FPN_448]"] = 12
