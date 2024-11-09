@@ -25,7 +25,7 @@ class NCUT:
         num_sample: int = 10000,
         sample_method: Literal["farthest", "random"] = "farthest",
         distance: Literal["cosine", "euclidean", "rbf"] = "cosine",
-        indirect_connection: bool = True,
+        indirect_connection: bool = False,
         indirect_pca_dim: int = 100,
         device: str = None,
         move_output_to_cpu: bool = False,
@@ -144,6 +144,7 @@ class NCUT:
             matmul_chunk_size=self.matmul_chunk_size,
             verbose=self.verbose,
             no_propagation=True,
+            move_output_to_cpu=self.move_output_to_cpu,
         )
         self.subgraph_features = features[self.subgraph_indices]
         return self
@@ -211,6 +212,7 @@ def nystrom_ncut(
     make_orthogonal: bool = True,
     verbose: bool = False,
     no_propagation: bool = False,
+    move_output_to_cpu: bool = False,
 ):
     """PyTorch implementation of Faster Nystrom Normalized cut.
     Args:
@@ -243,7 +245,7 @@ def nystrom_ncut(
         make_orthogonal (bool): make eigenvectors orthogonal after propagation, default True
         verbose (bool): show progress bar when propagating eigenvectors from subgraph to full graph
         no_propagation (bool): if True, skip the eigenvector propagation step, only return the subgraph eigenvectors
-
+        move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
     Returns:
         (torch.Tensor): eigenvectors, shape (n_samples, num_eig)
         (torch.Tensor): eigenvalues, sorted in descending order, shape (num_eig,)
@@ -341,6 +343,7 @@ def nystrom_ncut(
         chunk_size=matmul_chunk_size,
         device=device,
         use_tqdm=verbose,
+        move_output_to_cpu=move_output_to_cpu,
     )
 
     # post-hoc orthogonalization
