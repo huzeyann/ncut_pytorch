@@ -593,7 +593,7 @@ try:
         quantile_normalize,
         quantile_min_max,
     )
-    from .visualization import (
+    from .visualize_utils import (
         eigenvector_to_rgb,
         rgb_from_tsne_3d,
         rgb_from_umap_sphere,

@@ -4,7 +4,7 @@ from .nystrom_utils import (
     propagate_knn,
     quantile_normalize,
 )
-from .visualization import (
+from .visualize_utils import (
     eigenvector_to_rgb,
     rgb_from_tsne_3d,
     rgb_from_umap_sphere,
