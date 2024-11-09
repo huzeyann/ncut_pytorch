@@ -23,7 +23,7 @@ def _identity(X: torch.Tensor) -> torch.Tensor:
 def eigenvector_to_rgb(
     eigen_vector: torch.Tensor,
     method: Literal["tsne_2d", "tsne_3d", "umap_sphere", "umap_2d", "umap_3d"] = "tsne_3d",
-    num_sample: int = 300,
+    num_sample: int = 1000,
     perplexity: int = 150,
     n_neighbors: int = 150,
     min_distance: float = 0.1,
@@ -131,7 +131,7 @@ def _rgb_with_dimensionality_reduction(
 
 def rgb_from_tsne_2d(
     features: torch.Tensor,
-    num_sample: int = 300,
+    num_sample: int = 1000,
     perplexity: int = 150,
     metric: Literal["cosine", "euclidean"] = "cosine",
     device: str = None,
@@ -173,7 +173,7 @@ def rgb_from_tsne_2d(
 
 def rgb_from_tsne_3d(
     features: torch.Tensor,
-    num_sample: int = 300,
+    num_sample: int = 1000,
     perplexity: int = 150,
     metric: Literal["cosine", "euclidean"] = "cosine",
     device: str = None,
@@ -215,7 +215,7 @@ def rgb_from_tsne_3d(
 
 def rgb_from_umap_2d(
     features: torch.Tensor,
-    num_sample: int = 300,
+    num_sample: int = 1000,
     n_neighbors: int = 150,
     min_dist: float = 0.1,
     metric: Literal["cosine", "euclidean"] = "cosine",
@@ -251,7 +251,7 @@ def rgb_from_umap_2d(
 
 def rgb_from_umap_sphere(
     features: torch.Tensor,
-    num_sample: int = 300,
+    num_sample: int = 1000,
     n_neighbors: int = 150,
     min_dist: float = 0.1,
     metric: Literal["cosine", "euclidean"] = "cosine",
@@ -296,7 +296,7 @@ def rgb_from_umap_sphere(
 
 def rgb_from_umap_3d(
     features: torch.Tensor,
-    num_sample: int = 300,
+    num_sample: int = 1000,
     n_neighbors: int = 150,
     min_dist: float = 0.1,
     metric: Literal["cosine", "euclidean"] = "cosine",
@@ -432,7 +432,7 @@ def propagate_rgb_color(
     eigenvectors: torch.Tensor,
     new_eigenvectors: torch.Tensor,
     knn: int = 10,
-    num_sample: int = 300,
+    num_sample: int = 1000,
     sample_method: Literal["farthest", "random"] = "farthest",
     chunk_size: int = 8096,
     device: str = None,
