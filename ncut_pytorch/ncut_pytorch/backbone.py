@@ -591,13 +591,14 @@ RES_DICT["DiNO(dino_vitb16_448)"] = (448, 448)
 
 
 class FPNDiNO(nn.Module):
-    def __init__(self, resolutions=[224, 448]):
+    def __init__(self, resolutions=[224, 448], interpolate='nearest'):
         super().__init__()
         model1 = load_model("DiNO(dino_vitb16_448)").eval()
         model2 = load_model("DiNO(dino_vitb8_448)").eval()
         self.model1 = model1
         self.model2 = model2
         self.resolutions = resolutions
+        self.interpolate = interpolate
     
     def forward(self, x):
         
@@ -605,7 +606,7 @@ class FPNDiNO(nn.Module):
         feature_list1 = []
         feature_list2 = []
         for res in self.resolutions:
-            x = F.interpolate(x, size=(res, res), mode='nearest')
+            x = F.interpolate(x, size=(res, res), mode=self.interpolate)
             feature = self.model1(x)
             feature_list1.append(feature)
             feature = self.model2(x)
@@ -622,7 +623,7 @@ class FPNDiNO(nn.Module):
                 max_size = max([f.shape[-2] for f in _features1])
                 def resize_feat(feat):
                     feat = rearrange(feat, 'b h w c -> b c h w')
-                    feat = F.interpolate(feat, size=(max_size, max_size), mode='nearest')
+                    feat = F.interpolate(feat, size=(max_size, max_size), mode=self.interpolate)
                     feat = rearrange(feat, 'b c h w -> b h w c')
                     return feat
                 _features1 = [resize_feat(feat) for feat in _features1]
