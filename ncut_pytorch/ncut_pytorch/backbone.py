@@ -591,7 +591,7 @@ RES_DICT["DiNO(dino_vitb16_448)"] = (448, 448)
 
 
 class FPNDiNO(nn.Module):
-    def __init__(self, resolutions=[224, 448], interpolate='nearest'):
+    def __init__(self, resolutions=[224, 448], interpolate='bilinear'):
         super().__init__()
         model1 = load_model("DiNO(dino_vitb16_448)").eval()
         model2 = load_model("DiNO(dino_vitb8_448)").eval()
@@ -606,10 +606,10 @@ class FPNDiNO(nn.Module):
         feature_list1 = []
         feature_list2 = []
         for res in self.resolutions:
-            x = F.interpolate(x, size=(res, res), mode=self.interpolate)
-            feature = self.model1(x)
+            _x = F.interpolate(x, size=(res, res), mode=self.interpolate)
+            feature = self.model1(_x)
             feature_list1.append(feature)
-            feature = self.model2(x)
+            feature = self.model2(_x)
             feature_list2.append(feature)
         
         # combine features from different resolutions, resize to the biggest feature map, and average
@@ -620,7 +620,7 @@ class FPNDiNO(nn.Module):
             for i_layer in range(n_layers):
                 _features1 = [f[key][i_layer] for f in feature_list1]
                 _features2 = [f[key][i_layer] for f in feature_list2]
-                max_size = max([f.shape[-2] for f in _features1])
+                max_size = max([f.shape[-2] for f in _features2] + [f.shape[-2] for f in _features1])
                 def resize_feat(feat):
                     feat = rearrange(feat, 'b h w c -> b c h w')
                     feat = F.interpolate(feat, size=(max_size, max_size), mode=self.interpolate)
