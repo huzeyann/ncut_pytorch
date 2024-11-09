@@ -592,6 +592,7 @@ try:
         propagate_eigenvectors,
         quantile_normalize,
         quantile_min_max,
+        farthest_point_sampling,
     )
     from .visualize_utils import (
         eigenvector_to_rgb,
