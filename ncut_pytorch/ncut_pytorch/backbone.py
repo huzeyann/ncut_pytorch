@@ -659,7 +659,7 @@ RES_DICT["FPNDiNO8plus16[stack][FPN_672]"] = (672, 672)
 class FPNDiNO8(nn.Module):
     def __init__(self, resolutions=[224, 448], interpolate='bilinear'):
         super().__init__()
-        model1 = load_model("DiNO(dino_vitb16_448)").eval()
+        model1 = load_model("DiNO(dino_vitb8_448)").eval()
         self.model1 = model1
         self.resolutions = resolutions
         self.interpolate = interpolate
