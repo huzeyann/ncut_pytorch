@@ -590,8 +590,8 @@ LAYER_DICT["DiNO(dino_vitb16_448)"] = 12
 RES_DICT["DiNO(dino_vitb16_448)"] = (448, 448)
 
 
-class FPNDiNO(nn.Module):
-    def __init__(self, resolutions=[224, 448], interpolate='bilinear'):
+class FPNDiNO8plus16(nn.Module):
+    def __init__(self, resolutions=[224, 448], interpolate='bilinear', reduce='mean'):
         super().__init__()
         model1 = load_model("DiNO(dino_vitb16_448)").eval()
         model2 = load_model("DiNO(dino_vitb8_448)").eval()
@@ -599,6 +599,7 @@ class FPNDiNO(nn.Module):
         self.model2 = model2
         self.resolutions = resolutions
         self.interpolate = interpolate
+        self.reduce = reduce
     
     def forward(self, x):
         
@@ -606,7 +607,7 @@ class FPNDiNO(nn.Module):
         feature_list1 = []
         feature_list2 = []
         for res in self.resolutions:
-            _x = F.interpolate(x, size=(res, res), mode=self.interpolate)
+            _x = F.interpolate(x, size=(res, res), mode='bilinear')
             feature = self.model1(_x)
             feature_list1.append(feature)
             feature = self.model2(_x)
@@ -630,18 +631,76 @@ class FPNDiNO(nn.Module):
                 _features2 = [resize_feat(feat) for feat in _features2]
                 _feature1 = torch.stack(_features1, dim=1).mean(dim=1)
                 _feature2 = torch.stack(_features2, dim=1).mean(dim=1)
-                _feature = torch.cat([_feature1, _feature2], dim=-1)
+                if self.reduce == 'stack':
+                    _feature = torch.cat([_feature1, _feature2], dim=-1)
+                elif self.reduce == 'mean':
+                    _feature = (_feature1 + _feature2) / 2
+                else:
+                    raise ValueError(f"Unsupported reduce method: {self.reduce}")
                 combined_features[key].append(_feature)
         
         return combined_features  # return a dictionary of features, {'block': [layer1, layer2, ...], 'attn': ...}
 
 
-MODEL_DICT["DiNO[FPN_448]"] = partial(FPNDiNO, resolutions=[224, 448])
-LAYER_DICT["DiNO[FPN_448]"] = 12
-RES_DICT["DiNO[FPN_448]"] = (448, 448)
-MODEL_DICT["DiNO[FPN_672]"] = partial(FPNDiNO, resolutions=[224, 448, 672])
-LAYER_DICT["DiNO[FPN_672]"] = 12
-RES_DICT["DiNO[FPN_672]"] = (672, 672)
+MODEL_DICT["FPNDiNO8plus16[mean][FPN_448]"] = partial(FPNDiNO8plus16, resolutions=[224, 448])
+LAYER_DICT["FPNDiNO8plus16[mean][FPN_448]"] = 12
+RES_DICT["FPNDiNO8plus16[mean][FPN_448]"] = (448, 448)
+MODEL_DICT["FPNDiNO8plus16[mean][FPN_672]"] = partial(FPNDiNO8plus16, resolutions=[224, 448, 672])
+LAYER_DICT["FPNDiNO8plus16[mean][FPN_672]"] = 12
+RES_DICT["FPNDiNO8plus16[mean][FPN_672]"] = (672, 672)
+MODEL_DICT["FPNDiNO8plus16[stack][FPN_448]"] = partial(FPNDiNO8plus16, resolutions=[224, 448], reduce='stack')
+LAYER_DICT["FPNDiNO8plus16[stack][FPN_448]"] = 12
+RES_DICT["FPNDiNO8plus16[stack][FPN_448]"] = (448, 448)
+MODEL_DICT["FPNDiNO8plus16[stack][FPN_672]"] = partial(FPNDiNO8plus16, resolutions=[224, 448, 672], reduce='stack')
+LAYER_DICT["FPNDiNO8plus16[stack][FPN_672]"] = 12
+RES_DICT["FPNDiNO8plus16[stack][FPN_672]"] = (672, 672)
+
+
+class FPNDiNO8(nn.Module):
+    def __init__(self, resolutions=[224, 448], interpolate='bilinear'):
+        super().__init__()
+        model1 = load_model("DiNO(dino_vitb16_448)").eval()
+        self.model1 = model1
+        self.resolutions = resolutions
+        self.interpolate = interpolate
+    
+    def forward(self, x):
+        
+        # iterate over different resolutions, extract features from each resolution
+        feature_list1 = []
+        for res in self.resolutions:
+            _x = F.interpolate(x, size=(res, res), mode='bilinear')
+            feature = self.model1(_x)
+            feature_list1.append(feature)
+
+        
+        # combine features from different resolutions, resize to the biggest feature map, and average
+        feature_keys = list(feature_list1[0].keys())
+        n_layers = len(feature_list1[0][feature_keys[0]])
+        combined_features = {key: [] for key in feature_keys}
+        for key in feature_keys:
+            for i_layer in range(n_layers):
+                _features1 = [f[key][i_layer] for f in feature_list1]
+                max_size = max([f.shape[-2] for f in _features1])
+                def resize_feat(feat):
+                    feat = rearrange(feat, 'b h w c -> b c h w')
+                    feat = F.interpolate(feat, size=(max_size, max_size), mode=self.interpolate)
+                    feat = rearrange(feat, 'b c h w -> b h w c')
+                    return feat
+                _features1 = [resize_feat(feat) for feat in _features1]
+                _feature1 = torch.stack(_features1, dim=1).mean(dim=1)
+                _feature = _feature1
+                combined_features[key].append(_feature)
+        
+        return combined_features  # return a dictionary of features, {'block': [layer1, layer2, ...], 'attn': ...}
+
+
+MODEL_DICT["FPNDiNO8[FPN_448]"] = partial(FPNDiNO8, resolutions=[224, 448])
+LAYER_DICT["FPNDiNO8[FPN_448]"] = 12
+RES_DICT["FPNDiNO8[FPN_448]"] = (448, 448)
+MODEL_DICT["FPNDiNO8[FPN_672]"] = partial(FPNDiNO8, resolutions=[224, 448, 672])
+LAYER_DICT["FPNDiNO8[FPN_672]"] = 12
+RES_DICT["FPNDiNO8[FPN_672]"] = (672, 672)
 
 
 def resample_position_embeddings(embeddings, h, w):
