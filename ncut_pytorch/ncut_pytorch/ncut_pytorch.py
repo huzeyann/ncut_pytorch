@@ -121,7 +121,7 @@ class NCUT:
         """
         _n = features.shape[0]
         if self.num_sample >= _n:
-            logging.warning(
+            logging.info(
                 f"NCUT nystrom num_sample is larger than number of input samples, nyström approximation is not needed, setting num_sample={_n} and knn=1"
             )
             self.num_sample = _n

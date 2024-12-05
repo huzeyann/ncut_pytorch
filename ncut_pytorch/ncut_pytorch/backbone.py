@@ -714,6 +714,13 @@ def resample_position_embeddings(embeddings, h, w):
     return embeddings
 
 
+def resample_clip_positional_embedding(model, h, w, patch_size):
+    h, w = h // patch_size, w // patch_size
+    positional_embedding = resample_position_embeddings(model.visual.positional_embedding, h, w)
+    model.visual.positional_embedding = nn.Parameter(positional_embedding)
+    return model
+
+
 class OpenCLIPViT(nn.Module):
     def __init__(self, version='ViT-B-16', pretrained='laion2b_s34b_b88k', save_qkv=False):
         super().__init__()
@@ -734,14 +741,17 @@ class OpenCLIPViT(nn.Module):
         model, _, _ = open_clip.create_model_and_transforms(version, pretrained=pretrained)
         
         if version == 'ViT-B-16':
-            positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 42, 42)
+            # positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 42, 42)
+            self.patch_size = 16
         elif version == 'ViT-L-14':
-            positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 48, 48)
+            # positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 48, 48)
+            self.patch_size = 14
         elif version == 'ViT-H-14':
-            positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 48, 48)
+            # positional_embedding = resample_position_embeddings(model.visual.positional_embedding, 48, 48)
+            self.patch_size = 14
         else:
             raise ValueError(f"Unsupported version: {version}")
-        model.visual.positional_embedding = nn.Parameter(positional_embedding)
+        # model.visual.positional_embedding = nn.Parameter(positional_embedding)
         
         def new_forward(
                 self,
@@ -820,6 +830,7 @@ class OpenCLIPViT(nn.Module):
         self.save_qkv = True
             
     def forward(self, x):
+        self.model = resample_clip_positional_embedding(self.model, x.shape[-2], x.shape[-1], self.patch_size)
         out = self.model(x)
         attn_outputs, mlp_outputs, block_outputs = [], [], []
         if self.save_qkv:

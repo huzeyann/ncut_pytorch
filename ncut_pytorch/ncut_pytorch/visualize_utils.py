@@ -158,7 +158,7 @@ def rgb_from_tsne_2d(
         )
         perplexity = num_sample // 2
 
-    return _rgb_with_dimensionality_reduction(
+    x2d, rgb = _rgb_with_dimensionality_reduction(
         features=features,
         num_sample=num_sample,
         metric=metric,
@@ -169,6 +169,8 @@ def rgb_from_tsne_2d(
             "perplexity": perplexity,
         },
     )
+    
+    return x2d, rgb
 
 
 def rgb_from_tsne_3d(
@@ -200,7 +202,7 @@ def rgb_from_tsne_3d(
         )
         perplexity = num_sample // 2
 
-    return _rgb_with_dimensionality_reduction(
+    x3d, rgb = _rgb_with_dimensionality_reduction(
         features=features,
         num_sample=num_sample,
         metric=metric,
@@ -212,6 +214,7 @@ def rgb_from_tsne_3d(
         },
     )
 
+    return x3d, rgb
 
 def rgb_from_umap_2d(
     features: torch.Tensor,
@@ -235,7 +238,7 @@ def rgb_from_umap_2d(
     except ImportError:
         raise ImportError("umap import failed, please install `pip install umap-learn`")
 
-    return _rgb_with_dimensionality_reduction(
+    x2d, rgb = _rgb_with_dimensionality_reduction(
         features=features,
         num_sample=num_sample,
         metric=metric,
@@ -247,6 +250,8 @@ def rgb_from_umap_2d(
             "min_dist": min_dist,
         },
     )
+    
+    return x2d, rgb
 
 
 def rgb_from_umap_sphere(
@@ -278,7 +283,7 @@ def rgb_from_umap_sphere(
             torch.cos(X[:, 0]),
         ), dim=1)
 
-    return _rgb_with_dimensionality_reduction(
+    x3d, rgb = _rgb_with_dimensionality_reduction(
         features=features,
         num_sample=num_sample,
         metric=metric,
@@ -292,6 +297,8 @@ def rgb_from_umap_sphere(
         },
         transform_func=transform_func
     )
+    
+    return x3d, rgb
 
 
 def rgb_from_umap_3d(
@@ -316,7 +323,7 @@ def rgb_from_umap_3d(
     except ImportError:
         raise ImportError("umap import failed, please install `pip install umap-learn`")
 
-    return _rgb_with_dimensionality_reduction(
+    x3d, rgb = _rgb_with_dimensionality_reduction(
         features=features,
         num_sample=num_sample,
         metric=metric,
@@ -328,6 +335,8 @@ def rgb_from_umap_3d(
             "min_dist": min_dist,
         },
     )
+    
+    return x3d, rgb
 
 
 def flatten_sphere(X_3d):
