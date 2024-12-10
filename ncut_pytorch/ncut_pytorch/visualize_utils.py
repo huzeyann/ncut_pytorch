@@ -270,7 +270,6 @@ def rgb_from_cosine_tsne_3d(
         seed=seed, device=device,
         reduction=TSNE, reduction_dim=3, reduction_kwargs={
             "perplexity": perplexity,
-            "metric": "cosine",
         },
     )
     
