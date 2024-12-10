@@ -261,7 +261,7 @@ def rgb_from_cosine_tsne_3d(
     def rgb_from_cosine(X_3d: torch.Tensor, q: float) -> torch.Tensor:
         return rgb_from_3d_rgb_cube(cosine_to_rbf(X_3d), q=q)
 
-    return _rgb_with_dimensionality_reduction(
+    x3d, rgb = _rgb_with_dimensionality_reduction(
         features=features,
         num_sample=num_sample,
         metric="cosine",
@@ -273,6 +273,8 @@ def rgb_from_cosine_tsne_3d(
             "metric": "cosine",
         },
     )
+    
+    return x3d, rgb
 
 
 def rgb_from_umap_2d(
