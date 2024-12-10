@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Callable, Dict, Literal
+from typing import Any, Callable, Dict, Literal, Tuple
 
 import numpy as np
 import torch
@@ -100,7 +100,7 @@ def _rgb_with_dimensionality_reduction(
     reduction_dim: int,
     reduction_kwargs: Dict[str, Any],
     transform_func: Callable[[torch.Tensor], torch.Tensor] = _identity,
-):
+) -> Tuple[torch.Tensor, torch.Tensor]:
     subgraph_indices = run_subgraph_sampling(
         features,
         num_sample=num_sample,
@@ -215,6 +215,65 @@ def rgb_from_tsne_3d(
     )
 
     return x3d, rgb
+
+
+def rgb_from_cosine_tsne_3d(
+    features: torch.Tensor,
+    num_sample: int = 1000,
+    perplexity: int = 150,
+    device: str = None,
+    seed: int = 0,
+    q: float = 0.95,
+    knn: int = 10,
+    **kwargs: Any,
+):
+    """
+    Returns:
+        (torch.Tensor): Embedding in 3D, shape (n_samples, 3)
+        (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
+    """
+    try:
+        from sklearn.manifold import TSNE
+    except ImportError:
+        raise ImportError(
+            "sklearn import failed, please install `pip install scikit-learn`"
+        )
+    num_sample = min(num_sample, features.shape[0])
+    if perplexity > num_sample // 2:
+        logging.warning(
+            f"perplexity is larger than num_sample, set perplexity to {num_sample // 2}"
+        )
+        perplexity = num_sample // 2
+
+
+    def cosine_to_rbf(X: torch.Tensor) -> torch.Tensor:                                 # [B... x N x 3]
+        normalized_X = X / torch.norm(X, p=2, dim=-1, keepdim=True)                     # [B... x N x 3]
+        D = 1 - normalized_X @ normalized_X.mT                                          # [B... x N x N]
+
+        G = (D[..., :1, 1:] ** 2 + D[..., 1:, :1] ** 2 - D[..., 1:, 1:] ** 2) / 2       # [B... x (N - 1) x (N - 1)]
+        L, V = torch.linalg.eigh(G)                                                     # [B... x (N - 1)], [B... x (N - 1) x (N - 1)]
+        sqrtG = V[..., -3:] * (L[..., None, -3:] ** 0.5)                                # [B... x (N - 1) x 3]
+
+        Y = torch.cat((torch.zeros_like(sqrtG[..., :1, :]), sqrtG), dim=-2)             # [B... x N x 3]
+        Y = Y - torch.mean(Y, dim=-2, keepdim=True)
+        return Y
+
+    def rgb_from_cosine(X_3d: torch.Tensor, q: float) -> torch.Tensor:
+        return rgb_from_3d_rgb_cube(cosine_to_rbf(X_3d), q=q)
+
+    return _rgb_with_dimensionality_reduction(
+        features=features,
+        num_sample=num_sample,
+        metric="cosine",
+        rgb_func=rgb_from_cosine,
+        q=q, knn=knn,
+        seed=seed, device=device,
+        reduction=TSNE, reduction_dim=3, reduction_kwargs={
+            "perplexity": perplexity,
+            "metric": "cosine",
+        },
+    )
+
 
 def rgb_from_umap_2d(
     features: torch.Tensor,

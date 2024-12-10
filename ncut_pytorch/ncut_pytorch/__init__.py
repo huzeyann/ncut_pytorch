@@ -11,6 +11,7 @@ from .visualize_utils import (
     rgb_from_tsne_2d,
     rgb_from_umap_3d,
     rgb_from_umap_2d,
+    rgb_from_cosine_tsne_3d,
     rotate_rgb_cube,
     convert_to_lab_color,
     propagate_rgb_color,
