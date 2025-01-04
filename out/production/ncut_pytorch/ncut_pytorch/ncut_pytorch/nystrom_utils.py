@@ -72,52 +72,12 @@ def farthest_point_sampling(
     return kdline_fps_samples_idx
 
 
-def distance_from_features(
-    features: torch.Tensor,
-    features_B: torch.Tensor,
-    distance: Literal["cosine", "euclidean", "rbf"],
-    fill_diagonal: bool,
-):
-    """Compute affinity matrix from input features.
-
-    Args:
-        features (torch.Tensor): input features, shape (n_samples, n_features)
-        features_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
-        affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the edge weights
-            on weak connections, default 1.0
-        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'.
-        normalize_features (bool): normalize input features before computing affinity matrix
-
-    Returns:
-        (torch.Tensor): affinity matrix, shape (n_samples, n_samples)
-    """
-    # compute distance matrix from input features
-    if distance == "cosine":
-        if not check_if_normalized(features):
-            features = F.normalize(features, dim=-1)
-        if not check_if_normalized(features_B):
-            features_B = F.normalize(features_B, dim=-1)
-        D = 1 - features @ features_B.T
-    elif distance == "euclidean":
-        D = torch.cdist(features, features_B, p=2)
-    elif distance == "rbf":
-        D = torch.cdist(features, features_B, p=2) ** 2
-        D = D / (2 * features.var(dim=0).sum())
-    else:
-        raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
-
-    if fill_diagonal:
-        D[torch.arange(D.shape[0]), torch.arange(D.shape[0])] = 0
-    return D
-
-
 def propagate_knn(
     subgraph_output: torch.Tensor,
     inp_features: torch.Tensor,
     subgraph_features: torch.Tensor,
     knn: int = 10,
     distance: Literal["cosine", "euclidean", "rbf"] = "cosine",
-    affinity_focal_gamma: float = 1.0,
     chunk_size: int = 8096,
     device: str = None,
     use_tqdm: bool = False,
@@ -129,7 +89,7 @@ def propagate_knn(
         subgraph_output (torch.Tensor): output from subgraph, shape (num_sample, D)
         inp_features (torch.Tensor): features from existing nodes, shape (new_num_samples, n_features)
         subgraph_features (torch.Tensor): features from subgraph, shape (num_sample, n_features)
-        knn (int): number of KNN to propagate eige nvectors
+        knn (int): number of KNN to propagate eigenvectors
         distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
         chunk_size (int): chunk size for matrix multiplication
         device (str): device to use for computation, if None, will not change device
@@ -147,6 +107,11 @@ def propagate_knn(
 
     """
     device = subgraph_output.device if device is None else device
+    if distance == 'cosine':
+        if not check_if_normalized(inp_features):
+            inp_features = F.normalize(inp_features, dim=-1)
+        if not check_if_normalized(subgraph_features):
+            subgraph_features = F.normalize(subgraph_features, dim=-1)
 
     if knn == 1:
         return propagate_nearest(
@@ -162,43 +127,65 @@ def propagate_knn(
     # propagate eigen_vector from subgraph to full graph
     subgraph_output = subgraph_output.to(device)
     V_list = []
-    iterator = range(0, inp_features.shape[0], chunk_size)
-    try:
-        assert use_tqdm
-        from tqdm import tqdm
-        iterator = tqdm(iterator, "propagate by KNN")
-    except (AssertionError, ImportError):
-        pass
+    if use_tqdm:
+        try:
+            from tqdm import tqdm
+        except ImportError:
+            use_tqdm = False
+    if use_tqdm:
+        iterator = tqdm(range(0, inp_features.shape[0], chunk_size), "propagate by KNN")
+    else:
+        iterator = range(0, inp_features.shape[0], chunk_size)
 
     subgraph_features = subgraph_features.to(device)
     for i in iterator:
         end = min(i + chunk_size, inp_features.shape[0])
         _v = inp_features[i:end].to(device)
-        _D = distance_from_features(subgraph_features, _v, distance, False).mT
+        if distance == 'cosine':
+            _A = _v @ subgraph_features.T
+        elif distance == 'euclidean':
+            _A = - torch.cdist(_v, subgraph_features, p=2)
+        elif distance == 'rbf':
+            _A = - torch.cdist(_v, subgraph_features, p=2) ** 2
+        else:
+            raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
 
-        if knn is not None:
-            mask = torch.full_like(_D, True, dtype=torch.bool)
-            mask[torch.arange(end - i)[:, None], _D.topk(knn, dim=-1, largest=False).indices] = False
-            _D[mask] = torch.inf
-        _A = torch.softmax(-_D / affinity_focal_gamma, dim=-1)
+        # keep topk KNN for each row
+        topk_sim, topk_idx = _A.topk(knn, dim=-1, largest=True)
+        row_id = torch.arange(topk_idx.shape[0], device=_A.device)[:, None].expand(
+            -1, topk_idx.shape[1]
+        )
+        _A = torch.sparse_coo_tensor(
+            torch.stack([row_id, topk_idx], dim=-1).reshape(-1, 2).T,
+            topk_sim.reshape(-1),
+            size=(_A.shape[0], _A.shape[1]),
+            device=_A.device,
+        )
+        _A = _A.to_dense().to(dtype=subgraph_output.dtype)
+        # _A is KNN graph
+
+        _D = _A.sum(-1)
+        _A /= _D[:, None]
 
         _V = _A @ subgraph_output
+
         if move_output_to_cpu:
             _V = _V.cpu()
         V_list.append(_V)
 
     subgraph_output = torch.cat(V_list, dim=0)
+
     return subgraph_output
 
 
 def propagate_nearest(
-    subgraph_output: torch.Tensor,
-    inp_features: torch.Tensor,
-    subgraph_features: torch.Tensor,
-    distance: Literal["cosine", "euclidean", "rbf"] = "cosine",
-    chunk_size: int = 8096,
-    device: str = None,
-    move_output_to_cpu: bool = False,
+    subgraph_output,
+    inp_features,
+    subgraph_features,
+    distance="cosine",
+    chunk_size=8096,
+    device=None,
+    move_output_to_cpu=False,
 ):
     device = subgraph_output.device if device is None else device
     if distance == 'cosine':
@@ -214,8 +201,14 @@ def propagate_nearest(
     for i in range(0, inp_features.shape[0], chunk_size):
         end = min(i + chunk_size, inp_features.shape[0])
         _v = inp_features[i:end].to(device)
-        _A = -distance_from_features(subgraph_features, _v, distance, False).mT
-
+        if distance == 'cosine':
+            _A = _v @ subgraph_features.T
+        elif distance == 'euclidean':
+            _A = - torch.cdist(_v, subgraph_features, p=2)
+        elif distance == 'rbf':
+            _A = - torch.cdist(_v, subgraph_features, p=2) ** 2
+        else:
+            raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
         # keep top1 for each row
         top_idx = _A.argmax(dim=-1).cpu()
         _V = subgraph_output[top_idx]
@@ -224,6 +217,7 @@ def propagate_nearest(
         V_list.append(_V)
 
     subgraph_output = torch.cat(V_list, dim=0)
+
     return subgraph_output
 
 

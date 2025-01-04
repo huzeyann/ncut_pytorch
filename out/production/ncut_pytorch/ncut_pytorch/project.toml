@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ncut_pytorch"
+version = "1.8.10"
+authors = [
+  { name="Huzheng Yang", email="huze.yann@gmail.com" },
+]
+description = "Normalized Cut and Nyström Approximation"
+readme = "README.md"
+requires-python = ">=3"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Documentation = "https://ncut-pytorch.readthedocs.io/"
+Github = "https://github.com/huzeyann/ncut_pytorch/"

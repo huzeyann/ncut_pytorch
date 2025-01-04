@@ -1,0 +1,9 @@
+include ncut_pytorch/__init__.py
+include ncut_pytorch/ncut_pytorch.py
+include ncut_pytorch/backbone.py
+include ncut_pytorch/backbone_text.py
+include requirements.txt
+include MANIFEST.in
+include README.md
+include LICENSE
+include setup.py
