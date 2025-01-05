@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from sklearn.base import BaseEstimator
 
-from .nystrom_utils import (
+from .propagation_utils import (
     run_subgraph_sampling,
     propagate_knn,
     propagate_eigenvectors,

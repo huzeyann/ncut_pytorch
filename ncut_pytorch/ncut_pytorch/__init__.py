@@ -1,5 +1,5 @@
 from .ncut_pytorch import NCUT
-from .nystrom_utils import (
+from .propagation_utils import (
     propagate_eigenvectors,
     propagate_knn,
     quantile_normalize,
