@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "1.8.10"
+version = "1.8.12"
 authors = [
   { name="Huzheng Yang", email="huze.yann@gmail.com" },
 ]

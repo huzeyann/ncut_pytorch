@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from sklearn.base import BaseEstimator
 
-from .nystrom_utils import (
+from .propagation_utils import (
     run_subgraph_sampling,
     propagate_knn,
     propagate_eigenvectors,
@@ -100,7 +100,7 @@ def _rgb_with_dimensionality_reduction(
     reduction_dim: int,
     reduction_kwargs: Dict[str, Any],
     transform_func: Callable[[torch.Tensor], torch.Tensor] = _identity,
-) -> Tuple[np.ndarray, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     subgraph_indices = run_subgraph_sampling(
         features,
         num_sample=num_sample,
@@ -226,7 +226,7 @@ def rgb_from_cosine_tsne_3d(
     q: float = 0.95,
     knn: int = 10,
     **kwargs: Any,
-) -> Tuple[np.ndarray, torch.Tensor]:
+):
     """
     Returns:
         (torch.Tensor): Embedding in 3D, shape (n_samples, 3)
@@ -245,6 +245,7 @@ def rgb_from_cosine_tsne_3d(
         )
         perplexity = num_sample // 2
 
+
     def cosine_to_rbf(X: torch.Tensor) -> torch.Tensor:                                 # [B... x N x 3]
         normalized_X = X / torch.norm(X, p=2, dim=-1, keepdim=True)                     # [B... x N x 3]
         D = 1 - normalized_X @ normalized_X.mT                                          # [B... x N x N]
@@ -260,7 +261,7 @@ def rgb_from_cosine_tsne_3d(
     def rgb_from_cosine(X_3d: torch.Tensor, q: float) -> torch.Tensor:
         return rgb_from_3d_rgb_cube(cosine_to_rbf(X_3d), q=q)
 
-    return _rgb_with_dimensionality_reduction(
+    x3d, rgb = _rgb_with_dimensionality_reduction(
         features=features,
         num_sample=num_sample,
         metric="cosine",
@@ -269,9 +270,10 @@ def rgb_from_cosine_tsne_3d(
         seed=seed, device=device,
         reduction=TSNE, reduction_dim=3, reduction_kwargs={
             "perplexity": perplexity,
-            "metric": "cosine",
         },
     )
+    
+    return x3d, rgb
 
 
 def rgb_from_umap_2d(

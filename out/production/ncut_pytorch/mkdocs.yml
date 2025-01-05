@@ -1,0 +1,109 @@
+site_name: Nyström Normalized Cuts PyTorch
+
+repo_url: https://github.com/huzeyann/ncut_pytorch
+repo_name: ncut_pytorch
+
+theme:
+  name: "material"
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: light blue
+      accent: pink
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+
+  features:
+    - content.code.copy
+    - content.code.select
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - navigation.expand
+    - navigation.indexes
+    - navigation.sections
+    # - toc.integrate
+  icon:
+    repo: fontawesome/brands/github
+  logo: images/ncut.svg
+
+plugins:
+- search
+- autorefs
+- mkdocstrings:
+    enabled: !ENV [ENABLE_MKDOCSTRINGS, true]
+    default_handler: python
+    handlers:
+      python:
+        options:
+          show_source: true
+          show_root_heading: true
+          path: [.]
+
+nav:
+  - Install & Quick Start:
+    - Install & Quick Start: index.md
+    - How NCUT Works: how_ncut_works.md 
+    - NCUT and t-SNE/UMAP: compare.md
+
+  - Gallery:
+    - Gallery - Dataset: gallery_dataset.md
+    - Gallery - Model: gallery.md
+    - Application: gallery_application.md
+
+  - Guides:
+    - How to Get Better Segmentation: how_to_get_better_segmentation.md
+    - Aligned NCUT: alignedcut_vs_ncut.md
+    - Memory Usage: memory_usage.md
+    - Speed and Performance: speed_and_performance.md
+    - Gradient of NCUT: gradient_of_ncut.md
+
+  - Tutorials:
+    - Tutorial 1 - Quick Start: tutorials.md
+    - Tutorial 2 - Parameters: parameters.md
+    - Tutorial 3 - Add Nodes: add_nodes.md
+    - Tutorial 4 - Mixing Data: mixing_data.md
+    - Tutorial 5 - Coloring: coloring.md
+    - Application - Point Prompting: application_segmentation.md
+  
+  - API References:
+    - NCUT APIs: api_reference.md
+    - Backbone APIs: backbones.md
+    - Install Trouble Shooting: trouble_shooting.md
+  
+  - Demo: demo.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+copyright: Copyright &copy; 2024 Huzheng Yang
+
+extra:
+  analytics:
+    provider: google
+    property: G-8CPZDV5GR1
+  generator: true
+  social: 
+  - icon: fontawesome/brands/x-twitter
+    link: https://twitter.com/HuzeYann

@@ -1,15 +1,18 @@
 # %%
 import logging
 import math
-from typing import Literal
+from typing import Any, Callable, Dict, Literal, Optional, Tuple
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 
-from .nystrom_utils import (
+from .nystrom import (
+    solve_eig
+)
+from .propagation_utils import (
     run_subgraph_sampling,
     propagate_knn,
+    distance_from_features,
     check_if_normalized,
 )
 
@@ -168,6 +171,7 @@ class NCUT:
             self.subgraph_features,
             knn,
             distance=self.distance,
+            affinity_focal_gamma=self.affinity_focal_gamma,
             chunk_size=self.matmul_chunk_size,
             device=self.device,
             use_tqdm=self.verbose,
@@ -250,16 +254,98 @@ def nystrom_ncut(
         (torch.Tensor): eigenvectors, shape (n_samples, num_eig)
         (torch.Tensor): eigenvalues, sorted in descending order, shape (num_eig,)
         (torch.Tensor): sampled_indices used by Nystrom-like approximation subgraph, shape (num_sample,)
+    # """
+    eigen_vector, eigen_value, sampled_indices = nystrom(
+        features=features,
+        num_eig=num_eig,
+        num_sample=num_sample,
+        knn=knn,
+        sample_method=sample_method,
+        precomputed_sampled_indices=precomputed_sampled_indices,
+        distance=distance,
+        distance_transform_func=lambda D_: normalized_affinity_transform(D_, affinity_focal_gamma),
+        affinity_focal_gamma=affinity_focal_gamma,
+        indirect_connection=indirect_connection,
+        indirect_pca_dim=indirect_pca_dim,
+        eig_solver=eig_solver,
+        normalize_features=normalize_features,
+        matmul_chunk_size=matmul_chunk_size,
+        make_orthogonal=make_orthogonal,
+        verbose=verbose,
+        no_propagation=no_propagation,
+        device=device,
+        move_output_to_cpu=move_output_to_cpu,
+    )
+    return eigen_vector, eigen_value, sampled_indices
+
+
+def nystrom(
+    features: torch.Tensor,
+    num_eig: int,
+    num_sample: int,
+    knn: int,
+    sample_method: Literal["farthest", "random"],
+    precomputed_sampled_indices: torch.Tensor,
+    distance: Literal["cosine", "euclidean", "rbf"],
+    distance_transform_func: Callable[[torch.Tensor], torch.Tensor],
+    affinity_focal_gamma: float,
+    indirect_connection: bool,
+    indirect_pca_dim: int,
+    eig_solver: Literal["svd_lowrank", "lobpcg", "svd", "eigh"],
+    normalize_features: bool,
+    matmul_chunk_size: int,
+    make_orthogonal: bool,
+    verbose: bool,
+    no_propagation: bool,
+    device: str,
+    move_output_to_cpu: bool,
+):
+    """PyTorch implementation of Faster Nystrom Normalized cut.
+    Args:
+        features (torch.Tensor): feature matrix, shape (n_samples, n_features)
+        num_eig (int): default 100, number of top eigenvectors to return
+        num_sample (int): default 10000, number of samples for Nystrom-like approximation
+        knn (int): default 10, number of KNN for propagating eigenvectors from subgraph to full graph,
+            smaller knn will result in more sharp eigenvectors,
+        sample_method (str): sample method, 'farthest' (default) or 'random'
+            'farthest' is recommended for better approximation
+        precomputed_sampled_indices (torch.Tensor): precomputed sampled indices, shape (num_sample,)
+            override the sample_method, if not None
+        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
+        affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the weak edge weights,
+            resulting in more sharp eigenvectors, default 1.0
+        indirect_connection (bool): include indirect connection in the subgraph, default True
+        indirect_pca_dim (int): default 100, PCA dimension to reduce the node dimension, only applied to
+            the not sampled nodes, not applied to the sampled nodes
+        device (str): device to use for computation, if None, will not change device
+            a good practice is to pass features by CPU since it's usually large,
+            and move subgraph affinity to GPU to speed up eigenvector computation
+        eig_solver (str): eigen decompose solver, 'svd_lowrank' (default), 'lobpcg', 'svd', 'eigh'
+            'svd_lowrank' is recommended for large scale graph, it's the fastest
+            they correspond to torch.svd_lowrank, torch.lobpcg, torch.svd, torch.linalg.eigh
+        normalize_features (bool): normalize input features before computing affinity matrix,
+            default 'None' is True for cosine distance, False for euclidean distance and rbf
+        matmul_chunk_size (int): chunk size for matrix multiplication
+            large matrix multiplication is chunked to reduce memory usage,
+            smaller chunk size will reduce memory usage but slower computation, default 8096
+        make_orthogonal (bool): make eigenvectors orthogonal after propagation, default True
+        verbose (bool): show progress bar when propagating eigenvectors from subgraph to full graph
+        no_propagation (bool): if True, skip the eigenvector propagation step, only return the subgraph eigenvectors
+        move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
+    Returns:
+        (torch.Tensor): eigenvectors, shape (n_samples, num_eig)
+        (torch.Tensor): eigenvalues, sorted in descending order, shape (num_eig,)
+        (torch.Tensor): sampled_indices used by Nystrom-like approximation subgraph, shape (num_sample,)
     """
 
     # check if features dimension greater than num_eig
     if eig_solver in ["svd_lowrank", "lobpcg"]:
-        assert features.shape[0] > (
+        assert features.shape[0] >= (
             num_eig * 2
         ), "number of nodes should be greater than 2*num_eig"
     if eig_solver in ["svd", "eigh"]:
         assert (
-            features.shape[0] > num_eig
+            features.shape[0] >= num_eig
         ), "number of nodes should be greater than num_eig"
 
     assert distance in ["cosine", "euclidean", "rbf"], "distance should be 'cosine', 'euclidean', 'rbf'"
@@ -283,21 +369,18 @@ def nystrom_ncut(
     device = original_device if device is None else device
     sampled_features = sampled_features.to(device)
 
-    # compute affinity matrix on subgraph
-    A = affinity_from_features(
-        sampled_features, affinity_focal_gamma=affinity_focal_gamma,
-        distance=distance,
-    )
-
     # check if all nodes are sampled, if so, no need for Nystrom approximation
     not_sampled = torch.full((features.shape[0],), True)
     not_sampled[sampled_indices] = False
     _n_not_sampled = not_sampled.sum()
 
-    if _n_not_sampled == 0:
-        # if sampled all nodes, no need for nyström approximation
-        eigen_vector, eigen_value = ncut(A, num_eig, eig_solver=eig_solver)
-        return eigen_vector, eigen_value, sampled_indices
+    # compute affinity matrix on subgraph
+    D = distance_from_features(
+        sampled_features,
+        sampled_features,
+        distance=distance,
+        fill_diagonal=False
+    )
 
     # 1) PCA to reduce the node dimension for the not sampled nodes
     # 2) compute indirect connection on the PC nodes
@@ -309,10 +392,9 @@ def nystrom_ncut(
         feature_B = feature_B_T.T
         feature_B = feature_B.to(device)
 
-        B = affinity_from_features(
+        B = distance_from_features(
             sampled_features,
             feature_B,
-            affinity_focal_gamma=affinity_focal_gamma,
             distance=distance,
             fill_diagonal=False,
         )
@@ -323,10 +405,16 @@ def nystrom_ncut(
         P = (P + P.T) / 2
         # fill diagonal with 0
         P[torch.arange(P.shape[0]), torch.arange(P.shape[0])] = 0
-        A = A + P
+        D = D + P
 
     # compute normalized cut on the subgraph
-    eigen_vector, eigen_value = ncut(A, num_eig, eig_solver=eig_solver)
+    A = distance_transform_func(D)
+    eigen_vector, eigen_value = solve_eig(A, num_eig, eig_solver)
+
+    # if sampled all nodes, no need for nyström approximation
+    if _n_not_sampled == 0:
+        return eigen_vector, eigen_value, sampled_indices
+
     eigen_vector = eigen_vector.to(dtype=features.dtype, device=original_device)
     eigen_value = eigen_value.to(dtype=features.dtype, device=original_device)
 
@@ -340,6 +428,7 @@ def nystrom_ncut(
         sampled_features,
         knn,
         distance=distance,
+        affinity_focal_gamma=affinity_focal_gamma,
         chunk_size=matmul_chunk_size,
         device=device,
         use_tqdm=verbose,
@@ -353,18 +442,12 @@ def nystrom_ncut(
     return eigen_vector, eigen_value, sampled_indices
 
 
-def affinity_from_features(
-    features: torch.Tensor,
-    features_B: torch.Tensor = None,
-    affinity_focal_gamma: float = 1.0,
-    distance: Literal["cosine", "euclidean", "rbf"] = "cosine",
-    fill_diagonal: bool = True,
-):
-    """Compute affinity matrix from input features.
+def normalized_affinity_transform(D: torch.Tensor, affinity_focal_gamma: float):
+    """Compute Laplacian-normalized affinity matrix from input features.
 
     Args:
         features (torch.Tensor): input features, shape (n_samples, n_features)
-        feature_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
+        features_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
         affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the edge weights
             on weak connections, default 1.0
         distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'.
@@ -373,38 +456,14 @@ def affinity_from_features(
     Returns:
         (torch.Tensor): affinity matrix, shape (n_samples, n_samples)
     """
-    # compute affinity matrix from input features
+    # make sure D is symmetric
+    D = (D + D.T) / 2
+    A = torch.exp(-D / affinity_focal_gamma)
 
-    # if feature_B is not provided, compute affinity matrix on features x features
-    # if feature_B is provided, compute affinity matrix on features x feature_B
-    if features_B is not None:
-        assert not fill_diagonal, "fill_diagonal should be False when feature_B is None"
-    features_B = features if features_B is None else features_B
-
-    if distance == "cosine":
-        if not check_if_normalized(features):
-            features = F.normalize(features, dim=-1)
-        if not check_if_normalized(features_B):
-            features_B = F.normalize(features_B, dim=-1)
-        A = 1 - features @ features_B.T
-    elif distance == "euclidean":
-        A = torch.cdist(features, features_B, p=2)
-    elif distance == "rbf":
-        d = torch.cdist(features, features_B, p=2)
-        A = torch.pow(d, 2)
-    else:
-        raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
-
-    if fill_diagonal:
-        A[torch.arange(A.shape[0]), torch.arange(A.shape[0])] = 0
-
-    # torch.exp make affinity matrix positive definite,
-    # lower affinity_focal_gamma reduce the weak edge weights
-    if distance != "rbf":
-        A = torch.exp(-A / affinity_focal_gamma)
-    if distance == "rbf":
-        sigma = 2 * affinity_focal_gamma * features.var(dim=0).sum()
-        A = torch.exp(-A / sigma)
+    # symmetrical normalization; A = D^(-1/2) A D^(-1/2)
+    D = A.sum(dim=-1).detach().clone()
+    A /= torch.sqrt(D)[:, None]
+    A /= torch.sqrt(D)[None, :]
     return A
 
 
@@ -424,7 +483,6 @@ def ncut(
         (torch.Tensor): eigenvectors corresponding to the eigenvalues, shape (n_samples, num_eig)
         (torch.Tensor): eigenvalues of the eigenvectors, sorted in descending order
     """
-
     # make sure A is symmetric
     A = (A + A.T) / 2
 
@@ -434,32 +492,7 @@ def ncut(
     A /= torch.sqrt(D)[None, :]
 
     # compute eigenvectors
-    if eig_solver == "svd_lowrank":  # default
-        # only top q eigenvectors, fastest
-        eigen_vector, eigen_value, _ = torch.svd_lowrank(A, q=num_eig)
-    elif eig_solver == "lobpcg":
-        # only top k eigenvectors, fast
-        eigen_value, eigen_vector = torch.lobpcg(A, k=num_eig)
-    elif eig_solver == "svd":
-        # all eigenvectors, slow
-        eigen_vector, eigen_value, _ = torch.svd(A)
-    elif eig_solver == "eigh":
-        # all eigenvectors, slow
-        eigen_value, eigen_vector = torch.linalg.eigh(A)
-    else:
-        raise ValueError(
-            "eigen_solver should be 'lobpcg', 'svd_lowrank', 'svd' or 'eigh'"
-        )
-
-    # sort eigenvectors by eigenvalues, take top (descending order)
-    eigen_value = eigen_value.real
-    eigen_vector = eigen_vector.real
-    sort_order = torch.argsort(eigen_value, descending=True)[:num_eig]
-    eigen_value = eigen_value[sort_order]
-    eigen_vector = eigen_vector[:, sort_order]
-
-    # correct the random rotation (flipping sign) of eigenvectors
-    eigen_vector = correct_rotation(eigen_vector)
+    eigen_vector, eigen_value = solve_eig(A, num_eig, eig_solver)
 
     if eigen_value.min() < 0:
         logging.warning(
@@ -590,7 +623,7 @@ def axis_align(eigen_vectors, max_iter=300):
 
 try:
 
-    from .nystrom_utils import (
+    from .propagation_utils import (
         propagate_nearest,
         propagate_eigenvectors,
         quantile_normalize,
@@ -604,7 +637,6 @@ try:
         rgb_from_tsne_2d,
         rgb_from_umap_3d,
         rgb_from_umap_2d,
-        rgb_from_cosine_tsne_3d,
         rotate_rgb_cube,
         convert_to_lab_color,
         _transform_heatmap,

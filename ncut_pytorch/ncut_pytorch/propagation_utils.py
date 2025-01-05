@@ -69,7 +69,7 @@ def farthest_point_sampling(
     kdline_fps_samples_idx = fpsample.bucket_fps_kdline_sampling(
         features.cpu().numpy(), num_sample, h
     ).astype(np.int64)
-    return kdline_fps_samples_idx
+    return torch.from_numpy(kdline_fps_samples_idx)
 
 
 def distance_from_features(
@@ -79,7 +79,6 @@ def distance_from_features(
     fill_diagonal: bool,
 ):
     """Compute affinity matrix from input features.
-
     Args:
         features (torch.Tensor): input features, shape (n_samples, n_features)
         features_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
@@ -109,6 +108,43 @@ def distance_from_features(
     if fill_diagonal:
         D[torch.arange(D.shape[0]), torch.arange(D.shape[0])] = 0
     return D
+
+
+def affinity_from_features(
+    features: torch.Tensor,
+    features_B: torch.Tensor = None,
+    affinity_focal_gamma: float = 1.0,
+    distance: Literal["cosine", "euclidean", "rbf"] = "cosine",
+    fill_diagonal: bool = True,
+):
+    """Compute affinity matrix from input features.
+
+    Args:
+        features (torch.Tensor): input features, shape (n_samples, n_features)
+        features_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
+        affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the edge weights
+            on weak connections, default 1.0
+        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'.
+        normalize_features (bool): normalize input features before computing affinity matrix
+
+    Returns:
+        (torch.Tensor): affinity matrix, shape (n_samples, n_samples)
+    """
+    # compute affinity matrix from input features
+
+    # if feature_B is not provided, compute affinity matrix on features x features
+    # if feature_B is provided, compute affinity matrix on features x feature_B
+    if features_B is not None:
+        assert not fill_diagonal, "fill_diagonal should be False when feature_B is None"
+    features_B = features if features_B is None else features_B
+
+    # compute distance matrix from input features
+    D = distance_from_features(features, features_B, distance, fill_diagonal)
+
+    # torch.exp make affinity matrix positive definite,
+    # lower affinity_focal_gamma reduce the weak edge weights
+    A = torch.exp(-D / affinity_focal_gamma)
+    return A
 
 
 def propagate_knn(
@@ -174,13 +210,13 @@ def propagate_knn(
     for i in iterator:
         end = min(i + chunk_size, inp_features.shape[0])
         _v = inp_features[i:end].to(device)
-        _D = distance_from_features(subgraph_features, _v, distance, False).mT
+        _A = affinity_from_features(subgraph_features, _v, affinity_focal_gamma, distance, False).mT
 
         if knn is not None:
-            mask = torch.full_like(_D, True, dtype=torch.bool)
-            mask[torch.arange(end - i)[:, None], _D.topk(knn, dim=-1, largest=False).indices] = False
-            _D[mask] = torch.inf
-        _A = torch.softmax(-_D / affinity_focal_gamma, dim=-1)
+            mask = torch.full_like(_A, True, dtype=torch.bool)
+            mask[torch.arange(end - i)[:, None], _A.topk(knn, dim=-1, largest=True).indices] = False
+            _A[mask] = 0.0
+        _A = F.normalize(_A, p=1, dim=-1)
 
         _V = _A @ subgraph_output
         if move_output_to_cpu:

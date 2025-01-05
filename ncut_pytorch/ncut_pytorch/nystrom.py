@@ -3,6 +3,9 @@ from typing import Any, Callable, Dict, Literal, Optional, Tuple
 import torch
 
 
+EigSolverOptions = Literal["svd_lowrank", "lobpcg", "svd", "eigh"]
+
+
 class OnlineKernel:
     def fit(self, features: torch.Tensor) -> None:                          # [n x d]
         raise NotImplementedError()
@@ -10,22 +13,17 @@ class OnlineKernel:
     def update(self, features: torch.Tensor) -> torch.Tensor:               # [m x d] -> [m x n]
         raise NotImplementedError()
 
-    def transform(self, featuers: torch.Tensor = None) -> torch.Tensor:     # [m x d] -> [m x n]
+    def transform(self, features: torch.Tensor = None) -> torch.Tensor:     # [m x d] -> [m x n]
         raise NotImplementedError()
 
 
 class OnlineNystrom:
-    SolverOptions = Literal["svd_lowrank", "lobpcg", "svd", "eigh"]
-
     def __init__(
         self,
         n_components: int,
         kernel: OnlineKernel,
-        indirect_pca_dim: int = None,
-        eig_solver: SolverOptions = "svd_lowrank",
-        make_orthogonal: bool = True,
-        device: str = None,
-        verbose: bool = False,
+        indirect_pca_dim: int,
+        eig_solver: EigSolverOptions,
     ):
         """
         Args:
@@ -33,18 +31,11 @@ class OnlineNystrom:
             kernel (OnlineKernel): Online kernel that computes pairwise matrix entries from input features and allows updates
             indirect_pca_dim (int): when compute indirect connection, PCA to reduce the node dimension,
             eig_solver (str): eigen decompose solver, ['svd_lowrank', 'lobpcg', 'svd', 'eigh'].
-            make_orthogonal (bool): make eigenvectors orthogonal post-hoc
-            device (str): device to use for eigen computation, move to GPU to speeds up a bit (~5x faster)
-            verbose (bool): progress bar
         """
         self.n_components: int = n_components
         self.kernel: OnlineKernel = kernel
         self.indirect_pca_dim: int = indirect_pca_dim
-        self.eig_solver: OnlineNystrom.SolverOptions = eig_solver
-        self.make_orthogonal = make_orthogonal
-
-        self.device: str = device
-        self.verbose: bool = verbose
+        self.eig_solver: EigSolverOptions = eig_solver
 
         # Anchor matrices
         self.anchor_features: torch.Tensor = None   # [n x d]
@@ -56,35 +47,43 @@ class OnlineNystrom:
         # Updated matrices
         self.S: torch.Tensor = None                 # [n x n]
         self.transform_matrix: torch.Tensor = None  # [n x n_components]
+        self.LS: torch.Tensor = None                # [n]
 
-    def fit(self, features: torch.Tensor) -> None:
+    def fit(self, features: torch.Tensor):
+        OnlineNystrom.fit_transform(self, features)
+        return self
+
+    def fit_transform(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         self.anchor_features = features
 
         self.kernel.fit(self.anchor_features)
-        self.A = self.S = self.kernel.transform()                                               # [n x n]
+        self.A = self.S = self.kernel.transform()                                                   # [n x n]
 
-        U, L = solve_eig(self.A, max(self.indirect_pca_dim, self.n_components), self.eig_solver)# [n x ?], [?]
-        self.Ahinv_UL = (U * (L ** -0.5))[:, :self.indirect_pca_dim]                            # [n x indirect_pca_dim]
-        self.Ahinv_VT = U[:, :self.indirect_pca_dim].mT                                         # [indirect_pca_dim x n]
-        self.Ahinv = self.Ahinv_UL @ self.Ahinv_VT                                              # [n x n]
+        U, L = solve_eig(self.A, max(self.indirect_pca_dim, self.n_components), self.eig_solver)    # [n x ?], [?]
+        self.Ahinv_UL = (U * (L ** -0.5))[:, :self.indirect_pca_dim]                                # [n x indirect_pca_dim]
+        self.Ahinv_VT = U[:, :self.indirect_pca_dim].mT                                             # [indirect_pca_dim x n]
+        self.Ahinv = self.Ahinv_UL @ self.Ahinv_VT                                                  # [n x n]
 
-        self.transform_matrix = (U / L)[:, :self.n_components]                                  # [n x n_components]
+        self.transform_matrix = (U / L)[:, :self.n_components]                                      # [n x n_components]
+        self.LS = L[:self.n_components]                                                             # [n_components]
+        return U[:, :self.n_components], L[:self.n_components]                                      # [n x n_components], [n_components]
 
-    def update(self, features: torch.Tensor) -> torch.Tensor:
-        B = self.kernel.update(features).mT                                                     # [n x m]
-        compressed_B = self.Ahinv_VT @ B                                                        # [indirect_pca_dim x m]
-        self.S = self.S + self.Ahinv_UL @ (compressed_B @ compressed_B.mT) @ self.Ahinv_UL.mT   # [n x n]
+    def update(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        B = self.kernel.update(features).mT                                                         # [n x m]
+        compressed_B = self.Ahinv_VT @ B                                                            # [indirect_pca_dim x m]
 
-        US, LS = solve_eig(self.S, self.n_components, self.eig_solver)                          # [n x n_components], [n_components]
-        self.transform_matrix = self.Ahinv @ US * (LS ** -0.5)                                  # [n x n_components]
-        return B.mT @ self.transform_matrix                                                     # [m x n_components]
+        self.S = self.S + self.Ahinv_UL @ (compressed_B @ compressed_B.mT) @ self.Ahinv_UL.mT       # [n x n]
+        US, self.LS = solve_eig(self.S, self.n_components, self.eig_solver)                         # [n x n_components], [n_components]
 
-    def transform(self, features: torch.Tensor = None) -> torch.Tensor:
+        self.transform_matrix = self.Ahinv @ US * (self.LS ** -0.5)                                 # [n x n_components]
+        return B.mT @ self.transform_matrix, self.LS                                                # [m x n_components], [n_components]
+
+    def transform(self, features: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
         if features is None:
-            B = self.A                                                                          # [n x n]
+            B = self.A                                                                              # [n x n]
         else:
-            B = self.kernel.transform(features).mT                                              # [n x m]
-        return B.mT @ self.transform_matrix                                                     # [m x n_components]
+            B = self.kernel.transform(features).mT                                                  # [n x m]
+        return B.mT @ self.transform_matrix, self.LS                                                # [m x n_components], [n_components]
 
 
 def solve_eig(
