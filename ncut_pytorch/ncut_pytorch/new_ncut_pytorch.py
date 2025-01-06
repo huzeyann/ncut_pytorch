@@ -108,7 +108,6 @@ class NewNCUT(OnlineNystrom):
         eig_solver: Literal["svd_lowrank", "lobpcg", "svd", "eigh"] = "svd_lowrank",
         normalize_features: bool = None,
         matmul_chunk_size: int = 8096,
-        make_orthogonal: bool = False,
         verbose: bool = False,
     ):
         """
@@ -124,7 +123,6 @@ class NewNCUT(OnlineNystrom):
                 farthest point sampling is recommended for better Nystrom-approximation accuracy
             distance (str): distance metric for affinity matrix, ['cosine', 'euclidean', 'rbf'].
             indirect_connection (bool): include indirect connection in the Nystrom-like approximation
-            indirect_pca_dim (int): when compute indirect connection, PCA to reduce the node dimension,
             device (str): device to use for eigen computation,
                 move to GPU to speeds up a bit (~5x faster)
             move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
@@ -132,7 +130,6 @@ class NewNCUT(OnlineNystrom):
             normalize_features (bool): normalize input features before computing affinity matrix,
                 default 'None' is True for cosine distance, False for euclidean distance and rbf
             matmul_chunk_size (int): chunk size for large-scale matrix multiplication
-            make_orthogonal (bool): make eigenvectors orthogonal post-hoc
             verbose (bool): progress bar
         """
         OnlineNystrom.__init__(
@@ -153,7 +150,6 @@ class NewNCUT(OnlineNystrom):
                 self.normalize_features = True
             if distance in ["euclidean", "rbf"]:
                 self.normalize_features = False
-        self.make_orthogonal = make_orthogonal
 
         self.device = device
         self.move_output_to_cpu = move_output_to_cpu
