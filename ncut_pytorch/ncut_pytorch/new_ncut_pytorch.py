@@ -24,12 +24,10 @@ class LaplacianKernel(OnlineKernel):
         affinity_focal_gamma: float,
         distance: DistanceOptions,
         eig_solver: EigSolverOptions,
-        inverse_approximation_dim: int,
     ):
         self.affinity_focal_gamma = affinity_focal_gamma
         self.distance: DistanceOptions = distance
         self.eig_solver: EigSolverOptions = eig_solver
-        self.inverse_approximation_dim: int = inverse_approximation_dim
 
         # Anchor matrices
         self.anchor_features: torch.Tensor = None               # [n x d]
@@ -50,9 +48,9 @@ class LaplacianKernel(OnlineKernel):
         )                                                       # [n x n]
         U, L = solve_eig(
             self.A,
-            num_eig=max(self.inverse_approximation_dim, features.shape[-1]) + 1,
+            num_eig=features.shape[-1] + 1,
             eig_solver=self.eig_solver,
-        )                                                       # [n x (? + 1)], [? + 1]
+        )                                                       # [n x (d + 1)], [d + 1]
         self.Ainv = U @ torch.diag(1 / L) @ U.mT                # [n x n]
         self.a_r = torch.sum(self.A, dim=-1)                    # [n]
         self.b_r = torch.zeros_like(self.a_r)                   # [n]
@@ -140,7 +138,7 @@ class NewNCUT(OnlineNystrom):
         OnlineNystrom.__init__(
             self,
             n_components=num_eig,
-            kernel=LaplacianKernel(affinity_focal_gamma, distance, eig_solver, num_eig),
+            kernel=LaplacianKernel(affinity_focal_gamma, distance, eig_solver),
             eig_solver=eig_solver,
             chunk_size=matmul_chunk_size,
         )
