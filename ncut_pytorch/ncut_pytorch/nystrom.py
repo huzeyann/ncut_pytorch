@@ -22,7 +22,6 @@ class OnlineNystrom:
         self,
         n_components: int,
         kernel: OnlineKernel,
-        indirect_pca_dim: int,
         eig_solver: EigSolverOptions,
         chunk_size: int = 8192,
     ):
@@ -35,8 +34,8 @@ class OnlineNystrom:
         """
         self.n_components: int = n_components
         self.kernel: OnlineKernel = kernel
-        self.indirect_pca_dim: int = indirect_pca_dim
         self.eig_solver: EigSolverOptions = eig_solver
+        self.inverse_approximation_dim: int = None
 
         self.chunk_size = chunk_size
 
@@ -62,9 +61,14 @@ class OnlineNystrom:
         self.kernel.fit(self.anchor_features)
         self.A = self.S = self.kernel.transform()                                                   # [n x n]
 
-        U, L = solve_eig(self.A, max(self.indirect_pca_dim, self.n_components), self.eig_solver)    # [n x ?], [?]
-        self.Ahinv_UL = (U * (L ** -0.5))[:, :self.indirect_pca_dim]                                # [n x indirect_pca_dim]
-        self.Ahinv_VT = U[:, :self.indirect_pca_dim].mT                                             # [indirect_pca_dim x n]
+        self.inverse_approximation_dim = max(self.n_components, features.shape[-1]) + 1
+        U, L = solve_eig(
+            self.A,
+            num_eig=self.inverse_approximation_dim,
+            eig_solver=self.eig_solver,
+        )                                                                                           # [n x (? + 1)], [? + 1]
+        self.Ahinv_UL = U * (L ** -0.5)                                                             # [n x (? + 1)]
+        self.Ahinv_VT = U.mT                                                                        # [(? + 1) x n]
         self.Ahinv = self.Ahinv_UL @ self.Ahinv_VT                                                  # [n x n]
 
         self.transform_matrix = (U / L)[:, :self.n_components]                                      # [n x n_components]
@@ -79,11 +83,11 @@ class OnlineNystrom:
             for chunk in chunks:
                 self.kernel.update(chunk)
 
-            compressed_BBT = torch.zeros((self.indirect_pca_dim, self.indirect_pca_dim))                # [indirect_pca_dim x indirect_pca_dim]
+            compressed_BBT = torch.zeros((self.inverse_approximation_dim, self.inverse_approximation_dim))  # [(? + 1) x (? + 1))]
             for i, chunk in enumerate(chunks):
                 _B = self.kernel.transform(chunk).mT                                                    # [n x _m]
-                _compressed_B = self.Ahinv_VT @ _B                                                      # [indirect_pca_dim x _m]
-                compressed_BBT = compressed_BBT + _compressed_B @ _compressed_B.mT                      # [indirect_pca_dim x indirect_pca_dim]
+                _compressed_B = self.Ahinv_VT @ _B                                                      # [(? + 1) x _m]
+                compressed_BBT = compressed_BBT + _compressed_B @ _compressed_B.mT                      # [(? + 1) x (? + 1)]
             self.S = self.S + self.Ahinv_UL @ compressed_BBT @ self.Ahinv_UL.mT                         # [n x n]
             US, self.LS = solve_eig(self.S, self.n_components, self.eig_solver)                         # [n x n_components], [n_components]
             self.transform_matrix = self.Ahinv @ US * (self.LS ** -0.5)                                 # [n x n_components]
