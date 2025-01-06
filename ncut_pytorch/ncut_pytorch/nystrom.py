@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Literal, Optional, Tuple
+from typing import Literal, Tuple
 
 import torch
 
@@ -24,6 +24,7 @@ class OnlineNystrom:
         kernel: OnlineKernel,
         indirect_pca_dim: int,
         eig_solver: EigSolverOptions,
+        chunk_size: int = 8192,
     ):
         """
         Args:
@@ -36,6 +37,8 @@ class OnlineNystrom:
         self.kernel: OnlineKernel = kernel
         self.indirect_pca_dim: int = indirect_pca_dim
         self.eig_solver: EigSolverOptions = eig_solver
+
+        self.chunk_size = chunk_size
 
         # Anchor matrices
         self.anchor_features: torch.Tensor = None   # [n x d]
@@ -69,21 +72,54 @@ class OnlineNystrom:
         return U[:, :self.n_components], L[:self.n_components]                                      # [n x n_components], [n_components]
 
     def update(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        B = self.kernel.update(features).mT                                                         # [n x m]
-        compressed_B = self.Ahinv_VT @ B                                                            # [indirect_pca_dim x m]
+        n_chunks = -(-len(features) // self.chunk_size)
+        if n_chunks > 1:
+            """ Chunked version """
+            chunks = torch.chunk(features, n_chunks, dim=0)
+            for chunk in chunks:
+                self.kernel.update(chunk)
 
-        self.S = self.S + self.Ahinv_UL @ (compressed_B @ compressed_B.mT) @ self.Ahinv_UL.mT       # [n x n]
-        US, self.LS = solve_eig(self.S, self.n_components, self.eig_solver)                         # [n x n_components], [n_components]
+            compressed_BBT = torch.zeros((self.indirect_pca_dim, self.indirect_pca_dim))                # [indirect_pca_dim x indirect_pca_dim]
+            for i, chunk in enumerate(chunks):
+                _B = self.kernel.transform(chunk).mT                                                    # [n x _m]
+                _compressed_B = self.Ahinv_VT @ _B                                                      # [indirect_pca_dim x _m]
+                compressed_BBT = compressed_BBT + _compressed_B @ _compressed_B.mT                      # [indirect_pca_dim x indirect_pca_dim]
+            self.S = self.S + self.Ahinv_UL @ compressed_BBT @ self.Ahinv_UL.mT                         # [n x n]
+            US, self.LS = solve_eig(self.S, self.n_components, self.eig_solver)                         # [n x n_components], [n_components]
+            self.transform_matrix = self.Ahinv @ US * (self.LS ** -0.5)                                 # [n x n_components]
 
-        self.transform_matrix = self.Ahinv @ US * (self.LS ** -0.5)                                 # [n x n_components]
-        return B.mT @ self.transform_matrix, self.LS                                                # [m x n_components], [n_components]
+            VS = []
+            for chunk in chunks:
+                VS.append(self.kernel.transform(chunk) @ self.transform_matrix)                         # [_m x n_components]
+            VS = torch.cat(VS, dim=0)
+            return VS, self.LS                                                                          # [m x n_components], [n_components]
+        else:
+            """ Unchunked version """
+            B = self.kernel.update(features).mT                                                         # [n x m]
+            compressed_B = self.Ahinv_VT @ B                                                            # [indirect_pca_dim x m]
+
+            self.S = self.S + self.Ahinv_UL @ (compressed_B @ compressed_B.mT) @ self.Ahinv_UL.mT       # [n x n]
+            US, self.LS = solve_eig(self.S, self.n_components, self.eig_solver)                         # [n x n_components], [n_components]
+            self.transform_matrix = self.Ahinv @ US * (self.LS ** -0.5)                                 # [n x n_components]
+
+            return B.mT @ self.transform_matrix, self.LS                                                # [m x n_components], [n_components]
 
     def transform(self, features: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
         if features is None:
-            B = self.A                                                                              # [n x n]
+            VS = self.A @ self.transform_matrix                                                     # [n x n_components]
         else:
-            B = self.kernel.transform(features).mT                                                  # [n x m]
-        return B.mT @ self.transform_matrix, self.LS                                                # [m x n_components], [n_components]
+            n_chunks = -(-len(features) // self.chunk_size)
+            if n_chunks > 1:
+                """ Chunked version """
+                chunks = torch.chunk(features, n_chunks, dim=0)
+                VS = []
+                for chunk in chunks:
+                    VS.append(self.kernel.transform(chunk) @ self.transform_matrix)                     # [_m x n_components]
+                VS = torch.cat(VS, dim=0)
+            else:
+                """ Unchunked version """
+                VS = self.kernel.transform(features) @ self.transform_matrix                            # [m x n_components]
+        return VS, self.LS                                                                          # [m x n_components], [n_components]
 
 
 def solve_eig(

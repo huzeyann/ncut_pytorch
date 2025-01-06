@@ -23,13 +23,10 @@ class LaplacianKernel(OnlineKernel):
         self,
         affinity_focal_gamma: float,
         distance: DistanceOptions,
-        inverse_approximation_dim: int,
         eig_solver: EigSolverOptions,
     ):
-
         self.affinity_focal_gamma = affinity_focal_gamma
         self.distance: DistanceOptions = distance
-        self.inverse_approximation_dim: int = inverse_approximation_dim
         self.eig_solver: EigSolverOptions = eig_solver
 
         # Anchor matrices
@@ -45,16 +42,12 @@ class LaplacianKernel(OnlineKernel):
         self.anchor_features = features                         # [n x d]
         self.A = affinity_from_features(
             self.anchor_features,                               # [n x d]
-            self.anchor_features,                               # [n x d]
             affinity_focal_gamma=self.affinity_focal_gamma,
             distance=self.distance,
             fill_diagonal=False,
         )                                                       # [n x n]
-        if self.inverse_approximation_dim is not None:
-            U, L = solve_eig(self.A, self.inverse_approximation_dim, self.eig_solver)   # [n x inverse_approximation_dim], [inverse_approximation_dim]
-            self.Ainv = U @ torch.diag(1 / L) @ U.mT            # [n x n]
-        else:
-            self.Ainv = torch.inverse(self.A)
+        U, L = solve_eig(self.A, features.shape[-1], self.eig_solver)   # [n x d], [d]
+        self.Ainv = U @ torch.diag(1 / L) @ U.mT                # [n x n]
         self.a_r = torch.sum(self.A, dim=-1)                    # [n]
         self.b_r = torch.zeros_like(self.a_r)                   # [n]
 
@@ -142,9 +135,10 @@ class NewNCUT(OnlineNystrom):
         OnlineNystrom.__init__(
             self,
             num_eig,
-            LaplacianKernel(affinity_focal_gamma, distance, num_eig, eig_solver),
+            LaplacianKernel(affinity_focal_gamma, distance, eig_solver),
             indirect_pca_dim=indirect_pca_dim if indirect_connection else 0,
             eig_solver=eig_solver,
+            chunk_size=matmul_chunk_size,
         )
         self.knn = knn
         self.num_sample = num_sample
