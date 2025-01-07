@@ -97,7 +97,6 @@ class NewNCUT(OnlineNystrom):
     def __init__(
         self,
         num_eig: int = 100,
-        knn: int = 10,
         affinity_focal_gamma: float = 1.0,
         num_sample: int = 10000,
         sample_method: Literal["farthest", "random"] = "farthest",
@@ -113,8 +112,6 @@ class NewNCUT(OnlineNystrom):
         """
         Args:
             num_eig (int): number of top eigenvectors to return
-            knn (int): number of KNN for propagating eigenvectors from subgraph to full graph,
-                smaller knn result in more sharp eigenvectors.
             affinity_focal_gamma (float): affinity matrix temperature, lower t reduce the not-so-connected edge weights,
                 smaller t result in more sharp eigenvectors.
             num_sample (int): number of samples for Nystrom-like approximation,
@@ -139,7 +136,6 @@ class NewNCUT(OnlineNystrom):
             eig_solver=eig_solver,
             chunk_size=matmul_chunk_size,
         )
-        self.knn = knn
         self.num_sample = num_sample
         self.sample_method = sample_method
         self.distance = distance
@@ -168,10 +164,9 @@ class NewNCUT(OnlineNystrom):
         _n = features.shape[0]
         if self.num_sample >= _n:
             logging.info(
-                f"NCUT nystrom num_sample is larger than number of input samples, nyström approximation is not needed, setting num_sample={_n} and knn=1"
+                f"NCUT nystrom num_sample is larger than number of input samples, nyström approximation is not needed, setting num_sample={_n}"
             )
             self.num_sample = _n
-            self.knn = 1
 
         # check if features dimension greater than num_eig
         if self.eig_solver in ["svd_lowrank", "lobpcg"]:
