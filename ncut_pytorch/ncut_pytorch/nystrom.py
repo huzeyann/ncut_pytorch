@@ -29,7 +29,6 @@ class OnlineNystrom:
         Args:
             n_components (int): number of top eigenvectors to return
             kernel (OnlineKernel): Online kernel that computes pairwise matrix entries from input features and allows updates
-            indirect_pca_dim (int): when compute indirect connection, PCA to reduce the node dimension,
             eig_solver (str): eigen decompose solver, ['svd_lowrank', 'lobpcg', 'svd', 'eigh'].
         """
         self.n_components: int = n_components
@@ -163,23 +162,9 @@ def solve_eig(
     # sort eigenvectors by eigenvalues, take top (descending order)
     eigen_value = eigen_value.real
     eigen_vector = eigen_vector.real
-    sort_order = torch.argsort(eigen_value, descending=True)[:num_eig]
-    eigen_value = eigen_value[sort_order]
-    eigen_vector = eigen_vector[:, sort_order]
+    eigen_value, indices = torch.topk(eigen_value, k=num_eig, dim=0)
+    eigen_vector = eigen_vector[:, indices]
 
     # correct the random rotation (flipping sign) of eigenvectors
-    eigen_vector = correct_rotation(eigen_vector)
+    eigen_vector = eigen_vector * torch.sum(eigen_vector, dim=0).sign()
     return eigen_vector, eigen_value
-
-
-def correct_rotation(eigen_vector):
-    # correct the random rotation (flipping sign) of eigenvectors
-    rand_w = torch.ones(
-        eigen_vector.shape[0], device=eigen_vector.device, dtype=eigen_vector.dtype
-    )
-    s = rand_w[None, :] @ eigen_vector
-    s = s.sign()
-    return eigen_vector * s
-
-
-

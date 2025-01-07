@@ -100,12 +100,11 @@ class NewNCUT(OnlineNystrom):
         affinity_focal_gamma: float = 1.0,
         num_sample: int = 10000,
         sample_method: Literal["farthest", "random"] = "farthest",
-        distance: Literal["cosine", "euclidean", "rbf"] = "cosine",
-        indirect_connection: bool = False,
+        distance: DistanceOptions = "cosine",
+        eig_solver: EigSolverOptions = "svd_lowrank",
+        normalize_features: bool = None,
         device: str = None,
         move_output_to_cpu: bool = False,
-        eig_solver: Literal["svd_lowrank", "lobpcg", "svd", "eigh"] = "svd_lowrank",
-        normalize_features: bool = None,
         matmul_chunk_size: int = 8096,
         verbose: bool = False,
     ):
@@ -119,13 +118,12 @@ class NewNCUT(OnlineNystrom):
             sample_method (str): subgraph sampling, ['farthest', 'random'].
                 farthest point sampling is recommended for better Nystrom-approximation accuracy
             distance (str): distance metric for affinity matrix, ['cosine', 'euclidean', 'rbf'].
-            indirect_connection (bool): include indirect connection in the Nystrom-like approximation
-            device (str): device to use for eigen computation,
-                move to GPU to speeds up a bit (~5x faster)
-            move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
             eig_solver (str): eigen decompose solver, ['svd_lowrank', 'lobpcg', 'svd', 'eigh'].
             normalize_features (bool): normalize input features before computing affinity matrix,
                 default 'None' is True for cosine distance, False for euclidean distance and rbf
+            device (str): device to use for eigen computation,
+                move to GPU to speeds up a bit (~5x faster)
+            move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
             matmul_chunk_size (int): chunk size for large-scale matrix multiplication
             verbose (bool): progress bar
         """
@@ -139,7 +137,6 @@ class NewNCUT(OnlineNystrom):
         self.num_sample = num_sample
         self.sample_method = sample_method
         self.distance = distance
-        self.indirect_connection = indirect_connection
         self.normalize_features = normalize_features
         if self.normalize_features is None:
             if distance in ["cosine"]:
@@ -199,10 +196,7 @@ class NewNCUT(OnlineNystrom):
         if _n_not_sampled > 0:
             unsampled_indices = torch.full((_n,), True).scatter(0, sampled_indices, False)
             unsampled_features = features[unsampled_indices].to(device)
-            if self.indirect_connection:
-                V_unsampled, _ = OnlineNystrom.update(self, unsampled_features)
-            else:
-                V_unsampled, _ = OnlineNystrom.transform(self, unsampled_features)
+            V_unsampled, _ = OnlineNystrom.update(self, unsampled_features)
         else:
             unsampled_indices = V_unsampled = None
         return unsampled_indices, V_unsampled
@@ -248,5 +242,3 @@ class NewNCUT(OnlineNystrom):
         else:
             V = V_sampled
         return V, L
-
-
