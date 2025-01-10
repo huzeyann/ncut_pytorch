@@ -489,8 +489,10 @@ def rgb_from_2d_colormap(X_2d, q=0.95):
     cmap = ColorMap2DCubeDiagonal()
     xy = xy.cpu().numpy()
     len_x, len_y = cmap._cmap_data.shape[:2]
-    x = (xy[:, 0] * (len_x - 1)).astype(int)
-    y = (xy[:, 1] * (len_y - 1)).astype(int)
+    x = (xy[:, 0] * (len_x - 1)).astype(np.int64)
+    y = (xy[:, 1] * (len_y - 1)).astype(np.int64)
+    x = np.clip(x, 0, len_x - 1)
+    y = np.clip(y, 0, len_y - 1)
     rgb = cmap._cmap_data[x, y]
     rgb = torch.tensor(rgb, dtype=torch.float32) / 255
     return rgb

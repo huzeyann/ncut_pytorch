@@ -141,6 +141,7 @@ def propagate_knn(
     for i in iterator:
         end = min(i + chunk_size, inp_features.shape[0])
         _v = inp_features[i:end].to(device)
+        #TODO: fix this, add expential for rbf
         if distance == 'cosine':
             _A = _v @ subgraph_features.T
         elif distance == 'euclidean':
