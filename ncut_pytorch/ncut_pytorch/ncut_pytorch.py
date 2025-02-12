@@ -524,7 +524,39 @@ def _discretisation_eigenvector(eigen_vector):
     return Y
 
 
-def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False):
+def chunked_matmul(
+    A,
+    B,
+    chunk_size=8096,
+    device="cuda:0",
+    large_device="cpu",
+    transform=lambda x: x,
+):
+    A = A.to(large_device)
+    B = B.to(large_device)
+    C = torch.zeros(A.shape[0], B.shape[1], device=large_device)
+    iterator = range(0, A.shape[0], chunk_size)
+    for i in iterator:
+        end_i = min(i + chunk_size, A.shape[0])
+        for j in range(0, B.shape[1], chunk_size):
+            end_j = min(j + chunk_size, B.shape[1])
+            _A = A[i:end_i]
+            _B = B[:, j:end_j]
+            _C_ij = None
+            for k in range(0, A.shape[1], chunk_size):
+                end_k = min(k + chunk_size, A.shape[1])
+                __A = _A[:, k:end_k].to(device)
+                __B = _B[k:end_k].to(device)
+                _C = __A @ __B
+                _C_ij = _C if _C_ij is None else _C_ij + _C
+            _C_ij = transform(_C_ij)
+
+            _C_ij = _C_ij.to(large_device)
+            C[i:end_i, j:end_j] = _C_ij
+    return C
+
+
+def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, device=None, chunk_size=8096):
     """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
 
     Args:
@@ -534,6 +566,16 @@ def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False):
     Returns:
         torch.Tensor: Discretized eigenvectors, shape (n, k), each row is a one-hot vector.
     """
+    if device is None:
+        # do not change device, assume eigen_vectors fits into GPU memory or CPU memory
+        device = eigen_vectors.device
+        large_device = eigen_vectors.device
+    else:
+        # use gpu for matrix multiplication, use cpu for storage since eigen_vectors is large and do not fit into GPU memory
+        device = device
+        large_device = 'cpu'
+        
+    
     # Normalize eigenvectors
     n, k = eigen_vectors.shape
     vm = torch.sqrt(torch.sum(eigen_vectors ** 2, dim=1))
@@ -559,10 +601,16 @@ def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False):
         nb_iterations_discretisation += 1
 
         # Discretize the projected eigenvectors
-        eigenvectors_discrete = _discretisation_eigenvector(eigen_vectors @ R)
+        _out = chunked_matmul(
+            eigen_vectors, R, chunk_size=chunk_size, device=device, large_device=large_device
+        )
+        eigenvectors_discrete = _discretisation_eigenvector(_out)
 
         # SVD decomposition
-        U, S, Vh = torch.linalg.svd(eigenvectors_discrete.T @ eigen_vectors, full_matrices=False)
+        _out = chunked_matmul(
+            eigenvectors_discrete.T, eigen_vectors, chunk_size=chunk_size, device=device, large_device=large_device
+        )
+        U, S, Vh = torch.linalg.svd(_out, full_matrices=False)
         V = Vh.T
 
         # Compute the Ncut value
@@ -580,6 +628,10 @@ def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False):
         return eigenvectors_discrete, R
 
     return eigenvectors_discrete
+
+
+def axis_align(eigen_vectors, max_iter=300, device=None, chunk_size=8096):
+    return kway_ncut(eigen_vectors, max_iter=max_iter, return_rotation=True, device=device, chunk_size=chunk_size)
 
 
 def axis_align(eigen_vectors, max_iter=300):
