@@ -54,8 +54,8 @@
 </div>
 
 <div style="text-align: center;">
-<img src="./images/ncut_hierarchy_vs_sam.jpg" style="width:100%;">
-<p>NCUT on DiNO features segmentation at various granularity. </br> NCUT segments coloring is aligned across images, SAM color is arbitrary.
+<img src="./images/ncut_hierarchy_vs_sam.png" style="width:100%;">
+<p>NCUT (DiNO features as input) produce segmentation at various granularity. </br> NCUT segments coloring is aligned across images, SAM color is arbitrary.
 </p>
 </div>
 
