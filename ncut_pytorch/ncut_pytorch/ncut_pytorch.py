@@ -556,7 +556,7 @@ def chunked_matmul(
     return C
 
 
-def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, device=None, chunk_size=8096):
+def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, device=None, chunk_size=80960):
     """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
 
     Args:

@@ -53,14 +53,19 @@
 </p>
 </div>
 
+<div style="text-align: center;">
+<img src="./images/ncut_hierarchy_vs_sam.jpg" style="width:100%;">
+<p>NCUT on DiNO features segmentation at various granularity. </br> NCUT segments coloring is aligned across images, SAM color is arbitrary.
+</p>
+</div>
+
 <div class="warning" style='padding:0.1em; background-color:#E9D8FD; color:#69337A'>
 <span>
 <p style='margin-top:1em; text-align:center'>
 <b>PROCEDURE <a href="./how_ncut_works">How NCUT Works</a></b></p>
 <p style='margin-left:1em;'>
-1. <b>Feature Extraction</b>: extract feature for every image frame.</br>
-2. <b>NCUT</b>: compute 100 NCUT eigenvectors, each node is a latent-pixel. </br>
-3. <b>spectral-tSNE</b>: reduce 100 eigenvectors to 3D, plot as RGB image.  </br>
+1. <b>Feature Extraction</b>: extract feature from pre-trained model.</br>
+2. <b>NCUT</b>: compute 100 NCUT eigenvectors, input feature is from deep models. </br>
 </p>
 </p></span>
 </div>
