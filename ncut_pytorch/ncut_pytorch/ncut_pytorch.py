@@ -512,18 +512,6 @@ def correct_rotation(eigen_vector):
     return eigen_vector * s
 
 
-# Multiclass Spectral Clustering, SX Yu, J Shi, 2003
-def _discretisation_eigenvector(eigen_vector):
-    # Function that discretizes rotated eigenvectors
-    n, k = eigen_vector.shape
-
-    # Find the maximum index along each row
-    _, J = torch.max(eigen_vector, dim=1)
-    Y = torch.zeros(n, k, device=eigen_vector.device).scatter_(1, J.unsqueeze(1), 1)
-
-    return Y
-
-
 def chunked_matmul(
     A,
     B,
@@ -556,7 +544,19 @@ def chunked_matmul(
     return C
 
 
-def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, device=None, chunk_size=80960):
+# Multiclass Spectral Clustering, SX Yu, J Shi, 2003
+def _discretisation_eigenvector(eigen_vector):
+    # Function that discretizes rotated eigenvectors
+    n, k = eigen_vector.shape
+
+    # Find the maximum index along each row
+    _, J = torch.max(eigen_vector, dim=1)
+    Y = torch.zeros(n, k, device=eigen_vector.device).scatter_(1, J.unsqueeze(1), 1)
+
+    return Y
+
+
+def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, return_continuous=False):
     """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
 
     Args:
@@ -566,32 +566,16 @@ def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, 
     Returns:
         torch.Tensor: Discretized eigenvectors, shape (n, k), each row is a one-hot vector.
     """
-    if device is None:
-        # do not change device, assume eigen_vectors fits into GPU memory or CPU memory
-        device = eigen_vectors.device
-        large_device = eigen_vectors.device
-    else:
-        # use gpu for matrix multiplication, use cpu for storage since eigen_vectors is large and do not fit into GPU memory
-        device = device
-        large_device = 'cpu'
         
-    
     # Normalize eigenvectors
     n, k = eigen_vectors.shape
     vm = torch.sqrt(torch.sum(eigen_vectors ** 2, dim=1))
     eigen_vectors = eigen_vectors / vm.unsqueeze(1)
 
-    # Initialize R matrix with the first column from a random row of EigenVectors
-    R = torch.zeros(k, k, device=eigen_vectors.device)
-    R[:, 0] = eigen_vectors[torch.randint(0, n, (1,))].squeeze()
-
-    # Loop to populate R with k orthogonal directions
-    c = torch.zeros(n, device=eigen_vectors.device)
-    for j in range(1, k):
-        c += torch.abs(eigen_vectors @ R[:, j - 1])
-        _, i = torch.min(c, dim=0)
-        R[:, j] = eigen_vectors[i]
-
+    # Initialize R matrix with the first column from Farthest Point Sampling
+    _sample_idx = farthest_point_sampling(eigen_vectors, k)
+    R = eigen_vectors[_sample_idx].T
+    
     # Iterative optimization loop
     last_objective_value = 0
     exit_loop = False
@@ -601,15 +585,11 @@ def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, 
         nb_iterations_discretisation += 1
 
         # Discretize the projected eigenvectors
-        _out = chunked_matmul(
-            eigen_vectors, R, chunk_size=chunk_size, device=device, large_device=large_device
-        )
-        eigenvectors_discrete = _discretisation_eigenvector(_out)
+        eigenvectors_continuous = eigen_vectors @ R
+        eigenvectors_discrete = _discretisation_eigenvector(eigenvectors_continuous)
 
         # SVD decomposition
-        _out = chunked_matmul(
-            eigenvectors_discrete.T, eigen_vectors, chunk_size=chunk_size, device=device, large_device=large_device
-        )
+        _out = eigenvectors_discrete.T @ eigen_vectors
         U, S, Vh = torch.linalg.svd(_out, full_matrices=False)
         V = Vh.T
 
@@ -627,11 +607,10 @@ def kway_ncut(eigen_vectors: torch.Tensor, max_iter=300, return_rotation=False, 
     if return_rotation:
         return eigenvectors_discrete, R
 
+    if return_continuous:
+        return eigenvectors_discrete, eigenvectors_continuous
+
     return eigenvectors_discrete
-
-
-def axis_align(eigen_vectors, max_iter=300, device=None, chunk_size=8096):
-    return kway_ncut(eigen_vectors, max_iter=max_iter, return_rotation=True, device=device, chunk_size=chunk_size)
 
 
 def axis_align(eigen_vectors, max_iter=300):
