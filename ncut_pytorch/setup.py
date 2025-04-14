@@ -14,11 +14,12 @@ with open(requirement_file) as f:
     
 setup(
     name="ncut_pytorch",
-    version="1.8.19",
+    version="1.10.0dev1",
     packages=['ncut_pytorch'],
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Huzheng Yang',
     author_email='huze.yann@gmail.com',
     install_requires=required,
+    license='MIT',
 )
