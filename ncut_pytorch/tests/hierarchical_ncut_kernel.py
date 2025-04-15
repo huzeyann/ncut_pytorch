@@ -1,13 +1,15 @@
 # %%
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
 from ncut_pytorch import NCUT, rgb_from_tsne_3d, convert_to_lab_color
+
+from nystrom_ncut import KernelNCut
 
 # %%
 from PIL import Image
@@ -62,7 +64,7 @@ from ncut_pytorch import kway_ncut
 
 
 @torch.no_grad()
-def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10, 50, 250], 
+def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=8, num_clusters=[10, 50, 250], 
                                        num_sample=10000, degree=0.1, distance='rbf'):
     
     num_eig = max(color_num_eig, np.max(num_clusters))
@@ -77,13 +79,29 @@ def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10
     # gamma = find_gamma_by_degree_after_fps(feats, degree, distance=distance, num_sample=num_sample)
     # print(f'gamma: {gamma}')
 
-    # run NCUT
-    eigvecs, eigvals = NCUT(num_eig=num_eig, device='cuda:0', move_output_to_cpu=False,
-                            # affinity_focal_gamma=gamma, distance=distance,
-                            # num_sample=10000, num_sample2=1024,
-                            knn=100,
-                            ).fit_transform(feats)
-    # return None, None
+
+    feats = feats.to('cuda:1')
+
+    # run KernelNCut
+    gamma = 0.4
+    kernel_ncut = KernelNCut(n_components=num_eig, kernel_dim=64, affinity_type='rbf', affinity_focal_gamma=gamma)
+    eigvecs = kernel_ncut.fit_transform(feats)
+    print(eigvecs.shape)
+    # Check for NaN values in eigenvectors
+    has_nan = torch.isnan(eigvecs).any()
+    if has_nan:
+        print("Warning: NaN values detected in eigenvectors")
+        print(f"Number of NaN values: {torch.isnan(eigvecs).sum().item()}")
+    # Fill NaN values with 0
+    eigvecs = torch.nan_to_num(eigvecs, nan=0.0)
+
+    # # run NCUT
+    # eigvecs, eigvals = NCUT(num_eig=num_eig, device='cuda:0', move_output_to_cpu=False,
+    #                         # affinity_focal_gamma=gamma, distance=distance,
+    #                         num_sample=64, num_sample2=64,
+    #                         knn=1,
+    #                         ).fit_transform(feats)
+    # # return None, None
     
     # use t-SNE to fill a base color palette
     x3d, rgb = rgb_from_tsne_3d(eigvecs[:, :color_num_eig], device='cuda:1', num_sample=1000, perplexity=500)
@@ -113,7 +131,7 @@ import gc
 torch.cuda.empty_cache()
 gc.collect()
 # %%
-num_clusters = [16, 32, 64, 128, 256]
+num_clusters = [16, 32, 64, 64, 64]
 ncut_discrete_rgbs, continues_rgb = rgb_from_ncut_discrete_hirarchical(featup, color_num_eig=50, num_clusters=num_clusters, 
                                                            num_sample=10000, degree=0.1, distance='rbf')
 
@@ -123,6 +141,8 @@ ncut_discrete_rgbs, continues_rgb = rgb_from_ncut_discrete_hirarchical(featup, c
 
 # ncut_discrete_rgbs_degree, continues_rgb_degree = rgb_from_ncut_discrete_hirarchical(featup, color_num_eig=50, num_clusters=num_clusters, 
 #                                                            num_sample=10000, degree=0.05, distance='rbf')
+# %%
+np.prod([3, 384, 1024, 1024]) * 4 / 1024**3
 # %%
 import cv2
 import numpy as np
@@ -174,7 +194,7 @@ for i in range(3):
     for j, num_cluster in enumerate(num_clusters):
         axes[i][j+1].imshow(ncut_discrete_rgbs[j][i])
         axes[i][j+1].set_title(f'k-way ({num_cluster})')
-plt.suptitle('DiNO Features (sample=10000,1024,p**2+1/D+gamma, knn=100)', fontsize=16)
+plt.suptitle('DiNO Features (sample=64,64,knn=1)', fontsize=16)
 plt.tight_layout()
 plt.show()
     

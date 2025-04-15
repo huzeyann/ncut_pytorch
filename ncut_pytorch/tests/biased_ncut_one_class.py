@@ -56,7 +56,7 @@ print(click_idx)
 
 bias_factor = 0.5
 input_features = rearrange(features, 'b c h w -> (b h w) c')
-eigvecs, eigvals = bias_ncut_soft(input_features, click_idx, bias_factor=bias_factor)
+eigvecs, eigvals = bias_ncut_soft(input_features, click_idx, bias_factor=bias_factor, num_sample2=1024)
 
 mask, heatmap = get_mask_and_heatmap(eigvecs, click_idx)
 
