@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
 from ncut_pytorch import NCUT, rgb_from_tsne_3d, convert_to_lab_color
-
 # %%
 from PIL import Image
 # image = Image.open("/workspace/data/egoexo_0001.jpg")
@@ -81,7 +80,7 @@ def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10
     eigvecs, eigvals = NCUT(num_eig=num_eig, device='cuda:0', move_output_to_cpu=False,
                             # affinity_focal_gamma=gamma, distance=distance,
                             # num_sample=10000, num_sample2=1024,
-                            knn=100,
+                            knn=10,
                             ).fit_transform(feats)
     # return None, None
     

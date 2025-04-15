@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ncut_pytorch"
+version = "1.11.1"
+authors = [
+  { name="Huzheng Yang", email="huze.yann@gmail.com" },
+]
+description = "Normalized Cut and Nyström Approximation"
+readme = "README.md"
+requires-python = ">=3"
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "einops",
+    "scikit-learn",
+    "fpsample",
+    "pycolormap-2d",
+]
+
+[project.urls]
+Documentation = "https://ncut-pytorch.readthedocs.io/"
+Github = "https://github.com/huzeyann/ncut_pytorch/"
+PyPI = "https://pypi.org/project/ncut_pytorch/"
+
+[tool.setuptools]
+packages = ["ncut_pytorch"]
+
+[tool.setuptools.package-data]
+"ncut_pytorch" = ["*.txt", "*.md"] 
