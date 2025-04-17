@@ -9,6 +9,7 @@ from sklearn.base import BaseEstimator
 from .nystrom_utils import (
     run_subgraph_sampling,
     propagate_knn,
+    which_device,
 )
 from .math_utils import (
     quantile_normalize,
@@ -26,8 +27,10 @@ def _rgb_with_dimensionality_reduction(
     num_sample: int,
     metric: Literal["cosine", "euclidean"],
     rgb_func: Callable[[torch.Tensor, float], torch.Tensor],
-    q: float, knn: int,
-    seed: int, device: str,
+    q: float, 
+    knn: int,
+    seed: int, 
+    device: str,
     reduction: Callable[..., BaseEstimator],
     reduction_dim: int,
     reduction_kwargs: Dict[str, Any],
@@ -59,6 +62,53 @@ def _rgb_with_dimensionality_reduction(
     ))
     rgb = rgb_func(X_nd, q)
     return X_nd.numpy(force=True), rgb
+
+
+def rgb_from_mspace_2d(
+    features: torch.Tensor,
+    q: float = 0.95,
+    n_eig: int = 32,
+    training_steps: int = 1000,
+    batch_size: int = 1000,
+    repulsion_loss: float = 0.01,
+    **kwargs: Any,
+):
+    from .mspace import fit_transform_mspace_model
+    """
+    Returns:
+        (torch.Tensor): Embedding in 2D, shape (n_samples, 2)
+        (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
+    """
+
+    x2d = fit_transform_mspace_model(features, n_eig=n_eig, mood_dim=2, training_steps=training_steps, batch_size=batch_size, repulsion_loss=repulsion_loss, **kwargs)
+
+    rgb = rgb_from_2d_colormap(x2d, q=q)
+
+    return x2d, rgb
+
+
+def rgb_from_mspace_3d(
+    features: torch.Tensor,
+    q: float = 0.95,
+    n_eig: int = 32,
+    training_steps: int = 1000,
+    batch_size: int = 1000,
+    repulsion_loss: float = 1.0,
+    **kwargs: Any,
+):
+    from .mspace import fit_transform_mspace_model
+    """
+    Returns:
+        (torch.Tensor): Embedding in 3D, shape (n_samples, 3)
+        (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
+    """
+
+    x3d = fit_transform_mspace_model(features, n_eig=n_eig, mood_dim=3, training_steps=training_steps, batch_size=batch_size, repulsion_loss=repulsion_loss, **kwargs)
+
+    rgb = rgb_from_3d_rgb_cube(x3d, q=q)
+
+    return x3d, rgb
+
 
 
 def rgb_from_tsne_2d(

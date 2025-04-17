@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "1.11.1"
+version = "1.12.0dev"
 authors = [
   { name="Huzheng Yang", email="huze.yann@gmail.com" },
 ]
@@ -21,9 +21,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
+    "torch",
+    "fpsample",
     "einops",
     "scikit-learn",
-    "fpsample",
     "pycolormap-2d",
 ]
 

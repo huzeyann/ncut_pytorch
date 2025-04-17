@@ -1,4 +1,5 @@
+torch
+fpsample
 einops
 scikit-learn
-fpsample
 pycolormap-2d

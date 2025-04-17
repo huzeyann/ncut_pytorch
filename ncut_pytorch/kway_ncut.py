@@ -83,6 +83,6 @@ def kway_ncut(eigen_vectors: torch.Tensor,
     return eigenvectors_discrete
 
 
-def axis_align(eigen_vectors, max_iter=1000, num_sample=1000):
+def axis_align(eigen_vectors, max_iter=1000, num_sample=10240):
     """deprecated, use kway_ncut(return_rotation=True) instead"""
     return kway_ncut(eigen_vectors, max_iter=max_iter, num_sample=num_sample, return_rotation=True)

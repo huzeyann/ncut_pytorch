@@ -7,6 +7,8 @@ import torch
 from .math_utils import pca_lowrank
 from .math_utils import affinity_from_features
 
+import fpsample
+
 
 def which_device(feature_device = "cuda:0", user_input_device = None):
     if str(user_input_device) == "cpu":
@@ -75,28 +77,9 @@ def _farthest_point_sampling(
     h: int = 7,
     device: str = None,
 ):
-    try:
-        import fpsample
-    except ImportError:
-        raise ImportError(
-            "fpsample import failed, please install `pip install fpsample`"
-        )
-    
-    use_bucket_fps_kdline_sampling = False
-    try:
-        from fpsample import bucket_fps_kdline_sampling
-        use_bucket_fps_kdline_sampling = True
-    except ImportError:
-        logging.warning(
-            """using slower fpsampling (10x slower) because new version of `fpsample` is not installed, please install `pip install -U fpsample==0.3.3`
-            If you run into installation issues, please refer to https://ncut-pytorch.readthedocs.io/en/latest/trouble_shooting/
-            """
-        )
-
     num_data = features.shape[0]
     if num_sample > num_data:
         return np.arange(num_data)
-
 
     if isinstance(features, np.ndarray):
         features = torch.from_numpy(features)
@@ -109,7 +92,7 @@ def _farthest_point_sampling(
     if features.shape[1] > 8:
         features = pca_lowrank(features, q=8)
 
-    if use_bucket_fps_kdline_sampling:
+    if _is_fast_fps_available():
         h = min(h, int(np.log2(num_data)))
         samples_idx = fpsample.bucket_fps_kdline_sampling(
             features.cpu().numpy(), num_sample, h
@@ -120,6 +103,35 @@ def _farthest_point_sampling(
         ).astype(np.int64)
 
     return samples_idx
+
+
+def _is_fast_fps_available():
+    
+    try:
+        from fpsample import bucket_fps_kdline_sampling
+        return True
+    except ImportError:
+        message = """
+        ---
+        Farthest Point Sampling (fpsample>=0.3.3) installation Not Found. 
+        Using a old and slower implementation.
+        ---
+        To install fpsample, run:
+        
+        >>> pip install fpsample==0.3.3
+        
+        if the above pip install fails, try install build dependencies first:
+        >>> sudo apt-get update && sudo apt-get install build-essential cargo rustc -y
+        or 
+        >>> conda install rust -c conda-forge
+
+        see https://ncut-pytorch.readthedocs.io/en/latest/trouble_shooting/ for more help
+        ---
+        ---
+        """
+        logger = logging.getLogger("ncut_pytorch")
+        logger.warning(message)
+        return False
 
 
 def propagate_knn(
@@ -182,7 +194,6 @@ def propagate_knn(
             topk_A = topk_A / _D[:, None]
             _weights = topk_A.flatten()  # (n * knn)
         
-
         _values = subgraph_output[topk_indices.flatten()]  # (n * knn, d)
         topk_output = _values * _weights[:, None]  # (n * knn, d)
         topk_output = topk_output.reshape(-1, knn, _values.shape[-1])  # (n, knn, d)

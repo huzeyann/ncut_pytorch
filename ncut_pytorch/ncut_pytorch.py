@@ -26,7 +26,7 @@ from .affinity_gamma import find_gamma_by_degree_after_fps
 def nystrom_ncut(
     features: torch.Tensor,
     num_eig: int = 100,
-    degree: float = 0.1,
+    degree: float = 0.05,
     distance: Literal["cosine", "euclidean", "rbf"] = "rbf",
     num_sample: int = 10240,
     num_sample2: int = 1024,
@@ -45,7 +45,8 @@ def nystrom_ncut(
     Args:
         features (torch.Tensor): feature matrix, shape (n_samples, n_features)
         num_eig (int): default 100, number of top eigenvectors to return
-        degree (float): target degree to search for optimal gamma, default 0.1
+        degree (float): target degree to search for optimal gamma, default 0.05. 
+            lower degree will result in more sharp eigenvectors
         distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
         num_sample (int): default 10240, number of samples for Nystrom-like approximation
         num_sample2 (int): default 1024, number of samples for eigenvector propagation
@@ -131,7 +132,7 @@ class NCUT:
         num_eig: int = 100,
         knn: int = 10,
         affinity_focal_gamma: float = None,
-        degree: float = 0.1,
+        degree: float = 0.05,
         num_sample: int = 10240,
         num_sample2: int = 1024,
         sample_method: Literal["farthest", "random"] = "farthest",
@@ -153,7 +154,8 @@ class NCUT:
             distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
             affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the weak edge weights,
                 resulting in more sharp eigenvectors, default None (auto search)
-            degree (float): target degree to search for optimal gamma, default 0.1
+            degree (float): target degree to search for optimal gamma, default 0.05. 
+                lower degree will result in more sharp eigenvectors
             device (str): device to use for computation, if None, will not change device
                 a good practice is to pass features by CPU since it's usually large,
                 and move subgraph affinity to GPU to speed up eigenvector computation
