@@ -9,15 +9,11 @@ from torch.utils.data import TensorDataset
 
 # disable lightning logs
 logging.getLogger('lightning').setLevel(0)
-pl.utilities.distributed.log.setLevel(logging.ERROR)
-logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
-logging.getLogger("lightning.pytorch.utilities.rank_zero").setLevel(logging.WARNING)
-logging.getLogger("lightning.pytorch.accelerators.cuda").setLevel(logging.WARNING)
+logging.getLogger("pytorch_lightning").setLevel(0)
 class IgnorePLFilter(logging.Filter):
     def filter(self, record):
         keywords = ['available:', 'CUDA', 'LOCAL_RANK:']
         return not any(keyword in record.getMessage() for keyword in keywords)
-    
 logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFilter())
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
@@ -156,9 +152,12 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=1000, gr
 
     model = CompressionModel(c, **model_kwargs)
     
+    dataset = TensorDataset(compress_feats, uncompress_feats)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     is_cuda = torch.cuda.is_available()
-    trainer = pl.Trainer(max_steps=training_steps,
+    trainer = pl.Trainer(limit_train_batches=training_steps,
+                         max_steps=training_steps,
                          gradient_clip_val=grad_clip_val,
                          accelerator="gpu" if is_cuda else "cpu", 
                          devices=devices if is_cuda else None,
@@ -166,10 +165,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=1000, gr
                          enable_progress_bar=True,
                          enable_model_summary=False,
                          logger=False,
-                         limit_train_batches=training_steps,
                          )
-    dataset = TensorDataset(compress_feats, uncompress_feats)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     trainer.fit(model, dataloader)
 
     if return_trainer:

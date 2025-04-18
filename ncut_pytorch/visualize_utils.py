@@ -69,18 +69,16 @@ def rgb_from_mspace_2d(
     q: float = 0.95,
     n_eig: int = 32,
     training_steps: int = 1000,
-    batch_size: int = 1000,
-    repulsion_loss: float = 0.01,
     **kwargs: Any,
 ):
-    from .mspace import fit_transform_mspace_model
+    from .mspace import mspace_viz_transform
     """
     Returns:
         (torch.Tensor): Embedding in 2D, shape (n_samples, 2)
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
 
-    x2d = fit_transform_mspace_model(features, n_eig=n_eig, mood_dim=2, training_steps=training_steps, batch_size=batch_size, repulsion_loss=repulsion_loss, **kwargs)
+    x2d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=2, training_steps=training_steps, **kwargs)
 
     rgb = rgb_from_2d_colormap(x2d, q=q)
 
@@ -92,18 +90,16 @@ def rgb_from_mspace_3d(
     q: float = 0.95,
     n_eig: int = 32,
     training_steps: int = 1000,
-    batch_size: int = 1000,
-    repulsion_loss: float = 1.0,
     **kwargs: Any,
 ):
-    from .mspace import fit_transform_mspace_model
+    from .mspace import mspace_viz_transform
     """
     Returns:
         (torch.Tensor): Embedding in 3D, shape (n_samples, 3)
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
 
-    x3d = fit_transform_mspace_model(features, n_eig=n_eig, mood_dim=3, training_steps=training_steps, batch_size=batch_size, repulsion_loss=repulsion_loss, **kwargs)
+    x3d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=3, training_steps=training_steps, **kwargs)
 
     rgb = rgb_from_3d_rgb_cube(x3d, q=q)
 
