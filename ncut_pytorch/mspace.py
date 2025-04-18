@@ -7,6 +7,20 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.utils.data import TensorDataset
 
+# disable lightning logs
+logging.getLogger('lightning').setLevel(0)
+pl.utilities.distributed.log.setLevel(logging.ERROR)
+logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
+logging.getLogger("lightning.pytorch.utilities.rank_zero").setLevel(logging.WARNING)
+logging.getLogger("lightning.pytorch.accelerators.cuda").setLevel(logging.WARNING)
+class IgnorePLFilter(logging.Filter):
+    def filter(self, record):
+        keywords = ['available:', 'CUDA', 'LOCAL_RANK:']
+        return not any(keyword in record.getMessage() for keyword in keywords)
+    
+logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFilter())
+logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
+
 
 from .ncut_pytorch import affinity_from_features, ncut
 from .affinity_gamma import find_gamma_by_degree_after_fps
@@ -53,10 +67,10 @@ class MLP(nn.Module):
 
 class CompressionModel(pl.LightningModule):
     def __init__(self, in_dim, mood_dim=2, n_eig=32, 
-                 n_layer=2, latent_dim=512, 
+                 n_layer=4, latent_dim=256, 
                  eigvec_loss=1, recon_loss=1, 
-                 riemann_curvature_loss=0, axis_align_loss=0, 
-                 repulsion_loss=0.01, boundary_loss=0.01, 
+                 riemann_curvature_loss=0.1, axis_align_loss=0, 
+                 repulsion_loss=0.1, boundary_loss=1, 
                  lr=0.001):
         super().__init__()
         
@@ -149,9 +163,10 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=1000, gr
                          accelerator="gpu" if is_cuda else "cpu", 
                          devices=devices if is_cuda else None,
                          enable_checkpointing=False,
-                         enable_progress_bar=False,
+                         enable_progress_bar=True,
                          enable_model_summary=False,
                          logger=False,
+                         limit_train_batches=training_steps,
                          )
     dataset = TensorDataset(compress_feats, uncompress_feats)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
