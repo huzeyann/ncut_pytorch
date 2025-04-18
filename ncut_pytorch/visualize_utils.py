@@ -479,3 +479,19 @@ def rgb_from_2d_colormap(X_2d, q=0.95):
     rgb = torch.tensor(rgb, dtype=torch.float32) / 255
     return rgb
 
+def rgb_from_nd_colormap(X_nd, q=0.95, lab_color=False):
+    """
+    Returns:
+        (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
+    """
+    d = X_nd.shape[1]
+    if d == 2:
+        return rgb_from_2d_colormap(X_nd, q=q)
+    elif d == 3:
+        rgb = rgb_from_3d_rgb_cube(X_nd, q=q)
+        if lab_color:
+            rgb = convert_to_lab_color(rgb)
+            rgb = torch.from_numpy(rgb)
+        return rgb
+    else:
+        raise ValueError(f"Unsupported dimensionality: {d}")
