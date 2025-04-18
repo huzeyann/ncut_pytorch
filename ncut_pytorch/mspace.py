@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from tqdm import tqdm
 from torch.utils.data import TensorDataset
 
 # disable lightning logs
@@ -66,8 +67,8 @@ class CompressionModel(pl.LightningModule):
                  n_layer=4, latent_dim=256, 
                  eigvec_loss=1, recon_loss=1, 
                  riemann_curvature_loss=0.1, axis_align_loss=0, 
-                 repulsion_loss=0.1, boundary_loss=1, 
-                 lr=0.001):
+                 repulsion_loss=0.1, boundary_loss=1, zero_center_loss=0.1,
+                 lr=0.005, progress_bar=True, training_steps=500):
         super().__init__()
         
         self.compress = MLP(in_dim, mood_dim, n_layer, latent_dim)
@@ -82,8 +83,14 @@ class CompressionModel(pl.LightningModule):
         self.axis_align_loss = axis_align_loss
         self.repulsion_loss = repulsion_loss
         self.boundary_loss = boundary_loss
-
+        self.zero_center_loss = zero_center_loss
         self.lr = lr
+        
+        self.progress_bar = progress_bar
+        self.training_steps = training_steps
+        if self.progress_bar:
+            self.progress_bar = tqdm(total=training_steps, desc="Mspace training")
+
 
     def forward(self, x):
         if isinstance(x, list):
@@ -91,6 +98,11 @@ class CompressionModel(pl.LightningModule):
         return self.compress(x)
 
     def training_step(self, batch):
+        if self.progress_bar and self.trainer.global_step % 10 == 0:
+            self.progress_bar.update(10)
+        if self.progress_bar and self.trainer.global_step >= self.training_steps - 1:
+            self.progress_bar.close()
+
         input_feats, output_feats = batch
 
         if self.trainer.global_step == 0:
@@ -135,6 +147,11 @@ class CompressionModel(pl.LightningModule):
             self.log("loss/boundary", boundary_loss, prog_bar=True)
             total_loss += boundary_loss * self.boundary_loss
 
+        if self.zero_center_loss > 0:
+            zero_center_loss = feats_compressed.abs().mean()
+            self.log("loss/zero_center", zero_center_loss, prog_bar=True)
+            total_loss += zero_center_loss * self.zero_center_loss
+
         loss = total_loss
         self.log("loss/total", loss, prog_bar=True)
         return loss
@@ -144,13 +161,13 @@ class CompressionModel(pl.LightningModule):
         return optimizer
 
 
-def train_mspace_model(compress_feats, uncompress_feats, training_steps=1000, grad_clip_val=1.0, 
-                    batch_size=1000, devices=[0], return_trainer=False, **model_kwargs):
+def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, grad_clip_val=1.0, 
+                    batch_size=1000, devices=[0], return_trainer=False, progress_bar=True, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
     l, c = compress_feats.shape
 
-    model = CompressionModel(c, **model_kwargs)
+    model = CompressionModel(c, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
     
     dataset = TensorDataset(compress_feats, uncompress_feats)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -162,7 +179,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=1000, gr
                          accelerator="gpu" if is_cuda else "cpu", 
                          devices=devices if is_cuda else None,
                          enable_checkpointing=False,
-                         enable_progress_bar=True,
+                         enable_progress_bar=False,
                          enable_model_summary=False,
                          logger=False,
                          )

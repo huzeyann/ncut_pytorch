@@ -68,7 +68,8 @@ def rgb_from_mspace_2d(
     features: torch.Tensor,
     q: float = 0.95,
     n_eig: int = 32,
-    training_steps: int = 1000,
+    training_steps: int = 500,
+    progress_bar: bool = True,
     **kwargs: Any,
 ):
     from .mspace import mspace_viz_transform
@@ -78,7 +79,7 @@ def rgb_from_mspace_2d(
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
 
-    x2d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=2, training_steps=training_steps, **kwargs)
+    x2d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=2, training_steps=training_steps, progress_bar=progress_bar, **kwargs)
 
     rgb = rgb_from_2d_colormap(x2d, q=q)
 
@@ -89,7 +90,8 @@ def rgb_from_mspace_3d(
     features: torch.Tensor,
     q: float = 0.95,
     n_eig: int = 32,
-    training_steps: int = 1000,
+    training_steps: int = 500,
+    progress_bar: bool = True,
     **kwargs: Any,
 ):
     from .mspace import mspace_viz_transform
@@ -99,7 +101,7 @@ def rgb_from_mspace_3d(
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
 
-    x3d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=3, training_steps=training_steps, **kwargs)
+    x3d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=3, training_steps=training_steps, progress_bar=progress_bar, **kwargs)
 
     rgb = rgb_from_3d_rgb_cube(x3d, q=q)
 
