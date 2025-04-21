@@ -30,10 +30,8 @@ def affinity_from_features(
     features_B = features if features_B is None else features_B
 
     if distance == "cosine":
-        if not check_if_normalized(features):
-            features = F.normalize(features, dim=-1)
-        if not check_if_normalized(features_B):
-            features_B = F.normalize(features_B, dim=-1)
+        features = F.normalize(features, dim=-1)
+        features_B = F.normalize(features_B, dim=-1)
         A = 1 - features @ features_B.T
     elif distance == "euclidean":
         A = torch.cdist(features, features_B, p=2)
@@ -222,7 +220,7 @@ def pca_reduce_to_2d(points):
 def compute_delaunay(points):
     """Compute Delaunay triangulation of points"""
     from scipy.spatial import Delaunay
-    points_2d = pca_reduce_to_2d(points)
+    points_2d = pca_reduce_to_2d(points)   # TODO: does reduce to 2d make it a plane even if mspace is 3d?
     return Delaunay(points_2d.cpu().numpy()).simplices
   
 def compute_riemann_curvature_loss(points, simplices=None, domain_min=0, domain_max=1):

@@ -38,7 +38,7 @@ def nystrom_ncut(
     device: str = None,
     make_orthogonal: bool = False,
     no_propagation: bool = False,
-    move_output_to_cpu: bool = False,
+    move_output_to_cpu: bool = None,
     **kwargs,
 ):
     """PyTorch implementation of Faster Nystrom Normalized cut.
@@ -63,7 +63,7 @@ def nystrom_ncut(
             and move subgraph affinity to GPU to speed up eigenvector computation
         make_orthogonal (bool): make eigenvectors orthogonal after propagation, default True
         no_propagation (bool): if True, skip the eigenvector propagation step, only return the subgraph eigenvectors
-        move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
+        move_output_to_cpu (bool): move output to CPU, set to True if output is too large to fit in GPU memory
     Returns:
         (torch.Tensor): eigenvectors, shape (n_samples, num_eig)
         (torch.Tensor): eigenvalues, sorted in descending order, shape (num_eig,)
@@ -85,6 +85,9 @@ def nystrom_ncut(
             num_sample=num_sample,
             sample_method=sample_method,
         )
+
+    if move_output_to_cpu is None:
+        move_output_to_cpu = True if features.device.type == "cpu" else False
 
     sampled_features = features[sampled_indices]
     device = which_device(sampled_features.device, device)

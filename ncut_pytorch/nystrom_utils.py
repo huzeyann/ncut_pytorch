@@ -171,7 +171,7 @@ def propagate_knn(
 
     """
 
-    # sample subgraph, for speed up
+    # sub-sample, for speed up
     sample_idx = farthest_point_sampling(subgraph_output, num_sample)
     subgraph_output = subgraph_output[sample_idx]
     subgraph_features = subgraph_features[sample_idx]
@@ -206,4 +206,3 @@ def propagate_knn(
     fullgraph_outputs = torch.cat(fullgraph_outputs, dim=0)
 
     return fullgraph_outputs
-
