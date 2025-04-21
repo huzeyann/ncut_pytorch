@@ -211,18 +211,15 @@ def normalize_affinity(A, eps=1e-8):
     return A
 
 
-
-def pca_reduce_to_2d(points):
-    u, s, v = svd_lowrank(points, 2)
-    return points @ v[:, :2]
-
 @torch.no_grad()
 def compute_delaunay(points):
     """Compute Delaunay triangulation of points"""
     from scipy.spatial import Delaunay
-    points_2d = pca_reduce_to_2d(points)   # TODO: does reduce to 2d make it a plane even if mspace is 3d?
-    return Delaunay(points_2d.cpu().numpy()).simplices
+    if points.shape[1] > 3:
+        points = pca_lowrank(points, 3)
+    return Delaunay(points.cpu().numpy()).simplices
   
+
 def compute_riemann_curvature_loss(points, simplices=None, domain_min=0, domain_max=1):
     """
     Calculate loss based on approximated Riemann curvature.
