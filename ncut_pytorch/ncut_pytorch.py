@@ -313,6 +313,10 @@ try:
         quantile_normalize,
         quantile_min_max,
     )
+    from .affinity_gamma import (
+        find_gamma_by_degree,
+        find_gamma_by_degree_after_fps,
+    )
     from .visualize_utils import (
         rgb_from_tsne_3d,
         rgb_from_umap_sphere,
