@@ -110,7 +110,7 @@ class TrainerAutoEncoder(pl.LightningModule):
     
     def __init__(self, in_dim, mood_dim=2, n_eig=None, n_elbow=3,
                  n_layer=4, latent_dim=256, 
-                 eigvec_loss=1, recon_loss=1, 
+                 eigvec_loss=100, recon_loss=1, 
                  riemann_curvature_loss=0., axis_align_loss=0, 
                  repulsion_loss=0.1, attraction_loss=0., 
                  boundary_loss=0.01, zero_center_loss=0.,
