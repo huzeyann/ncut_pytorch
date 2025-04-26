@@ -264,16 +264,64 @@ def compute_axis_align_loss(data):
 
 
 def compute_repulsion_loss(points):
-
     # Add point repulsion term for additional stability
     dist_matrix = torch.cdist(points, points)
-    # Set diagonal to large value to avoid self-repulsion
+    # Set diagonal to large value to avoid self-repulsion 
     mask = torch.eye(points.shape[0], device=points.device).bool()
-    dist_matrix = dist_matrix + mask * 1000
-    repulsion = 1.0 / (dist_matrix + 1e-8)
-    non_diag = repulsion[~mask]
-    return torch.mean(non_diag)
+    dist_matrix = dist_matrix + mask * 1e10
+    
+    # For each point, only consider repulsion from nearest neighbor
+    nearest_dists, _ = torch.min(dist_matrix, dim=1)
+    repulsion = 1.0 / (nearest_dists + 1e-8)
+    return torch.mean(repulsion)
+
+def compute_attraction_loss(points):
+    # Add point repulsion term for additional stability
+    dist_matrix = torch.cdist(points, points)
+
+    nearest_dists, _ = torch.max(dist_matrix, dim=1)
+    attraction = nearest_dists.mean()
+    return attraction
+
 
 def compute_boundary_loss(points, domain_min=-1, domain_max=1):
     return torch.mean(torch.relu(domain_min - points)) + \
             torch.mean(torch.relu(points - domain_max))
+
+
+# Use elbow method to find optimal number of eigenvalues
+def find_elbow(eigvals, n_elbows=5):
+    # Convert to numpy array if tensor
+    if torch.is_tensor(eigvals):
+        eigvals = eigvals.cpu().detach().numpy()
+    
+    # Calculate coordinates
+    coords = np.vstack((np.arange(len(eigvals)), eigvals)).T
+    
+    # Get vector from first to last point
+    line_vec = coords[-1] - coords[0]
+    line_vec_norm = line_vec / np.sqrt(np.sum(line_vec**2))
+    
+    # Vector from point to first point
+    vec_from_first = coords - coords[0]
+    
+    # Distance from points to line
+    dist_from_line = np.cross(line_vec_norm, vec_from_first)
+    
+    # Find elbow points (maximum distances)
+    elbow_indices = []
+    remaining_distances = np.abs(dist_from_line)
+    
+    for _ in range(n_elbows):
+        if len(remaining_distances) == 0:
+            break
+        elbow_idx = np.argmax(remaining_distances)
+        elbow_indices.append(elbow_idx)
+        # Zero out a window around the found elbow to find the next one
+        window = 5  # Adjust this window size as needed
+        start_idx = max(0, elbow_idx - window)
+        end_idx = min(len(remaining_distances), elbow_idx + window)
+        remaining_distances[start_idx:end_idx] = 0
+    
+    return sorted(elbow_indices)
+
