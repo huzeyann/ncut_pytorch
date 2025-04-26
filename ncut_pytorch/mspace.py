@@ -19,25 +19,32 @@ logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFil
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
 
-from .ncut_pytorch import affinity_from_features, ncut
+from .ncut_pytorch import affinity_from_features, ncut, kway_ncut
 from .affinity_gamma import find_gamma_by_degree_after_fps
 from .math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
 
-def _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig):
+def _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight):
     _eigvec_gt = eigvec_gt[:, :n_eig]
     _eigvec_hat = eigvec_hat[:, :n_eig]
-    loss = F.smooth_l1_loss(_eigvec_gt @ _eigvec_gt.T, _eigvec_hat @ _eigvec_hat.T)
+    left = _eigvec_gt @ _eigvec_gt.T
+    right = _eigvec_hat @ _eigvec_hat.T
+    left = left * weight[:, None] * weight[None, :]
+    right = right * weight[:, None] * weight[None, :]
+    loss = F.l1_loss(left, right)
     return loss
 
-def flag_space_loss(eigvec_gt, eigvec_hat, n_eig, start=2, step_mult=2):
+def flag_space_loss(eigvec_gt, eigvec_hat, n_eig, start=2, step_mult=2, weight=None):
     if torch.all(eigvec_gt == 0) or torch.all(eigvec_hat == 0):
         return torch.tensor(0, device=eigvec_gt.device)
+    
+    if weight is None:
+        weight = torch.ones(eigvec_gt.shape[0], device=eigvec_gt.device, dtype=eigvec_gt.dtype)
     
     loss = 0
     n_eig = start // step_mult
     while True:
         n_eig *= step_mult
-        loss += _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig)
+        loss += _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight)
         if n_eig > eigvec_gt.shape[1] or n_eig > eigvec_hat.shape[1]:
             break
     return loss
@@ -70,8 +77,35 @@ class MLP(nn.Module):
         return self.mlp(x)
 
 
+class MspaceAutoEncoder(nn.Module):
+    def __init__(self, in_dim, mood_dim, n_layer=4, latent_dim=256):
+        super().__init__()
+        self.encoder = MLP(in_dim, mood_dim, n_layer, latent_dim)
+        self.decoder = MLP(mood_dim, in_dim, n_layer, latent_dim)
+    
 
-class CompressionModel(pl.LightningModule):
+class TrainerDecoder(pl.LightningModule):
+    # train the decoder after the encoder is trained
+    def __init__(self, mspace_ae, lr=0.001):
+        super().__init__()
+        self.mspace_ae = mspace_ae
+        self.lr = lr
+
+    def training_step(self, batch):
+        input_feats, output_feats = batch
+        with torch.no_grad():
+            feats_compressed = self.mspace_ae.encoder(input_feats)
+        feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
+        recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed)
+        self.log("loss/recon", recon_loss, prog_bar=True)
+        return recon_loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.NAdam(self.mspace_ae.decoder.parameters(), lr=self.lr)
+        return optimizer
+
+
+class TrainerAutoEncoder(pl.LightningModule):
     N_ITER_PER_STEP = 10
     
     def __init__(self, in_dim, mood_dim=2, n_eig=None, n_elbow=3,
@@ -81,11 +115,10 @@ class CompressionModel(pl.LightningModule):
                  repulsion_loss=0.1, attraction_loss=0., 
                  boundary_loss=0.01, zero_center_loss=0.,
                  lr=0.001, progress_bar=True, training_steps=3000,
-                 degree=[0.05, 0.1, 0.2, 0.5]):
+                 degree=[0.05, 0.1, 0.2, 0.5], kway_weight_gamma=5.0):
         super().__init__()
         
-        self.compress = MLP(in_dim, mood_dim, n_layer, latent_dim)
-        self.uncompress = MLP(mood_dim, in_dim, n_layer, latent_dim)
+        self.mspace_ae = MspaceAutoEncoder(in_dim, mood_dim, n_layer, latent_dim)
                 
         self.loss_history = defaultdict(list)
 
@@ -102,6 +135,7 @@ class CompressionModel(pl.LightningModule):
         self.gamma = [None] * len(self.degree)
         self.n_eig = n_eig if isinstance(n_eig, list) else [n_eig] * len(degree)
         self.n_elbow = n_elbow
+        self.kway_weight_gamma = kway_weight_gamma
 
         self.progress_bar = progress_bar
         self.training_steps = training_steps
@@ -114,7 +148,7 @@ class CompressionModel(pl.LightningModule):
     def forward(self, x):
         if isinstance(x, list):
             x = x[0]
-        return self.compress(x)
+        return self.mspace_ae.encoder(x)
 
     def training_step(self, batch):
         if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step != 0:
@@ -126,6 +160,7 @@ class CompressionModel(pl.LightningModule):
         input_feats, output_feats = batch
         
         stored_eigvec_gt = {}
+        stored_eigvec_weight = {}
         with torch.no_grad():
             # Compute eigvec_gt only once for each set of iterations
             if self.eigvec_loss != 0:
@@ -144,11 +179,17 @@ class CompressionModel(pl.LightningModule):
                     key = f"{i}_{degree}_{gamma}_{n_eig}"
                     eigvec_gt, eigval_gt = ncut_wrapper(input_feats, n_eig, gamma=gamma, distance='rbf')
                     stored_eigvec_gt[key] = eigvec_gt
+
+                    # Compute weight for each node, using kway ncut
+                    eigvec_gt_kway = kway_ncut(eigvec_gt, return_continuous=True)
+                    weight = eigvec_gt_kway.max(1).values.flatten()
+                    weight = weight ** self.kway_weight_gamma
+                    stored_eigvec_weight[key] = weight
         
         # Run the same batch 10 times, updating parameters after each iteration
         for iteration in range(self.N_ITER_PER_STEP):
-            feats_compressed = self.compress(input_feats)
-            feats_uncompressed = self.uncompress(feats_compressed)
+            feats_compressed = self.mspace_ae.encoder(input_feats)
+            feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
             
             total_loss = 0
             if self.eigvec_loss != 0:
@@ -157,19 +198,22 @@ class CompressionModel(pl.LightningModule):
                     # Reuse the stored eigvec_gt
                     key = f"{i}_{degree}_{gamma}_{n_eig}"
                     eigvec_gt = stored_eigvec_gt[key]
-                    
+                    weight = stored_eigvec_weight[key]
+
                     # Compute eigvec_hat for each iteration
                     eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, n_eig, gamma=gamma, distance='rbf')
-                    eigvec_loss = flag_space_loss(eigvec_gt, eigvec_hat, n_eig=n_eig)
+                    eigvec_loss = flag_space_loss(eigvec_gt, eigvec_hat, n_eig=n_eig, weight=weight)
                     self.log(f"loss/eigvec_d{self.degree[i]:.2f}", eigvec_loss, prog_bar=True)
                     total_loss += eigvec_loss * self.eigvec_loss
                     self.loss_history[f'eigvec_d{self.degree[i]:.2f}'].append(eigvec_loss.item())
+
 
             if self.recon_loss > 0:
                 recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed)
                 self.log("loss/recon", recon_loss, prog_bar=True)
                 total_loss += recon_loss * self.recon_loss
                 self.loss_history['recon'].append(recon_loss.item())
+
 
             if self.riemann_curvature_loss > 0:
                 riemann_curvature_loss = compute_riemann_curvature_loss(feats_compressed)
@@ -215,30 +259,42 @@ class CompressionModel(pl.LightningModule):
         return optimizer
 
 
-def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000,
+def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=300, decoder_lr=0.0001,
                     batch_size=1000, devices=[0], return_trainer=False, progress_bar=True, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
     l, c = compress_feats.shape
 
-    training_steps = training_steps // CompressionModel.N_ITER_PER_STEP
+    training_steps = training_steps // TrainerAutoEncoder.N_ITER_PER_STEP
 
-    model = CompressionModel(c, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
+    model = TrainerAutoEncoder(c, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
     
     dataset = TensorDataset(compress_feats, uncompress_feats)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     is_cuda = torch.cuda.is_available()
-    trainer = pl.Trainer(limit_train_batches=training_steps,
-                         max_steps=training_steps,
-                         accelerator="gpu" if is_cuda else "cpu", 
-                         devices=devices if is_cuda else None,
-                         enable_checkpointing=False,
-                         enable_progress_bar=False,
-                         enable_model_summary=False,
-                         logger=False,
-                         )
+
+    trainer_args = {
+        'accelerator': "gpu" if is_cuda else "cpu", 
+        'devices': devices if is_cuda else None,
+        'enable_checkpointing': False,
+        'enable_progress_bar': False,
+        'enable_model_summary': False,
+        'logger': False,
+    }
+
+    # train the autoencoder jointly
+    trainer = pl.Trainer(max_steps=training_steps, **trainer_args)
     trainer.fit(model, dataloader)
+    
+    mspace_ae = model.mspace_ae
+
+    if decoder_training_steps > 0:
+        # train the decoder only
+        model2 = TrainerDecoder(mspace_ae, lr=decoder_lr)
+        decoder_trainer = pl.Trainer(max_steps=decoder_training_steps, **trainer_args)
+        decoder_trainer.fit(model2, dataloader)
+        model.mspace_ae = model2.mspace_ae
 
     if return_trainer:
         return model, trainer
@@ -253,5 +309,5 @@ def mspace_viz_transform(feats, return_model=False, **kwargs):
     compressed = trainer.predict(model, test_loader)
     compressed = torch.cat(compressed, dim=0)
     if return_model:
-        return compressed, model
+        return compressed, model.mspace_ae
     return compressed
