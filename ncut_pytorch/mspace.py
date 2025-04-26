@@ -125,11 +125,10 @@ class CompressionModel(pl.LightningModule):
 
         input_feats, output_feats = batch
         
+        stored_eigvec_gt = {}
         with torch.no_grad():
-            # Compute eigvec_gt only once for each degree/gamma/n_eig combination
+            # Compute eigvec_gt only once for each set of iterations
             if self.eigvec_loss != 0:
-                if not hasattr(self, 'stored_eigvec_gt'):
-                    self.stored_eigvec_gt = {}
                     
                 for i, degree, gamma, n_eig in zip(range(len(self.degree)), 
                                                 self.degree, self.gamma, self.n_eig):
@@ -141,11 +140,10 @@ class CompressionModel(pl.LightningModule):
                         n_eig = find_elbow(eigval_gt, n_elbows=self.n_elbow)[-1]
                         self.n_eig[i] = n_eig
                     
-                    # Compute and store eigvec_gt only once
+                    # Compute and store eigvec_gt
                     key = f"{i}_{degree}_{gamma}_{n_eig}"
-                    if key not in self.stored_eigvec_gt:
-                        eigvec_gt, eigval_gt = ncut_wrapper(input_feats, n_eig, gamma=gamma, distance='rbf')
-                        self.stored_eigvec_gt[key] = eigvec_gt
+                    eigvec_gt, eigval_gt = ncut_wrapper(input_feats, n_eig, gamma=gamma, distance='rbf')
+                    stored_eigvec_gt[key] = eigvec_gt
         
         # Run the same batch 10 times, updating parameters after each iteration
         for iteration in range(self.N_ITER_PER_STEP):
@@ -158,7 +156,7 @@ class CompressionModel(pl.LightningModule):
                                                   self.degree, self.gamma, self.n_eig):
                     # Reuse the stored eigvec_gt
                     key = f"{i}_{degree}_{gamma}_{n_eig}"
-                    eigvec_gt = self.stored_eigvec_gt[key]
+                    eigvec_gt = stored_eigvec_gt[key]
                     
                     # Compute eigvec_hat for each iteration
                     eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, n_eig, gamma=gamma, distance='rbf')
