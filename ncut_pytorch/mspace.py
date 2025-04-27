@@ -318,7 +318,7 @@ class BestModelsAvgCallback(pl.Callback):
         
         # Get the current total loss from the outputs
         # The outputs from training_step is the total loss
-        current_loss = outputs.item() if isinstance(outputs, torch.Tensor) else float('inf')
+        current_loss = outputs['loss'].item()
         
         # If we have fewer than top_k models or this is a better model
         if len(self.best_models) < self.top_k or current_loss < self.best_loss:
@@ -367,11 +367,14 @@ class BestModelsAvgCallback(pl.Callback):
                 'best_loss': self.best_loss,
                 'avg_loss': sum(loss for loss, _ in self.best_models) / len(self.best_models)
             }, step=trainer.global_step)
+
+            self.best_models = []
+            self.best_loss = float('inf')
             
 
 def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=1000, decoder_lr=0.001,
                     batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
-                    logger=None, use_wandb=False, moving_avg_window=10, **model_kwargs):
+                    logger=None, use_wandb=False, model_avg_window=3, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
     l, c = compress_feats.shape
@@ -391,7 +394,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, de
         'enable_checkpointing': False,
         'enable_progress_bar': False,
         'enable_model_summary': False,
-        'callbacks': [BestModelsAvgCallback(top_k=moving_avg_window)],
+        'callbacks': [BestModelsAvgCallback(top_k=model_avg_window)],
     }
 
     if use_wandb and logger is None:
