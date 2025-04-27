@@ -23,6 +23,7 @@ from .ncut_pytorch import affinity_from_features, ncut, kway_ncut
 from .affinity_gamma import find_gamma_by_degree_after_fps
 from .math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
 
+
 def _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight):
     _eigvec_gt = eigvec_gt[:, :n_eig]
     _eigvec_hat = eigvec_hat[:, :n_eig]
@@ -96,10 +97,10 @@ class TrainerDecoder(pl.LightningModule):
             self.progress_bar = tqdm(total=training_steps//10, desc="M-space decoder training")
 
     def training_step(self, batch):
-        if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step != 0:
-            self.progress_bar.update(1)
-        if self.progress_bar and self.trainer.global_step >= self.training_steps - 10:
-            self.progress_bar.update(1)
+        if self.progress_bar and self.trainer.global_step % 100 == 0 and self.trainer.global_step != 0:
+            self.progress_bar.update(10)
+        if self.progress_bar and self.trainer.global_step >= self.training_steps - 100:
+            self.progress_bar.update(10)
             self.progress_bar.close()
 
         input_feats, output_feats = batch
@@ -289,16 +290,88 @@ class TrainerAutoEncoder(pl.LightningModule):
             self.clip_gradients(self.optimizers(), gradient_clip_val=0.1)
             self.optimizers().step()
             self.optimizers().zero_grad()
-    
+
+        return total_loss
     
     def configure_optimizers(self):
         optimizer = torch.optim.NAdam(self.parameters(), lr=self.lr)
         return optimizer
 
 
+# Moving Average Callback
+class BestModelsAvgCallback(pl.Callback):
+    """
+    Callback to store the top models with the lowest total loss and average them at the end.
+    """
+    def __init__(self, top_k=10):
+        super().__init__()
+        self.top_k = top_k
+        self.best_models = []  # List of tuples (loss, params)
+        self.best_loss = float('inf')
+        
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        """Store the model if it has a lower loss than the current best models."""
+        # Get current model parameters
+        current_params = {}
+        for name, param in pl_module.named_parameters():
+            current_params[name] = param.data.clone()
+        
+        # Get the current total loss from the outputs
+        # The outputs from training_step is the total loss
+        current_loss = outputs.item() if isinstance(outputs, torch.Tensor) else float('inf')
+        
+        # If we have fewer than top_k models or this is a better model
+        if len(self.best_models) < self.top_k or current_loss < self.best_loss:
+            # Add to best models
+            self.best_models.append((current_loss, current_params))
+            
+            # Sort by loss (ascending)
+            self.best_models.sort(key=lambda x: x[0])
+            
+            # Keep only top_k models
+            if len(self.best_models) > self.top_k:
+                self.best_models = self.best_models[:self.top_k]
+            
+            # Update best loss
+            self.best_loss = self.best_models[0][0]
+    
+    def on_train_end(self, trainer, pl_module):
+        """Average the best model parameters and apply them to the model at the end of training."""
+        if self.best_models:
+            # Initialize averaged parameters
+            avg_params = {}
+            
+            # Get parameter names from the first model
+            param_names = self.best_models[0][1].keys()
+            
+            # Initialize with zeros of the same shape
+            for name in param_names:
+                avg_params[name] = torch.zeros_like(self.best_models[0][1][name])
+            
+            # Sum all parameters from best models
+            for _, params in self.best_models:
+                for name in param_names:
+                    avg_params[name] += params[name]
+            
+            # Divide by the number of models to get the average
+            for name in param_names:
+                avg_params[name] /= len(self.best_models)
+            
+            # Apply averaged parameters to the model
+            for name, param in pl_module.named_parameters():
+                if name in avg_params:
+                    param.data.copy_(avg_params[name])
+            
+            # Log the best loss and average loss
+            pl_module.logger.log_metrics({
+                'best_loss': self.best_loss,
+                'avg_loss': sum(loss for loss, _ in self.best_models) / len(self.best_models)
+            }, step=trainer.global_step)
+            
+
 def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=1000, decoder_lr=0.001,
                     batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
-                    logger=None, use_wandb=False, **model_kwargs):
+                    logger=None, use_wandb=False, moving_avg_window=10, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
     l, c = compress_feats.shape
@@ -318,6 +391,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, de
         'enable_checkpointing': False,
         'enable_progress_bar': False,
         'enable_model_summary': False,
+        'callbacks': [BestModelsAvgCallback(top_k=moving_avg_window)],
     }
 
     if use_wandb and logger is None:
