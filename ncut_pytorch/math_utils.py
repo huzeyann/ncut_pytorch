@@ -272,8 +272,9 @@ def compute_repulsion_loss(points):
     
     # For each point, only consider repulsion from nearest neighbor
     nearest_dists, _ = torch.min(dist_matrix, dim=1)
-    repulsion = 1.0 / (nearest_dists + 1e-8)
+    repulsion = 1.0 / (nearest_dists + 0.01)  # the shift is to avoid big gradient
     return torch.mean(repulsion)
+
 
 def compute_attraction_loss(points):
     # Add point repulsion term for additional stability

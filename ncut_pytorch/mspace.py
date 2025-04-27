@@ -86,18 +86,29 @@ class MspaceAutoEncoder(nn.Module):
 
 class TrainerDecoder(pl.LightningModule):
     # train the decoder after the encoder is trained
-    def __init__(self, mspace_ae, lr=0.001):
+    def __init__(self, mspace_ae, lr=0.001, progress_bar=True, training_steps=1000):
         super().__init__()
         self.mspace_ae = mspace_ae
         self.lr = lr
+        self.progress_bar = progress_bar
+        self.training_steps = training_steps
+        if self.progress_bar:
+            self.progress_bar = tqdm(total=training_steps//10, desc="M-space decoder training")
 
     def training_step(self, batch):
+        if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step != 0:
+            self.progress_bar.update(1)
+        if self.progress_bar and self.trainer.global_step >= self.training_steps - 10:
+            self.progress_bar.update(1)
+            self.progress_bar.close()
+
         input_feats, output_feats = batch
         with torch.no_grad():
             feats_compressed = self.mspace_ae.encoder(input_feats)
         feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
-        recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed)
-        self.log("loss/recon", recon_loss, prog_bar=True)
+        # recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed, beta=0.1)
+        recon_loss = F.mse_loss(output_feats, feats_uncompressed)
+        self.log("loss/recon_separate", recon_loss, prog_bar=True)
         return recon_loss
 
     def configure_optimizers(self):
@@ -110,12 +121,13 @@ class TrainerAutoEncoder(pl.LightningModule):
     
     def __init__(self, in_dim, mood_dim=2, n_eig=None, n_elbow=3,
                  n_layer=4, latent_dim=256, 
-                 eigvec_loss=100, recon_loss=1, 
+                 eigvec_loss=100, recon_loss=0, 
                  riemann_curvature_loss=0., axis_align_loss=0, 
                  repulsion_loss=0.1, attraction_loss=0., 
-                 boundary_loss=0.01, zero_center_loss=0.,
+                 boundary_loss=0., zero_center_loss=0.01,
                  lr=0.001, progress_bar=True, training_steps=3000,
-                 degree=[0.05, 0.1, 0.2, 0.5], kway_weight_gamma=5.0):
+                 degree=[0.05, 0.1, 0.2, 0.5], kway_weight_gamma=5.0,
+                 log_grad_norm=False):
         super().__init__()
         
         self.mspace_ae = MspaceAutoEncoder(in_dim, mood_dim, n_layer, latent_dim)
@@ -140,15 +152,30 @@ class TrainerAutoEncoder(pl.LightningModule):
         self.progress_bar = progress_bar
         self.training_steps = training_steps
         if self.progress_bar:
-            self.progress_bar = tqdm(total=training_steps, desc="M-space training")
+            self.progress_bar = tqdm(total=training_steps, desc="M-space encoder training")
 
         self.automatic_optimization = False
-
+        self.log_grad_norm = log_grad_norm
 
     def forward(self, x):
         if isinstance(x, list):
             x = x[0]
         return self.mspace_ae.encoder(x)
+    
+
+    def _log_loss(self, loss, name, log_grad_norm=False):
+        self.logger.log_metrics({f'loss/{name}': loss.item()}, step=self.global_step)
+        self.loss_history[f"loss/{name}"].append(loss.item())
+        if log_grad_norm:
+            grad_norm = 0
+            self.manual_backward(loss, retain_graph=True)
+            for param in self.mspace_ae.encoder.parameters():
+                if param.grad is not None:
+                    grad_norm += param.grad.norm().item() ** 2
+            grad_norm = grad_norm ** 0.5
+            self.logger.log_metrics({f'grad/{name}': grad_norm}, step=self.global_step)
+            self.loss_history[f"grad/{name}"].append(grad_norm)
+            self.optimizers().zero_grad()
 
     def training_step(self, batch):
         if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step != 0:
@@ -189,7 +216,8 @@ class TrainerAutoEncoder(pl.LightningModule):
         # Run the same batch 10 times, updating parameters after each iteration
         for iteration in range(self.N_ITER_PER_STEP):
             feats_compressed = self.mspace_ae.encoder(input_feats)
-            feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
+
+            log_grad_norm = iteration == 0 and self.log_grad_norm
             
             total_loss = 0
             if self.eigvec_loss != 0:
@@ -203,50 +231,59 @@ class TrainerAutoEncoder(pl.LightningModule):
                     # Compute eigvec_hat for each iteration
                     eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, n_eig, gamma=gamma, distance='rbf')
                     eigvec_loss = flag_space_loss(eigvec_gt, eigvec_hat, n_eig=n_eig, weight=weight)
-                    self.log(f"loss/eigvec_d{self.degree[i]:.2f}", eigvec_loss, prog_bar=True)
-                    total_loss += eigvec_loss * self.eigvec_loss
-                    self.loss_history[f'eigvec_d{self.degree[i]:.2f}'].append(eigvec_loss.item())
+                    eigvec_loss = eigvec_loss * self.eigvec_loss
+                    total_loss += eigvec_loss
+
+                    _log_grad_norm = log_grad_norm and i == 0
+                    self._log_loss(eigvec_loss, f"eigvec_d{self.degree[i]:.2f}", log_grad_norm=_log_grad_norm)
 
 
             if self.recon_loss > 0:
-                recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed)
-                self.log("loss/recon", recon_loss, prog_bar=True)
-                total_loss += recon_loss * self.recon_loss
-                self.loss_history['recon'].append(recon_loss.item())
+                feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
+                recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed, beta=0.1)
+                recon_loss = recon_loss * self.recon_loss
+                total_loss += recon_loss
+                self._log_loss(recon_loss, "recon", log_grad_norm=log_grad_norm)
 
 
             if self.riemann_curvature_loss > 0:
                 riemann_curvature_loss = compute_riemann_curvature_loss(feats_compressed)
-                self.log("loss/riemann_curvature", riemann_curvature_loss, prog_bar=True)
-                total_loss += riemann_curvature_loss * self.riemann_curvature_loss
+                riemann_curvature_loss = riemann_curvature_loss * self.riemann_curvature_loss
+                total_loss += riemann_curvature_loss
+                self._log_loss(riemann_curvature_loss, "riemann_curvature", log_grad_norm=log_grad_norm)
 
             if self.axis_align_loss > 0:
                 axis_align_loss = compute_axis_align_loss(feats_compressed)
-                self.log("loss/axis_align", axis_align_loss, prog_bar=True)
-                total_loss += axis_align_loss * self.axis_align_loss
+                axis_align_loss = axis_align_loss * self.axis_align_loss
+                total_loss += axis_align_loss
+                self._log_loss(axis_align_loss, "axis_align", log_grad_norm=log_grad_norm)
 
             if self.repulsion_loss > 0:
                 repulsion_loss = compute_repulsion_loss(feats_compressed)
-                self.log("loss/repulsion", repulsion_loss, prog_bar=True)
-                total_loss += repulsion_loss * self.repulsion_loss
+                repulsion_loss = repulsion_loss * self.repulsion_loss
+                total_loss += repulsion_loss
+                self._log_loss(repulsion_loss, "repulsion", log_grad_norm=log_grad_norm)
 
             if self.attraction_loss > 0:
                 attraction_loss = compute_attraction_loss(feats_compressed)
-                self.log("loss/attraction", attraction_loss, prog_bar=True)
-                total_loss += attraction_loss * self.attraction_loss
+                attraction_loss = attraction_loss * self.attraction_loss
+                total_loss += attraction_loss
+                self._log_loss(attraction_loss, "attraction", log_grad_norm=log_grad_norm)
 
             if self.boundary_loss > 0:
                 boundary_loss = compute_boundary_loss(feats_compressed)
-                self.log("loss/boundary", boundary_loss, prog_bar=True)
-                total_loss += boundary_loss * self.boundary_loss
+                boundary_loss = boundary_loss * self.boundary_loss
+                total_loss += boundary_loss
+                self._log_loss(boundary_loss, "boundary", log_grad_norm=log_grad_norm)
 
             if self.zero_center_loss > 0:
                 zero_center_loss = feats_compressed.abs().mean()
-                self.log("loss/zero_center", zero_center_loss, prog_bar=True)
-                total_loss += zero_center_loss * self.zero_center_loss
+                zero_center_loss = zero_center_loss * self.zero_center_loss
+                total_loss += zero_center_loss
+                self._log_loss(zero_center_loss, "zero_center", log_grad_norm=log_grad_norm)
 
             # Log the loss for this iteration
-            self.log(f"loss/total", total_loss, prog_bar=True)
+            self.logger.log_metrics({'loss/total': total_loss.item()}, step=self.global_step)
             
             self.manual_backward(total_loss)
             self.clip_gradients(self.optimizers(), gradient_clip_val=0.1)
@@ -259,8 +296,9 @@ class TrainerAutoEncoder(pl.LightningModule):
         return optimizer
 
 
-def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=300, decoder_lr=0.0001,
-                    batch_size=1000, devices=[0], return_trainer=False, progress_bar=True, **model_kwargs):
+def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=1000, decoder_lr=0.001,
+                    batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
+                    logger=None, use_wandb=False, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
     l, c = compress_feats.shape
@@ -280,20 +318,22 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, de
         'enable_checkpointing': False,
         'enable_progress_bar': False,
         'enable_model_summary': False,
-        'logger': False,
     }
 
+    if use_wandb and logger is None:
+        logger = pl.loggers.WandbLogger(project='mspace', name='mspace')
+
     # train the autoencoder jointly
-    trainer = pl.Trainer(max_steps=training_steps, **trainer_args)
+    trainer = pl.Trainer(max_steps=training_steps, logger=logger, **trainer_args)
     trainer.fit(model, dataloader)
     
     mspace_ae = model.mspace_ae
 
     if decoder_training_steps > 0:
         # train the decoder only
-        model2 = TrainerDecoder(mspace_ae, lr=decoder_lr)
-        decoder_trainer = pl.Trainer(max_steps=decoder_training_steps, **trainer_args)
-        decoder_trainer.fit(model2, dataloader)
+        trainer = pl.Trainer(max_steps=decoder_training_steps, logger=logger, **trainer_args)
+        model2 = TrainerDecoder(mspace_ae, lr=decoder_lr, progress_bar=progress_bar, training_steps=decoder_training_steps)
+        trainer.fit(model2, dataloader)
         model.mspace_ae = model2.mspace_ae
 
     if return_trainer:
