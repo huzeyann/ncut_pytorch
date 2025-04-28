@@ -87,18 +87,41 @@ class MspaceAutoEncoder(nn.Module):
 
 class TrainerDecoder(pl.LightningModule):
     # train the decoder after the encoder is trained
-    def __init__(self, mspace_ae, lr=0.001, progress_bar=True, training_steps=1000):
+    def __init__(self, mspace_ae, decoder_lr=0.001, progress_bar=True, training_steps=1000, reg_loss=1e-4, log_grad_norm=False, **kwargs):
         super().__init__()
         self.mspace_ae = mspace_ae
-        self.lr = lr
+        self.lr = decoder_lr
         self.progress_bar = progress_bar
         self.training_steps = training_steps
         if self.progress_bar:
-            self.progress_bar = tqdm(total=training_steps//10, desc="M-space decoder training")
+            self.progress_bar = tqdm(total=training_steps//10, desc="[M-space decoder]")
+        self.reg_loss = reg_loss
+        self.log_grad_norm = log_grad_norm
+
+        self.loss_history = defaultdict(list)
+
+        self.automatic_optimization = False
+
+    def _log_loss(self, loss, name, log_grad_norm=False):
+        self.logger.log_metrics({f'decoder/loss/{name}': loss.item()}, step=self.global_step)
+        self.loss_history[f"decoder/loss/{name}"].append(loss.item())
+        if log_grad_norm:
+            grad_norm = 0
+            self.manual_backward(loss, retain_graph=True)
+            for param in self.mspace_ae.decoder.parameters():
+                if param.grad is not None:
+                    grad_norm += param.grad.norm().item() ** 2
+            grad_norm = grad_norm ** 0.5
+            self.logger.log_metrics({f'decoder/grad/{name}': grad_norm}, step=self.global_step)
+            self.loss_history[f"decoder/grad/{name}"].append(grad_norm)
+            self.optimizers().zero_grad()
 
     def training_step(self, batch):
         if self.progress_bar and self.trainer.global_step % 100 == 0 and self.trainer.global_step != 0:
             self.progress_bar.update(10)
+            if hasattr(self, 'loss_history') and 'decoder/loss/recon' in self.loss_history and self.loss_history['decoder/loss/recon']:
+                recon_loss = self.loss_history['decoder/loss/recon'][-1]
+                self.progress_bar.set_description(f"[M-space decoder] recon  loss: {recon_loss:.2e}")
         if self.progress_bar and self.trainer.global_step >= self.training_steps - 100:
             self.progress_bar.update(10)
             self.progress_bar.close()
@@ -106,11 +129,63 @@ class TrainerDecoder(pl.LightningModule):
         input_feats, output_feats = batch
         with torch.no_grad():
             feats_compressed = self.mspace_ae.encoder(input_feats)
+
         feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
-        # recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed, beta=0.1)
         recon_loss = F.mse_loss(output_feats, feats_uncompressed)
-        self.log("loss/recon_separate", recon_loss, prog_bar=True)
-        return recon_loss
+        self._log_loss(recon_loss, "recon", self.log_grad_norm)
+
+        ## repulsion regularization loss
+
+        # Create a grid in the compressed space
+        x_min, x_max = feats_compressed[:, 0].min(), feats_compressed[:, 0].max()
+        y_min, y_max = feats_compressed[:, 1].min(), feats_compressed[:, 1].max()
+        # increase the range of the grid
+        x_min -= 0.2 * (x_max - x_min)
+        x_max += 0.2 * (x_max - x_min)
+        y_min -= 0.2 * (y_max - y_min)
+        y_max += 0.2 * (y_max - y_min)
+        
+        grid_size = 40
+        x_grid = torch.linspace(x_min, x_max, grid_size, device=feats_compressed.device)
+        y_grid = torch.linspace(y_min, y_max, grid_size, device=feats_compressed.device)
+        X, Y = torch.meshgrid(x_grid, y_grid, indexing='ij')
+        grid_points = torch.stack([X.flatten(), Y.flatten()], dim=1)
+        
+        # Decompress the grid points
+        grid_decompressed = self.mspace_ae.decoder(grid_points)
+        
+        # Find nearest neighbors in original data
+        dist = torch.cdist(grid_decompressed, input_feats)
+        nearest_dists = dist.min(dim=1).values
+        repulsion = 1.0 / (nearest_dists + 0.01)  # the shift is to avoid big gradient
+        
+        ## filter out points that are too close to the existing data points
+
+        # Calculate cell size in the compressed space
+        cell_size_x = (x_max - x_min) / grid_size
+        cell_size_y = (y_max - y_min) / grid_size
+        radius = max(cell_size_x, cell_size_y)
+        
+        grid_to_data_distances = torch.cdist(grid_points, feats_compressed)
+        # Check if any data point is within the radius for each grid point
+        has_data_nearby = (grid_to_data_distances < radius).any(dim=1)
+
+        # Calculate regularization loss only for points without nearby data
+        if (~has_data_nearby).any():
+            reg_loss = repulsion[~has_data_nearby].mean()
+        else:
+            reg_loss = torch.tensor(0.0, device=repulsion.device)
+
+        reg_loss = reg_loss * self.reg_loss
+        self._log_loss(reg_loss, "reg", self.log_grad_norm)
+        
+        total_loss = recon_loss + reg_loss
+
+        self.optimizers().zero_grad()
+        self.manual_backward(total_loss)
+        self.optimizers().step()
+        
+        return total_loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.NAdam(self.mspace_ae.decoder.parameters(), lr=self.lr)
@@ -128,7 +203,7 @@ class TrainerAutoEncoder(pl.LightningModule):
                  boundary_loss=0., zero_center_loss=0.01,
                  lr=0.001, progress_bar=True, training_steps=3000,
                  degree=[0.05, 0.1, 0.2, 0.5], kway_weight_gamma=5.0,
-                 log_grad_norm=False):
+                 log_grad_norm=False, **kwargs):
         super().__init__()
         
         self.mspace_ae = MspaceAutoEncoder(in_dim, mood_dim, n_layer, latent_dim)
@@ -153,7 +228,7 @@ class TrainerAutoEncoder(pl.LightningModule):
         self.progress_bar = progress_bar
         self.training_steps = training_steps
         if self.progress_bar:
-            self.progress_bar = tqdm(total=training_steps, desc="M-space encoder training")
+            self.progress_bar = tqdm(total=training_steps, desc="[M-space encoder]")
 
         self.automatic_optimization = False
         self.log_grad_norm = log_grad_norm
@@ -181,6 +256,17 @@ class TrainerAutoEncoder(pl.LightningModule):
     def training_step(self, batch):
         if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step != 0:
             self.progress_bar.update(10)
+            # Update progress bar description with average eigvec loss
+            if hasattr(self, 'loss_history'):
+                # Calculate average eigvec loss from all degree values
+                eigvec_losses = []
+                for i, degree in enumerate(self.degree):
+                    loss_key = f"loss/eigvec_d{degree:.2f}"
+                    if loss_key in self.loss_history and self.loss_history[loss_key]:
+                        eigvec_losses.append(self.loss_history[loss_key][-1])
+                if eigvec_losses:
+                    avg_eigvec_loss = sum(eigvec_losses) / len(eigvec_losses)
+                    self.progress_bar.set_description(f"[M-space encoder] eigvec loss: {avg_eigvec_loss:.2e}")
         if self.progress_bar and self.trainer.global_step >= self.training_steps - 10:
             self.progress_bar.update(10)
             self.progress_bar.close()
@@ -285,6 +371,7 @@ class TrainerAutoEncoder(pl.LightningModule):
 
             # Log the loss for this iteration
             self.logger.log_metrics({'loss/total': total_loss.item()}, step=self.global_step)
+            self.loss_history['loss/total'].append(total_loss.item())
             
             self.manual_backward(total_loss)
             self.clip_gradients(self.optimizers(), gradient_clip_val=0.1)
@@ -372,7 +459,7 @@ class BestModelsAvgCallback(pl.Callback):
             self.best_loss = float('inf')
             
 
-def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=1000, decoder_lr=0.001,
+def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=1000,
                     batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
                     logger=None, use_wandb=False, model_avg_window=3, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
@@ -409,7 +496,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, de
     if decoder_training_steps > 0:
         # train the decoder only
         trainer = pl.Trainer(max_steps=decoder_training_steps, logger=logger, **trainer_args)
-        model2 = TrainerDecoder(mspace_ae, lr=decoder_lr, progress_bar=progress_bar, training_steps=decoder_training_steps)
+        model2 = TrainerDecoder(mspace_ae, progress_bar=progress_bar, training_steps=decoder_training_steps, **model_kwargs)
         trainer.fit(model2, dataloader)
         model.mspace_ae = model2.mspace_ae
 
