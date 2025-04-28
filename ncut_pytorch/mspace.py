@@ -136,20 +136,30 @@ class TrainerDecoder(pl.LightningModule):
 
         ## repulsion regularization loss
 
-        # Create a grid in the compressed space
-        x_min, x_max = feats_compressed[:, 0].min(), feats_compressed[:, 0].max()
-        y_min, y_max = feats_compressed[:, 1].min(), feats_compressed[:, 1].max()
-        # increase the range of the grid
-        x_min -= 0.2 * (x_max - x_min)
-        x_max += 0.2 * (x_max - x_min)
-        y_min -= 0.2 * (y_max - y_min)
-        y_max += 0.2 * (y_max - y_min)
+        # Get the dimension of the compressed space
+        compressed_dim = feats_compressed.shape[1]
         
+        # For each dimension, create a grid
         grid_size = 40
-        x_grid = torch.linspace(x_min, x_max, grid_size, device=feats_compressed.device)
-        y_grid = torch.linspace(y_min, y_max, grid_size, device=feats_compressed.device)
-        X, Y = torch.meshgrid(x_grid, y_grid, indexing='ij')
-        grid_points = torch.stack([X.flatten(), Y.flatten()], dim=1)
+        dim_mins = feats_compressed.min(0).values
+        dim_maxs = feats_compressed.max(0).values
+        dim_mins -= 0.2 * (dim_maxs - dim_mins)
+        dim_maxs += 0.2 * (dim_maxs - dim_mins)
+        radius = (dim_maxs - dim_mins) / grid_size
+        radius = (radius ** 2).sum() ** 0.5
+        
+        # Create a grid of points in the compressed space
+        if compressed_dim == 2:
+            # For 2D, use meshgrid for efficiency
+            grid1 = torch.linspace(dim_mins[0], dim_maxs[0], grid_size, device=feats_compressed.device)
+            grid2 = torch.linspace(dim_mins[1], dim_maxs[1], grid_size, device=feats_compressed.device)
+            X, Y = torch.meshgrid(grid1, grid2, indexing='ij')
+            grid_points = torch.stack([X.flatten(), Y.flatten()], dim=1)
+        else:
+            # For higher dimensions, create a random sampling of points
+            num_samples = 1000
+            grid_points = torch.rand(num_samples, compressed_dim, device=feats_compressed.device)
+            grid_points = grid_points * (dim_maxs - dim_mins) + dim_mins
         
         # Decompress the grid points
         grid_decompressed = self.mspace_ae.decoder(grid_points)
@@ -160,12 +170,6 @@ class TrainerDecoder(pl.LightningModule):
         repulsion = 1.0 / (nearest_dists + 0.01)  # the shift is to avoid big gradient
         
         ## filter out points that are too close to the existing data points
-
-        # Calculate cell size in the compressed space
-        cell_size_x = (x_max - x_min) / grid_size
-        cell_size_y = (y_max - y_min) / grid_size
-        radius = max(cell_size_x, cell_size_y)
-        
         grid_to_data_distances = torch.cdist(grid_points, feats_compressed)
         # Check if any data point is within the radius for each grid point
         has_data_nearby = (grid_to_data_distances < radius).any(dim=1)
