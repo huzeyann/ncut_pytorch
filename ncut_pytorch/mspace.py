@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from functools import partial
 from tqdm import tqdm
 from torch.utils.data import TensorDataset
 
@@ -64,14 +65,42 @@ def ncut_wrapper(features, n_eig, distance='rbf', gamma=0.5):
     return eigvec, eigval
 
 
+class MovingMinMax(nn.Module):
+    def __init__(self, dim, beta=0.1):
+        super(MovingMinMax, self).__init__()
+        self.beta = beta
+        self.min_val = nn.Parameter(torch.zeros(dim))
+        self.min_val.requires_grad = False
+        self.max_val = nn.Parameter(torch.ones(dim))
+        self.max_val.requires_grad = False
+        
+
+    def forward(self, x):
+        self.min_val.data = self.min_val * self.beta + x.min(dim=0).values * (1 - self.beta)
+        self.max_val.data = self.max_val * self.beta + x.max(dim=0).values * (1 - self.beta)
+
+        x = (x - self.min_val) / (self.max_val - self.min_val)
+        return x
+
 class MLP(nn.Module):
-    def __init__(self, in_dim, out_dim, n_layer=2, latent_dim=4096):
+    activation_map = {
+        'leaky_relu': partial(nn.LeakyReLU, negative_slope=0.2),
+        'relu': partial(nn.ReLU),
+        'elu': partial(nn.ELU),
+        'gelu': partial(nn.GELU),
+        'tanh': partial(nn.Tanh),
+        'sigmoid': partial(nn.Sigmoid),
+        'identity': partial(nn.Identity),
+    }
+    def __init__(self, in_dim, out_dim, n_layer=2, latent_dim=4096, activation='gelu', final_activation='identity'):
         super().__init__()
         self.mlp = nn.Sequential(
+            # MovingMinMaxAvg(in_dim),
             nn.Linear(in_dim, latent_dim),
-            nn.GELU(),
-            *[nn.Sequential(nn.Linear(latent_dim, latent_dim), nn.GELU()) for _ in range(n_layer)],
-            nn.Linear(latent_dim, out_dim)
+            self.activation_map[activation](),
+            *[nn.Sequential(nn.Linear(latent_dim, latent_dim), self.activation_map[activation]()) for _ in range(n_layer)],
+            nn.Linear(latent_dim, out_dim),
+            self.activation_map[final_activation](),
         )
     
     def forward(self, x):
@@ -79,23 +108,31 @@ class MLP(nn.Module):
 
 
 class MspaceAutoEncoder(nn.Module):
-    def __init__(self, in_dim, mood_dim, n_layer=4, latent_dim=256):
+    def __init__(self, in_dim, mood_dim, n_layer=4, latent_dim=256, encoder_activation='gelu', decoder_activation='gelu', final_activation='identity'):
         super().__init__()
-        self.encoder = MLP(in_dim, mood_dim, n_layer, latent_dim)
-        self.decoder = MLP(mood_dim, in_dim, n_layer, latent_dim)
+        self.encoder = MLP(in_dim, mood_dim, n_layer, latent_dim, encoder_activation, final_activation)
+        self.decoder = nn.Sequential(
+            MovingMinMax(mood_dim),
+            MLP(mood_dim, in_dim, n_layer, latent_dim, decoder_activation)
+        )
     
 
-class TrainerDecoder(pl.LightningModule):
-    # train the decoder after the encoder is trained
-    def __init__(self, mspace_ae, decoder_lr=0.001, progress_bar=True, training_steps=1000, reg_loss=1e-4, log_grad_norm=False, **kwargs):
+class TrainDecoder(pl.LightningModule):
+    N_ITER_PER_STEP = 1
+
+    # train the decoder after the encoder is trained, freeze the encoder
+    def __init__(self, mspace_ae, decoder_lr=0.001, progress_bar=True, training_steps=1000, 
+                 decoder_repulsion_loss=1e-1, decoder_zero_center_loss=1e-2,
+                 log_grad_norm=False, **kwargs):
         super().__init__()
         self.mspace_ae = mspace_ae
         self.lr = decoder_lr
         self.progress_bar = progress_bar
         self.training_steps = training_steps
         if self.progress_bar:
-            self.progress_bar = tqdm(total=training_steps//10, desc="[M-space decoder]")
-        self.reg_loss = reg_loss
+            self.progress_bar = tqdm(total=training_steps, desc="[M-space decoder]")
+        self.decoder_repulsion_loss = decoder_repulsion_loss
+        self.decoder_zero_center_loss = decoder_zero_center_loss
         self.log_grad_norm = log_grad_norm
 
         self.loss_history = defaultdict(list)
@@ -117,86 +154,103 @@ class TrainerDecoder(pl.LightningModule):
             self.optimizers().zero_grad()
 
     def training_step(self, batch):
-        if self.progress_bar and self.trainer.global_step % 100 == 0 and self.trainer.global_step != 0:
+        if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step != 0:
             self.progress_bar.update(10)
             if hasattr(self, 'loss_history') and 'decoder/loss/recon' in self.loss_history and self.loss_history['decoder/loss/recon']:
                 recon_loss = self.loss_history['decoder/loss/recon'][-1]
                 self.progress_bar.set_description(f"[M-space decoder] recon  loss: {recon_loss:.2e}")
-        if self.progress_bar and self.trainer.global_step >= self.training_steps - 100:
+        if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step >= self.training_steps - 10:
             self.progress_bar.update(10)
             self.progress_bar.close()
 
         input_feats, output_feats = batch
         with torch.no_grad():
             feats_compressed = self.mspace_ae.encoder(input_feats)
+            dim_mins = feats_compressed.min(0).values
+            dim_maxs = feats_compressed.max(0).values
+            compressed_dim = feats_compressed.shape[1]
 
-        feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
-        recon_loss = F.mse_loss(output_feats, feats_uncompressed)
-        self._log_loss(recon_loss, "recon", self.log_grad_norm)
 
-        ## repulsion regularization loss
+        for iteration in range(self.N_ITER_PER_STEP):
 
-        # Get the dimension of the compressed space
-        compressed_dim = feats_compressed.shape[1]
-        
-        # For each dimension, create a grid
-        grid_size = 40
-        dim_mins = feats_compressed.min(0).values
-        dim_maxs = feats_compressed.max(0).values
-        dim_mins -= 0.2 * (dim_maxs - dim_mins)
-        dim_maxs += 0.2 * (dim_maxs - dim_mins)
-        radius = (dim_maxs - dim_mins) / grid_size
-        radius = (radius ** 2).sum() ** 0.5
-        
-        # Create a grid of points in the compressed space
-        if compressed_dim == 2:
-            # For 2D, use meshgrid for efficiency
-            grid1 = torch.linspace(dim_mins[0], dim_maxs[0], grid_size, device=feats_compressed.device)
-            grid2 = torch.linspace(dim_mins[1], dim_maxs[1], grid_size, device=feats_compressed.device)
-            X, Y = torch.meshgrid(grid1, grid2, indexing='ij')
-            grid_points = torch.stack([X.flatten(), Y.flatten()], dim=1)
-        else:
-            # For higher dimensions, create a random sampling of points
-            num_samples = 1000
-            grid_points = torch.rand(num_samples, compressed_dim, device=feats_compressed.device)
-            grid_points = grid_points * (dim_maxs - dim_mins) + dim_mins
-        
-        # Decompress the grid points
-        grid_decompressed = self.mspace_ae.decoder(grid_points)
-        
-        # Find nearest neighbors in original data
-        dist = torch.cdist(grid_decompressed, input_feats)
-        nearest_dists = dist.min(dim=1).values
-        repulsion = 1.0 / (nearest_dists + 0.01)  # the shift is to avoid big gradient
-        
-        ## filter out points that are too close to the existing data points
-        grid_to_data_distances = torch.cdist(grid_points, feats_compressed)
-        # Check if any data point is within the radius for each grid point
-        has_data_nearby = (grid_to_data_distances < radius).any(dim=1)
+            total_loss = 0
 
-        # Calculate regularization loss only for points without nearby data
-        if (~has_data_nearby).any():
-            reg_loss = repulsion[~has_data_nearby].mean()
-        else:
-            reg_loss = torch.tensor(0.0, device=repulsion.device)
+            feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
+            recon_loss = F.mse_loss(output_feats, feats_uncompressed)
+            self._log_loss(recon_loss, "recon", self.log_grad_norm and iteration == 0)
+            total_loss = recon_loss + recon_loss
 
-        reg_loss = reg_loss * self.reg_loss
-        self._log_loss(reg_loss, "reg", self.log_grad_norm)
-        
-        total_loss = recon_loss + reg_loss
+            if self.decoder_repulsion_loss > 0:
+                ## repulsion regularization loss
+                grid_size = 16
+                radius_factor = 0.2
+                # randomly shift the grid, to have better coverage
+                dim_mins -= 0.25 * (dim_maxs - dim_mins) * torch.rand_like(dim_mins)
+                dim_maxs += 0.25 * (dim_maxs - dim_mins) * torch.rand_like(dim_maxs)
+                radius = (dim_maxs - dim_mins) / grid_size
+                radius = (radius ** 2).sum() ** 0.5 * radius_factor
+                
+                # Create a grid of points in the compressed space
+                if compressed_dim == 2:
+                    # For 2D, use meshgrid for efficiency
+                    grid1 = torch.linspace(dim_mins[0], dim_maxs[0], grid_size, device=feats_compressed.device)
+                    grid2 = torch.linspace(dim_mins[1], dim_maxs[1], grid_size, device=feats_compressed.device)
+                    X, Y = torch.meshgrid(grid1, grid2, indexing='ij')
+                    grid_points = torch.stack([X.flatten(), Y.flatten()], dim=1)
+                else:
+                    # For higher dimensions, create a random sampling of points
+                    num_samples = 256
+                    grid_points = torch.rand(num_samples, compressed_dim, device=feats_compressed.device)
+                    grid_points = grid_points * (dim_maxs - dim_mins) + dim_mins
+                
+                # Decompress the grid points
+                grid_decompressed = self.mspace_ae.decoder(grid_points)
+                
+                # Find nearest neighbors in original data
+                dist = torch.cdist(grid_decompressed, input_feats)
+                nearest_dists = dist.min(dim=1).values
+                repulsion = 1.0 / (nearest_dists + 0.01)  # the shift is to avoid big gradient
+                
+                ## filter out points that are too close to the existing data points
+                grid_to_data_distances = torch.cdist(grid_points, feats_compressed)
+                # Check if any data point is within the radius for each grid point
+                has_data_nearby = (grid_to_data_distances < radius).any(dim=1)
 
-        self.optimizers().zero_grad()
-        self.manual_backward(total_loss)
-        self.optimizers().step()
+                # Calculate regularization loss only for points without nearby data
+                if (~has_data_nearby).any():
+                    reg_loss = repulsion[~has_data_nearby].mean()
+                else:
+                    reg_loss = torch.tensor(0.0, device=repulsion.device)
+
+                reg_loss = reg_loss * self.decoder_repulsion_loss
+                self._log_loss(reg_loss, "reg", self.log_grad_norm and iteration == 0)
+                total_loss = total_loss + reg_loss
+
+                if self.decoder_zero_center_loss > 0:
+                    ## zero center loss
+                    zcenter = input_feats.mean(0)
+                    zcenter_points = grid_decompressed[~has_data_nearby]
+                    zcenter_loss = (zcenter_points - zcenter).abs().mean()
+                    zcenter_loss = zcenter_loss * self.decoder_zero_center_loss
+                    self._log_loss(zcenter_loss, "zcenter", self.log_grad_norm and iteration == 0)
+                    total_loss = total_loss + zcenter_loss
+
+            
+            self.optimizers().zero_grad()
+            self.manual_backward(total_loss)
+            self.clip_gradients(self.optimizers(), gradient_clip_val=0.1)
+            self.optimizers().step()
         
         return total_loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.NAdam(self.mspace_ae.decoder.parameters(), lr=self.lr)
+        params = list(self.mspace_ae.decoder.parameters())
+        params = [p for p in params if p.requires_grad]
+        optimizer = torch.optim.NAdam(params, lr=self.lr)
         return optimizer
 
 
-class TrainerAutoEncoder(pl.LightningModule):
+class TrainEncoder(pl.LightningModule):
     N_ITER_PER_STEP = 10
     
     def __init__(self, in_dim, mood_dim=2, n_eig=None, n_elbow=3,
@@ -205,12 +259,15 @@ class TrainerAutoEncoder(pl.LightningModule):
                  riemann_curvature_loss=0., axis_align_loss=0, 
                  repulsion_loss=0.1, attraction_loss=0., 
                  boundary_loss=0., zero_center_loss=0.01,
-                 lr=0.001, progress_bar=True, training_steps=3000,
+                 lr=0.001, progress_bar=True, training_steps=500,
                  degree=[0.05, 0.1, 0.2, 0.5], kway_weight_gamma=5.0,
-                 log_grad_norm=False, **kwargs):
+                 encoder_activation='gelu', decoder_activation='gelu', 
+                 final_activation='identity',
+                 log_grad_norm=False, 
+                 **kwargs):
         super().__init__()
         
-        self.mspace_ae = MspaceAutoEncoder(in_dim, mood_dim, n_layer, latent_dim)
+        self.mspace_ae = MspaceAutoEncoder(in_dim, mood_dim, n_layer, latent_dim, encoder_activation, decoder_activation, final_activation)
                 
         self.loss_history = defaultdict(list)
 
@@ -271,7 +328,7 @@ class TrainerAutoEncoder(pl.LightningModule):
                 if eigvec_losses:
                     avg_eigvec_loss = sum(eigvec_losses) / len(eigvec_losses)
                     self.progress_bar.set_description(f"[M-space encoder] eigvec loss: {avg_eigvec_loss:.2e}")
-        if self.progress_bar and self.trainer.global_step >= self.training_steps - 10:
+        if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step >= self.training_steps - 10:
             self.progress_bar.update(10)
             self.progress_bar.close()
 
@@ -306,6 +363,7 @@ class TrainerAutoEncoder(pl.LightningModule):
         
         # Run the same batch 10 times, updating parameters after each iteration
         for iteration in range(self.N_ITER_PER_STEP):
+
             feats_compressed = self.mspace_ae.encoder(input_feats)
 
             log_grad_norm = iteration == 0 and self.log_grad_norm
@@ -385,7 +443,9 @@ class TrainerAutoEncoder(pl.LightningModule):
         return total_loss
     
     def configure_optimizers(self):
-        optimizer = torch.optim.NAdam(self.parameters(), lr=self.lr)
+        params = list(self.mspace_ae.parameters())
+        params = [p for p in params if p.requires_grad]
+        optimizer = torch.optim.NAdam(params, lr=self.lr)
         return optimizer
 
 
@@ -402,6 +462,11 @@ class BestModelsAvgCallback(pl.Callback):
         
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         """Store the model if it has a lower loss than the current best models."""
+
+        # skip if the global step is on the frist 80% of the training steps
+        if trainer.global_step < trainer.max_steps * 0.8:
+            return
+        
         # Get current model parameters
         current_params = {}
         for name, param in pl_module.named_parameters():
@@ -463,16 +528,14 @@ class BestModelsAvgCallback(pl.Callback):
             self.best_loss = float('inf')
             
 
-def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, decoder_training_steps=1000,
+def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, decoder_training_steps=1000,
                     batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
                     logger=None, use_wandb=False, model_avg_window=3, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
     l, c = compress_feats.shape
 
-    training_steps = training_steps // TrainerAutoEncoder.N_ITER_PER_STEP
-
-    model = TrainerAutoEncoder(c, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
+    model = TrainEncoder(c, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
     
     dataset = TensorDataset(compress_feats, uncompress_feats)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -500,7 +563,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=3000, de
     if decoder_training_steps > 0:
         # train the decoder only
         trainer = pl.Trainer(max_steps=decoder_training_steps, logger=logger, **trainer_args)
-        model2 = TrainerDecoder(mspace_ae, progress_bar=progress_bar, training_steps=decoder_training_steps, **model_kwargs)
+        model2 = TrainDecoder(mspace_ae, progress_bar=progress_bar, training_steps=decoder_training_steps, **model_kwargs)
         trainer.fit(model2, dataloader)
         model.mspace_ae = model2.mspace_ae
 
