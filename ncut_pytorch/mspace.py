@@ -108,12 +108,12 @@ class MLP(nn.Module):
 
 
 class MspaceAutoEncoder(nn.Module):
-    def __init__(self, in_dim, mood_dim, n_layer=4, latent_dim=256, encoder_activation='gelu', decoder_activation='gelu', final_activation='identity'):
+    def __init__(self, in_dim, out_dim, mood_dim, n_layer=4, latent_dim=256, encoder_activation='gelu', decoder_activation='gelu', final_activation='identity'):
         super().__init__()
         self.encoder = MLP(in_dim, mood_dim, n_layer, latent_dim, encoder_activation, final_activation)
         self.decoder = nn.Sequential(
             MovingMinMax(mood_dim),
-            MLP(mood_dim, in_dim, n_layer, latent_dim, decoder_activation)
+            MLP(mood_dim, out_dim, n_layer, latent_dim, decoder_activation)
         )
     
 
@@ -253,7 +253,7 @@ class TrainDecoder(pl.LightningModule):
 class TrainEncoder(pl.LightningModule):
     N_ITER_PER_STEP = 10
     
-    def __init__(self, in_dim, mood_dim=2, n_eig=None, n_elbow=3,
+    def __init__(self, in_dim, out_dim, mood_dim=2, n_eig=None, n_elbow=3,
                  n_layer=4, latent_dim=256, 
                  eigvec_loss=100, recon_loss=0, 
                  riemann_curvature_loss=0., axis_align_loss=0, 
@@ -267,7 +267,7 @@ class TrainEncoder(pl.LightningModule):
                  **kwargs):
         super().__init__()
         
-        self.mspace_ae = MspaceAutoEncoder(in_dim, mood_dim, n_layer, latent_dim, encoder_activation, decoder_activation, final_activation)
+        self.mspace_ae = MspaceAutoEncoder(in_dim, out_dim, mood_dim, n_layer, latent_dim, encoder_activation, decoder_activation, final_activation)
                 
         self.loss_history = defaultdict(list)
 
@@ -533,9 +533,10 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
                     logger=None, use_wandb=False, model_avg_window=3, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
-    l, c = compress_feats.shape
+    l, c_in = compress_feats.shape
+    c_out = uncompress_feats.shape[1]
 
-    model = TrainEncoder(c, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
+    model = TrainEncoder(c_in, c_out, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
     
     dataset = TensorDataset(compress_feats, uncompress_feats)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
