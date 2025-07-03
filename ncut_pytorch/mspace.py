@@ -178,7 +178,7 @@ class TrainDecoder(pl.LightningModule):
             feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
             recon_loss = F.mse_loss(output_feats, feats_uncompressed)
             self._log_loss(recon_loss, "recon", self.log_grad_norm and iteration == 0)
-            total_loss = recon_loss + recon_loss
+            total_loss = recon_loss
 
             if self.decoder_repulsion_loss > 0:
                 ## repulsion regularization loss
@@ -207,7 +207,7 @@ class TrainDecoder(pl.LightningModule):
                 grid_decompressed = self.mspace_ae.decoder(grid_points)
                 
                 # Find nearest neighbors in original data
-                dist = torch.cdist(grid_decompressed, input_feats)
+                dist = torch.cdist(grid_decompressed, output_feats)
                 nearest_dists = dist.min(dim=1).values
                 repulsion = 1.0 / (nearest_dists + 0.01)  # the shift is to avoid big gradient
                 
@@ -228,7 +228,7 @@ class TrainDecoder(pl.LightningModule):
 
                 if self.decoder_zero_center_loss > 0:
                     ## zero center loss
-                    zcenter = input_feats.mean(0)
+                    zcenter = output_feats.mean(0)
                     zcenter_points = grid_decompressed[~has_data_nearby]
                     zcenter_loss = (zcenter_points - zcenter).abs().mean()
                     zcenter_loss = zcenter_loss * self.decoder_zero_center_loss
