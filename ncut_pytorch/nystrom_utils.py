@@ -184,22 +184,22 @@ def propagate_knn(
     for i in range(0, fullgraph_features.shape[0], chunk_size):
         end = min(i + chunk_size, fullgraph_features.shape[0])
 
-        with torch.no_grad():
-            _v = fullgraph_features[i:end].to(device)
-            _A = affinity_from_features(_v, subgraph_features, distance=distance, affinity_focal_gamma=affinity_focal_gamma)
+        # compute affinity matrix on subgraph
+        _v = fullgraph_features[i:end].to(device)
+        _A = affinity_from_features(_v, subgraph_features, distance=distance, affinity_focal_gamma=affinity_focal_gamma)
 
-            # keep topk nearest neighbors for each row (sampled nodes)
-            topk_A, topk_indices = _A.topk(k=knn, dim=-1, largest=True)
-            _D = topk_A.sum(-1)
-            topk_A = topk_A / _D[:, None]
-            _weights = topk_A.flatten()  # (n * knn)
+        # keep topk nearest neighbors for each row (sampled nodes)
+        topk_A, topk_indices = _A.topk(k=knn, dim=-1, largest=True)
+        _D = topk_A.sum(-1)
+        topk_A = topk_A / _D[:, None]
+        _weights = topk_A.flatten()  # (n * knn)
         
         _values = subgraph_output[topk_indices.flatten()]  # (n * knn, d)
         topk_output = _values * _weights[:, None]  # (n * knn, d)
         topk_output = topk_output.reshape(-1, knn, _values.shape[-1])  # (n, knn, d)
         topk_output = topk_output.sum(dim=1)  # (n, d)
 
-        if move_output_to_cpu:
+        if move_output_to_cpu:  # move output to cpu to save GPU memory
             topk_output = topk_output.cpu()
         fullgraph_outputs.append(topk_output)
 
