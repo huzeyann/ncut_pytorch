@@ -57,8 +57,12 @@ def svd_lowrank(mat, q):
     q: int
     return: (n, q), (q,), (q, m)
     """
+
+    if mat.dtype == torch.float16:
+        mat = mat.float()  # svd_lowrank does not support float16
+
     u, s, v = torch.svd_lowrank(mat, q=q+10)
-    # take 10 extra components to reduce the error, because error in svd_lowrank
+    # take 10 extra components to reduce the approximation error
     u = u[:, :q]
     s = s[:q]
     v = v[:, :q]
