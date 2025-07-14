@@ -264,11 +264,9 @@ def compute_axis_align_loss(data):
     cov_matrix = (centered_data.T @ centered_data) / n  # Compute covariance matrix
     
     eye = torch.eye(d, device=data.device)
-    return torch.nn.functional.smooth_l1_loss(cov_matrix, eye)  # L1 loss between covariance matrix and identity matrix
-
+    return torch.mean((cov_matrix - eye) ** 2)
 
 def compute_repulsion_loss(points):
-    # Add point repulsion term for additional stability
     dist_matrix = torch.cdist(points, points)
     # Set diagonal to large value to avoid self-repulsion 
     mask = torch.eye(points.shape[0], device=points.device).bool()
@@ -281,18 +279,14 @@ def compute_repulsion_loss(points):
 
 
 def compute_attraction_loss(points):
-    # Add point repulsion term for additional stability
-    dist_matrix = torch.cdist(points, points)
-
-    nearest_dists, _ = torch.max(dist_matrix, dim=1)
-    attraction = nearest_dists.mean()
-    return attraction
+    center = points.mean(dim=0)
+    dist = (points - center) ** 2
+    return dist.mean()
 
 
 def compute_boundary_loss(points, domain_min=-1, domain_max=1):
-    return torch.mean(torch.relu(domain_min - points)) + \
-            torch.mean(torch.relu(points - domain_max))
-
+    return torch.mean((torch.relu(domain_min - points))**2) + \
+            torch.mean((torch.relu(points - domain_max))**2)
 
 # Use elbow method to find optimal number of eigenvalues
 def find_elbow(eigvals, n_elbows=5):

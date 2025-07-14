@@ -426,7 +426,8 @@ class TrainEncoder(pl.LightningModule):
                 self._log_loss(boundary_loss, "boundary", log_grad_norm=log_grad_norm)
 
             if self.zero_center_loss > 0:
-                zero_center_loss = feats_compressed.abs().mean()
+                # zero_center_loss = feats_compressed.abs().mean()
+                zero_center_loss = (feats_compressed ** 2).mean()
                 zero_center_loss = zero_center_loss * self.zero_center_loss
                 total_loss += zero_center_loss
                 self._log_loss(zero_center_loss, "zero_center", log_grad_norm=log_grad_norm)

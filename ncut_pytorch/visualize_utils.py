@@ -68,8 +68,8 @@ def rgb_from_mspace_2d(
     features: torch.Tensor,
     q: float = 0.95,
     n_eig: int = 32,
-    training_steps: int = 500,
-    progress_bar: bool = True,
+    training_steps: int = 100,
+    progress_bar: bool = False,
     **kwargs: Any,
 ):
     from .mspace import mspace_viz_transform
@@ -79,8 +79,23 @@ def rgb_from_mspace_2d(
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
 
-    x2d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=2, training_steps=training_steps, progress_bar=progress_bar, **kwargs)
-
+    x2d = mspace_viz_transform(  
+                    features=features,
+                    n_eig=n_eig, 
+                    mood_dim=2, 
+                    training_steps=training_steps,
+                    progress_bar=progress_bar,
+                    eigvec_loss=1.0,
+                    recon_loss=0.0, 
+                    decoder_training_steps=0, 
+                    boundary_loss=100., 
+                    zero_center_loss=0.0, 
+                    repulsion_loss=1.0,
+                    attraction_loss=100.,
+                    axis_align_loss=100.,
+                    degree=[0.1, 0.5],
+                    **kwargs)
+                    
     rgb = rgb_from_2d_colormap(x2d, q=q)
 
     return x2d, rgb
@@ -90,8 +105,8 @@ def rgb_from_mspace_3d(
     features: torch.Tensor,
     q: float = 0.95,
     n_eig: int = 32,
-    training_steps: int = 500,
-    progress_bar: bool = True,
+    training_steps: int = 100,
+    progress_bar: bool = False,
     **kwargs: Any,
 ):
     from .mspace import mspace_viz_transform
@@ -101,7 +116,21 @@ def rgb_from_mspace_3d(
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
 
-    x3d = mspace_viz_transform(features, n_eig=n_eig, mood_dim=3, training_steps=training_steps, progress_bar=progress_bar, **kwargs)
+    x3d = mspace_viz_transform(features, 
+                    n_eig=n_eig, 
+                    mood_dim=3, 
+                    training_steps=training_steps, 
+                    progress_bar=progress_bar,
+                    eigvec_loss=1.0,
+                    recon_loss=0.0, 
+                    decoder_training_steps=0, 
+                    boundary_loss=100., 
+                    zero_center_loss=0.0, 
+                    repulsion_loss=1.0,
+                    attraction_loss=100.,
+                    axis_align_loss=100.,
+                    degree=[0.1, 0.5],
+                    **kwargs)
 
     rgb = rgb_from_3d_rgb_cube(x3d, q=q)
 
