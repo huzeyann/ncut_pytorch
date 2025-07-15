@@ -17,7 +17,7 @@ def truncate_inv(A, n_inv=-1):
 
 
 
-from ncut_pytorch.ncut_pytorch import correct_rotation, affinity_from_features, ncut
+from ncut_pytorch.ncut_pytorch import correct_rotation, get_affinity, _plain_ncut
 @torch.no_grad()
 def force_nystrom_ncut(
     features,
@@ -27,9 +27,9 @@ def force_nystrom_ncut(
     n_inv=50,
     **kwargs,
 ):
-    A = affinity_from_features(features[sample_indices], distance=distance)
+    A = get_affinity(features[sample_indices], distance=distance)
     not_sample_indices = np.setdiff1d(np.arange(features.shape[0]), sample_indices)
-    B = affinity_from_features(features[sample_indices], features[not_sample_indices], distance=distance, fill_diagonal=False)
+    B = get_affinity(features[sample_indices], features[not_sample_indices], distance=distance, fill_diagonal=False)
 
     indices = np.concatenate([sample_indices, not_sample_indices])
     reverse_indices = np.argsort(indices)
@@ -44,7 +44,7 @@ def force_nystrom_ncut(
     # W = [A, B; B.T, C]
     W = torch.cat([torch.cat([A, B], dim=1), torch.cat([B.T, C], dim=1)], dim=0)
 
-    V, L = ncut(W, num_eig)
+    V, L = _plain_ncut(W, num_eig)
     V = V[reverse_indices]
     V = correct_rotation(V)
 

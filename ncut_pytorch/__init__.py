@@ -1,7 +1,7 @@
 from .ncut_pytorch import nystrom_ncut
-from .ncut_pytorch import NCUT
+from .ncut_pytorch import Ncut
 from .nystrom_utils import (
-    propagate_knn,
+    nystrom_propagate,
     farthest_point_sampling,
 )
 from .math_utils import (
@@ -9,15 +9,13 @@ from .math_utils import (
     quantile_min_max,
 )
 from .visualize_utils import (
-    rgb_from_tsne_3d,
-    rgb_from_umap_sphere,
-    rgb_from_tsne_2d,
-    rgb_from_umap_3d,
-    rgb_from_umap_2d,
-    rgb_from_cosine_tsne_3d,
-    rotate_rgb_cube,
+    mspace_color,
+    tsne_color,
+    umap_color,
+    umap_sphere_color,
     convert_to_lab_color,
+    rotate_rgb_cube,
 )
-from .ncut_pytorch import nystrom_ncut, affinity_from_features, ncut
+from .ncut_pytorch import nystrom_ncut, get_affinity, _plain_ncut
 from .kway_ncut import kway_ncut, axis_align
 from .biased_ncut import bias_ncut_soft, get_mask_and_heatmap

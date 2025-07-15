@@ -116,7 +116,7 @@ def symmetric_normalize(A, B, D):
     return A, B
 
 
-from ncut_pytorch.ncut_pytorch import correct_rotation, affinity_from_features
+from ncut_pytorch.ncut_pytorch import correct_rotation, get_affinity
 @torch.no_grad()
 def nystrom_ncut(
     features,
@@ -127,9 +127,9 @@ def nystrom_ncut(
     device="cuda:0",
     chunk_size=8096,
 ):
-    A = affinity_from_features(features[sample_indices], distance=distance)
+    A = get_affinity(features[sample_indices], distance=distance)
     not_sample_indices = np.setdiff1d(np.arange(features.shape[0]), sample_indices)
-    B = affinity_from_features(features[sample_indices], features[not_sample_indices], distance=distance, fill_diagonal=False)
+    B = get_affinity(features[sample_indices], features[not_sample_indices], distance=distance, fill_diagonal=False)
 
     indices = np.concatenate([sample_indices, not_sample_indices])
     reverse_indices = np.argsort(indices)

@@ -4,13 +4,27 @@ from typing import Literal
 import numpy as np
 import torch
 
+import functools
+
 from .math_utils import pca_lowrank
-from .math_utils import affinity_from_features
+from .math_utils import get_affinity
 
 import fpsample
 
 
-def which_device(feature_device = "cuda:0", user_input_device = None):
+# internal configuration for nystrom approximation, can be overridden by kwargs
+# values are optimized based on empirical experiments, no need to change the values
+_NYSTROM_CONFIG = {
+    'n_sample': 10240,  # number of samples for nystrom approximation, 10240 is large enough for most cases
+    'n_sample2': 1024,  # number of samples for eigenvector propagation, 1024 is large enough for most cases
+    'n_neighbors': 10,  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
+    'matmul_chunk_size': 16384,  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
+    'sample_method': "farthest",  # sample method for nystrom approximation, 'farthest' is FPS(Farthest Point Sampling)
+    'move_output_to_cpu': True,  # if True, will move output to cpu, which saves memory but loses gradients
+}
+
+
+def auto_divice(feature_device = "cuda:0", user_input_device = None):
     if str(user_input_device) == "cpu":
         return "cpu"
     is_cuda_available = torch.cuda.is_available()
@@ -25,21 +39,21 @@ def which_device(feature_device = "cuda:0", user_input_device = None):
 
 @torch.no_grad()
 def run_subgraph_sampling(
-    features: torch.Tensor,
-    num_sample: int,
+    X: torch.Tensor,
+    n_sample: int,
     sample_method: Literal["farthest", "random"] = "farthest",
     max_draw_ratio: float = 4.0,
     device: str = None,
 ):
-    if num_sample >= features.shape[0]:
-        return torch.arange(features.shape[0])
+    if n_sample >= X.shape[0]:
+        return torch.arange(X.shape[0])
 
     if sample_method == "farthest": 
         sampled_indices = farthest_point_sampling(
-            features, num_sample, max_draw_ratio, device
+            X, n_sample, max_draw_ratio, device
         )
     elif sample_method == "random": 
-        sampled_indices = torch.randperm(features.shape[0])[:num_sample]
+        sampled_indices = torch.randperm(X.shape[0])[:n_sample]
     else:
         raise ValueError("sample_method should be 'farthest' or 'random'")
     return sampled_indices
@@ -47,24 +61,24 @@ def run_subgraph_sampling(
 
 @torch.no_grad()
 def farthest_point_sampling(
-    features: torch.Tensor,
-    num_sample: int,
+    X: torch.Tensor,
+    n_sample: int,
     max_draw_ratio: float = 4.0,
     device: str = None,
 ):
     # if num_data is too large, use random sampling to reduce the load of farthest point sampling
 
-    num_data = features.shape[0]
+    num_data = X.shape[0]
 
-    num_draw = int(num_sample * max_draw_ratio)
+    num_draw = int(n_sample * max_draw_ratio)
     if num_draw > num_data:
-        return _farthest_point_sampling(features, num_sample, device=device)
+        return _farthest_point_sampling(X, n_sample, device=device)
 
     # random draw num_draw samples to reduce the load of farthest point sampling
     draw_indices = torch.randperm(num_data)[:num_draw]
     sampled_indices = _farthest_point_sampling(
-        features[draw_indices],
-        num_sample=num_sample,
+        X[draw_indices],
+        n_sample=n_sample,
         device=device,
     )
     return draw_indices[sampled_indices]
@@ -72,41 +86,42 @@ def farthest_point_sampling(
 
 @torch.no_grad()
 def _farthest_point_sampling(
-    features: torch.Tensor,
-    num_sample: int,
+    X: torch.Tensor,
+    n_sample: int,
     h: int = 7,
     device: str = None,
 ):
-    num_data = features.shape[0]
-    if num_sample > num_data:
+    num_data = X.shape[0]
+    if n_sample > num_data:
         return np.arange(num_data)
 
-    if isinstance(features, np.ndarray):
-        features = torch.from_numpy(features)
+    if isinstance(X, np.ndarray):
+        X = torch.from_numpy(X)
     
     if device is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    features = features.to(device)
+    X = X.to(device)
 
     # PCA to reduce the dimension, because fpsample.bucket_fps_kdline_sampling only supports up to 8 dimensions
-    if features.shape[1] > 8:
-        features = pca_lowrank(features, q=8)
+    if X.shape[1] > 8:
+        X = pca_lowrank(X, q=8)
 
     if _is_fast_fps_available():
         h = min(h, int(np.log2(num_data)))
         samples_idx = fpsample.bucket_fps_kdline_sampling(
-            features.cpu().numpy(), num_sample, h
+            X.cpu().numpy(), n_sample, h
         ).astype(np.int64)
     else:
         samples_idx = fpsample.fps_npdu_kdtree_sampling(
-            features.cpu().numpy(), num_sample,
+            X.cpu().numpy(), n_sample,
         ).astype(np.int64)
 
     return samples_idx
 
 
 def _is_fast_fps_available():
-    
+    # a fallback implementation of fpsample is provided for users who cannot install fpsample
+    # but the performance is much slower
     try:
         from fpsample import bucket_fps_kdline_sampling
         return True
@@ -134,30 +149,31 @@ def _is_fast_fps_available():
         return False
 
 
-def propagate_knn(
-    subgraph_output: torch.Tensor,
-    fullgraph_features: torch.Tensor,
-    subgraph_features: torch.Tensor,
-    knn: int = 10,
-    affinity_focal_gamma: float = 1.0,
-    distance: Literal["cosine", "euclidean", "rbf"] = "rbf",
-    num_sample: int = 1024,
+def nystrom_propagate(
+    nystrom_out: torch.Tensor,
+    X: torch.Tensor,
+    nystrom_X: torch.Tensor,
+    n_neighbors: int = 10,
+    gamma: float = 1.0,
+    n_sample: int = 1024,
     chunk_size: int = 16384,
     device: str = None,
     move_output_to_cpu: bool = False,
+    track_grad: bool = False,
     **kwargs,
 ):
     """A generic function to propagate new nodes using KNN.
-    subgraph_output is propagated to fullgraph, using KNN look up from subgraph_features to fullgraph_features.
+    nystrom_out is propagated to fullgraph, using KNN look up from nystrom_X to X.
 
     Args:
-        subgraph_output (torch.Tensor): output from subgraph, shape (num_sample, D)
-        fullgraph_features (torch.Tensor): features from existing nodes, shape (new_num_samples, n_features)
-        subgraph_features (torch.Tensor): features from subgraph, shape (num_sample, n_features)
+        nystrom_out (torch.Tensor): output from subgraph, shape (num_sample, D)
+        X (torch.Tensor): features from existing nodes, shape (new_num_samples, n_features)
+        nystrom_X (torch.Tensor): features from subgraph, shape (num_sample, n_features)
         knn (int): number of KNN to propagate eigenvectors
         chunk_size (int): chunk size for matrix multiplication
         device (str): device to use for computation, if None, will not change device
         move_output_to_cpu (bool): move output to cpu to save GPU memory
+        track_grad (bool): keep track of pytorch gradients, default False
 
     Returns:
         torch.Tensor: propagated eigenvectors, shape (new_num_samples, D)
@@ -171,38 +187,49 @@ def propagate_knn(
 
     """
 
-    # sub-sample, for speed up
-    sample_idx = farthest_point_sampling(subgraph_output, num_sample)
-    subgraph_output = subgraph_output[sample_idx]
-    subgraph_features = subgraph_features[sample_idx]
+    prev_grad_state = torch.is_grad_enabled()
+    torch.set_grad_enabled(track_grad)
+
+    nystrom_indices = farthest_point_sampling(nystrom_out, n_sample)
+    nystrom_out = nystrom_out[nystrom_indices]
+    nystrom_X = nystrom_X[nystrom_indices]
     
-    device = which_device(subgraph_output.device, device)
-    subgraph_output = subgraph_output.to(device)
-    subgraph_features = subgraph_features.to(device)
+    device = auto_divice(nystrom_out.device, device)
 
-    fullgraph_outputs = []
-    for i in range(0, fullgraph_features.shape[0], chunk_size):
-        end = min(i + chunk_size, fullgraph_features.shape[0])
+    nystrom_out = nystrom_out.to(device)
+    nystrom_X = nystrom_X.to(device)
 
-        # compute affinity matrix on subgraph
-        _v = fullgraph_features[i:end].to(device)
-        _A = affinity_from_features(_v, subgraph_features, distance=distance, affinity_focal_gamma=affinity_focal_gamma)
+    # eigvec of each data point is a weighted sum of the nystrom_out eigvecs
+    # the weighted sum is only on the topk nearest neighbors of the data point
+    all_outs = []
+    for i in range(0, X.shape[0], chunk_size):
+        end = min(i + chunk_size, X.shape[0])
+
+        _Xi = X[i:end].to(device)
+
+        # compute affinity matrix from each chunk of data points to the nystrom sampled nodes
+        _Ai = get_affinity(_Xi, nystrom_X, gamma=gamma)
 
         # keep topk nearest neighbors for each row (sampled nodes)
-        topk_A, topk_indices = _A.topk(k=knn, dim=-1, largest=True)
+        topk_A, topk_indices = _Ai.topk(k=n_neighbors, dim=-1, largest=True)
+        # normalize the topk neighbors affinity to sum to 1 on each row
         _D = topk_A.sum(-1)
         topk_A = topk_A / _D[:, None]
-        _weights = topk_A.flatten()  # (n * knn)
+        _weights = topk_A.flatten()  # (n * n_neighbors)
         
-        _values = subgraph_output[topk_indices.flatten()]  # (n * knn, d)
-        topk_output = _values * _weights[:, None]  # (n * knn, d)
-        topk_output = topk_output.reshape(-1, knn, _values.shape[-1])  # (n, knn, d)
+        # for each data point (row), it's output eigvec is a weighted sum of 
+        # the topk neighbors eigvecs, each row of affinity matrix is normalized to sum to 1
+        _values = nystrom_out[topk_indices.flatten()]  # (n * n_neighbors, d)
+        topk_output = _values * _weights[:, None]  # (n * n_neighbors, d)
+        topk_output = topk_output.reshape(-1, n_neighbors, _values.shape[-1])  # (n, n_neighbors, d)
         topk_output = topk_output.sum(dim=1)  # (n, d)
 
-        if move_output_to_cpu:  # move output to cpu to save GPU memory
+        if move_output_to_cpu and not track_grad:  # move output to cpu to save GPU memory
             topk_output = topk_output.cpu()
-        fullgraph_outputs.append(topk_output)
+        all_outs.append(topk_output)
 
-    fullgraph_outputs = torch.cat(fullgraph_outputs, dim=0)
+    all_outs = torch.cat(all_outs, dim=0)
 
-    return fullgraph_outputs
+    torch.set_grad_enabled(prev_grad_state)
+
+    return all_outs

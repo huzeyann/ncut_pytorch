@@ -7,7 +7,7 @@ image = Image.open(requests.get(url, stream=True).raw)
 image
 # %%
 from ncut_pytorch.backbone import load_model
-from ncut_pytorch import NCUT, rgb_from_tsne_3d
+from ncut_pytorch import NCut, rgb_from_tsne_3d
 # %%
 model = load_model("DiNO(dino_vits8_448)")
 # %%
@@ -26,7 +26,7 @@ feat = feats['block'][-1]
 # %%
 feat.shape
 # %%
-eigenvectors, eigenvalues = NCUT(num_eig=100).fit_transform(feat.reshape(-1, feat.shape[-1]))
+eigenvectors, eigenvalues = NCut(num_eig=100).fit_transform(feat.reshape(-1, feat.shape[-1]))
 # %%
 h, w = feat.shape[1], feat.shape[2]
 # visualize top 9 eigenvectors, 3 eigenvectors per row

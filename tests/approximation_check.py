@@ -1,15 +1,15 @@
 # %%
 
 from typing import List, Tuple
-from ncut_pytorch import affinity_from_features, ncut, nystrom_ncut
+from ncut_pytorch import get_affinity, _plain_ncut, nystrom_ncut
 import torch
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
 
 def non_appriximation_ncut(features, num_eig, **config_kwargs):
-    aff = affinity_from_features(features, **config_kwargs)
-    eigvec, eigval = ncut(aff, num_eig)
+    aff = get_affinity(features, **config_kwargs)
+    eigvec, eigval = _plain_ncut(aff, num_eig)
     return eigvec, eigval
 
 def run_ncut(ncut_fn, features, num_eig, config_kwargs={}):

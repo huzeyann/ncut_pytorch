@@ -5,7 +5,7 @@ from ncut_pytorch.new_ncut_pytorch import NewNCUT
 
 
 from typing import List, Tuple
-from ncut_pytorch import affinity_from_features, ncut, nystrom_ncut
+from ncut_pytorch import get_affinity, _plain_ncut, nystrom_ncut
 import torch
 import logging
 import numpy as np
@@ -52,15 +52,15 @@ def plot_eigvecs_dynamic(eigvec1, eigvec2, eigvec3, sample_index, x_2d, n_cols=6
 
 from ncut_pytorch.ncut_pytorch import correct_rotation
 def non_appriximation_ncut(features, num_eig, **config_kwargs):
-    aff = affinity_from_features(features, **config_kwargs)
-    eigvec, eigval = ncut(aff, num_eig)
+    aff = get_affinity(features, **config_kwargs)
+    eigvec, eigval = _plain_ncut(aff, num_eig)
     eigvec = correct_rotation(eigvec)
     return eigvec, eigval
 
 
 
 def densesparse_ncut(features, num_eig, precomputed_sampled_indices, **config_kwargs):
-    aff = affinity_from_features(features, **config_kwargs)
+    aff = get_affinity(features, **config_kwargs)
     not_sampled_indices = np.setdiff1d(np.arange(features.shape[0]), precomputed_sampled_indices)
     indices = np.concatenate([precomputed_sampled_indices, not_sampled_indices])
     reverse_indices = np.argsort(indices)
@@ -75,7 +75,7 @@ def densesparse_ncut(features, num_eig, precomputed_sampled_indices, **config_kw
     C[torch.arange(C.shape[0]), torch.arange(C.shape[1])] = 1
         
     W = torch.cat([torch.cat([A, B], dim=1), torch.cat([B.T, C], dim=1)], dim=0)
-    eigvec, eigval = ncut(W, num_eig)
+    eigvec, eigval = _plain_ncut(W, num_eig)
     eigvec = eigvec[reverse_indices]
     eigvec = correct_rotation(eigvec)
     return eigvec, eigval
@@ -87,9 +87,9 @@ def original_nystrom_ncut(features, num_eig, precomputed_sampled_indices, distan
     eigvec = correct_rotation(eigvec)
     return eigvec, eigval
 
-from ncut_pytorch.ncut_pytorch import NCUT
+from ncut_pytorch.ncut_pytorch import NCut
 def knn_nystrom_ncut(features, num_eig, precomputed_sampled_indices, distance="rbf"):
-    eigvec, eigval = NCUT(num_eig=num_eig, knn=10, distance=distance,
+    eigvec, eigval = NCut(num_eig=num_eig, knn=10, distance=distance,
                           indirect_connection=False,
                           ).fit_transform(
         features, precomputed_sampled_indices=precomputed_sampled_indices)

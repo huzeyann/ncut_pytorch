@@ -1,293 +1,227 @@
 # %%
-import logging
-import math
-from typing import Literal
-
-import numpy as np
 import torch
-import torch.nn.functional as F
 
 from .nystrom_utils import (
     run_subgraph_sampling,
-    propagate_knn,
+    nystrom_propagate,
     farthest_point_sampling,
-    which_device,
+    auto_divice,
+    _NYSTROM_CONFIG,
 )
 from .math_utils import (
-    affinity_from_features,
+    get_affinity,
     normalize_affinity,
     svd_lowrank,
     gram_schmidt,
     correct_rotation,
 )
-from .affinity_gamma import find_gamma_by_degree_after_fps
+from .gamma import find_gamma_by_degree_after_fps
 
 
-def nystrom_ncut(
-    features: torch.Tensor,
-    num_eig: int = 100,
-    degree: float = 0.05,
-    distance: Literal["cosine", "euclidean", "rbf"] = "rbf",
-    num_sample: int = 10240,
-    num_sample2: int = 1024,
-    knn: int = 10,
-    matmul_chunk_size: int = 16384,
-    sample_method: Literal["farthest", "random"] = "farthest",
-    precomputed_sampled_indices: torch.Tensor = None,
-    affinity_focal_gamma: float = None,
-    device: str = None,
-    make_orthogonal: bool = False,
-    no_propagation: bool = False,
-    move_output_to_cpu: bool = None,
-    **kwargs,
-):
-    """PyTorch implementation of Faster Nystrom Normalized cut.
-    Args:
-        features (torch.Tensor): feature matrix, shape (n_samples, n_features)
-        num_eig (int): default 100, number of top eigenvectors to return
-        degree (float): target degree to search for optimal gamma, default 0.05. 
-            lower degree will result in more sharp eigenvectors
-        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
-        num_sample (int): default 10240, number of samples for Nystrom-like approximation
-        num_sample2 (int): default 1024, number of samples for eigenvector propagation
-        knn (int): default 10, number of KNN for propagating eigenvectors from subgraph to full graph,
-            smaller knn will result in more sharp eigenvectors,
-        sample_method (str): sample method, 'farthest' (default) or 'random'
-            'farthest' is recommended for better approximation
-        precomputed_sampled_indices (torch.Tensor): precomputed sampled indices, shape (num_sample,)
-            override the sample_method, if not None
-        affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the weak edge weights,
-            resulting in more sharp eigenvectors, default None (auto search)
-        device (str): device to use for computation, if None, will not change device
-            a good practice is to pass features by CPU since it's usually large,
-            and move subgraph affinity to GPU to speed up eigenvector computation
-        make_orthogonal (bool): make eigenvectors orthogonal after propagation, default True
-        no_propagation (bool): if True, skip the eigenvector propagation step, only return the subgraph eigenvectors
-        move_output_to_cpu (bool): move output to CPU, set to True if output is too large to fit in GPU memory
-    Returns:
-        (torch.Tensor): eigenvectors, shape (n_samples, num_eig)
-        (torch.Tensor): eigenvalues, sorted in descending order, shape (num_eig,)
-        (torch.Tensor): sampled_indices used by Nystrom-like approximation subgraph, shape (num_sample,)
-    Examples:
-        >>> from ncut_pytorch import nystrom_ncut
-        >>> import torch
-        >>> features = torch.rand(10000, 100)
-        >>> eigenvectors, eigenvalues = nystrom_ncut(features, num_eig=20)
-        >>> print(eigenvectors.shape, eigenvalues.shape)
-        >>> # (10000, 20) (20,)
-    """
-
-    if precomputed_sampled_indices is not None:
-        sampled_indices = precomputed_sampled_indices
-    else:
-        sampled_indices = run_subgraph_sampling(
-            features,
-            num_sample=num_sample,
-            sample_method=sample_method,
-        )
-
-    if move_output_to_cpu is None:
-        move_output_to_cpu = True if features.device.type == "cpu" else False
-
-    sampled_features = features[sampled_indices]
-    device = which_device(sampled_features.device, device)
-    sampled_features = sampled_features.to(device)
-
-    # compute affinity matrix on subgraph
-    if affinity_focal_gamma is None:
-        with torch.no_grad():
-            affinity_focal_gamma = find_gamma_by_degree_after_fps(sampled_features, degree, distance=distance)
-    
-    A = affinity_from_features(sampled_features, affinity_focal_gamma=affinity_focal_gamma, distance=distance)
-
-    # compute normalized cut on the subgraph
-    eigen_vector, eigen_value = ncut(A, num_eig)
-
-    if no_propagation:
-        return eigen_vector, eigen_value, sampled_indices, affinity_focal_gamma
-
-    # propagate eigenvectors from subgraph to full graph
-    eigen_vector = propagate_knn(
-        eigen_vector,
-        features,
-        features[sampled_indices],
-        knn,
-        num_sample=num_sample2,
-        distance=distance,
-        affinity_focal_gamma=affinity_focal_gamma,
-        chunk_size=matmul_chunk_size,
-        device=device,
-        move_output_to_cpu=move_output_to_cpu,
-    )
-
-    # post-hoc orthogonalization
-    if make_orthogonal:
-        eigen_vector = gram_schmidt(eigen_vector)
-
-    return eigen_vector, eigen_value
-
-
-class NCUT:
-    """Nystrom Normalized Cut."""
+class Ncut:
 
     def __init__(
         self,
-        num_eig: int = 100,
-        knn: int = 10,
-        affinity_focal_gamma: float = None,
-        degree: float = 0.05,
-        num_sample: int = 10240,
-        num_sample2: int = 1024,
-        sample_method: Literal["farthest", "random"] = "farthest",
-        distance: Literal["cosine", "euclidean", "rbf"] = "rbf",
-        device: str = None,
-        move_output_to_cpu: bool = False,
+        n_eig: int = 100,
+        track_grad: bool = False,
+        degree: float = 0.1,
+        gamma: float = None,
+        device: str = 'auto',
         make_orthogonal: bool = False,
         **kwargs,
     ):
         """
+        Nystrom Normalized Cut.
         Args:
-            num_eig (int): default 100, number of top eigenvectors to return
-            num_sample (int): default 10240, number of samples for Nystrom-like approximation
-            num_sample2 (int): default 1024, number of samples for eigenvector propagation
-            knn (int): default 10, number of KNN for propagating eigenvectors from subgraph to full graph,
-                smaller knn will result in more sharp eigenvectors,
-            sample_method (str): sample method, 'farthest' (default) or 'random'
-                'farthest' is recommended for better approximation
-            distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'
-            affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the weak edge weights,
-                resulting in more sharp eigenvectors, default None (auto search)
-            degree (float): target degree to search for optimal gamma, default 0.05. 
-                lower degree will result in more sharp eigenvectors
-            device (str): device to use for computation, if None, will not change device
-                a good practice is to pass features by CPU since it's usually large,
-                and move subgraph affinity to GPU to speed up eigenvector computation
-            make_orthogonal (bool): make eigenvectors orthogonal after propagation, default True
-            move_output_to_cpu (bool): move output to CPU, set to True if you have memory issue
+            n_eig (int): number of eigenvectors
+            track_grad (bool): keep track of pytorch gradients
+            degree (float): degree for automatic gamma search,
+                lower degree results in sharper eigenvectors
+            gamma (float): affinity parameter, default None (auto search based on degree)
+            device (str): device, default 'auto' (auto detect GPU)
+            make_orthogonal (bool): make eigenvectors orthogonal
 
         Examples:
-            >>> from ncut_pytorch import NCUT
+            >>> from ncut_pytorch import Ncut
             >>> import torch
             >>> features = torch.rand(10000, 100)
-            >>> ncut = NCUT(num_eig=20)
+            >>> ncut = Ncut(n_eig=20)
             >>> ncut.fit(features)
-            >>> eigenvectors, eigenvalues = ncut.transform(features)
-            >>> print(eigenvectors.shape, eigenvalues.shape)
+            >>> eigvec = ncut.transform(features)
+            >>> eigval = ncut.eigval
+            >>> print(eigvec.shape, eigval.shape)
             >>> # (10000, 20) (20,)
 
             >>> # transform new features
             >>> new_features = torch.rand(500, 100)
-            >>> new_eigenvectors, _ = ncut.transform(new_features)
-            >>> print(new_eigenvectors.shape)
+            >>> new_eigvec =  ncut.transform(new_features)
+            >>> print(new_eigvec.shape)
             >>> # (500, 20)
         """
-        self.num_eig = num_eig
-        self.num_sample = num_sample
-        self.num_sample2 = num_sample2
-        self.knn = knn
-        self.sample_method = sample_method
-        self.distance = distance
-        self.affinity_focal_gamma = affinity_focal_gamma
+        self.n_eig = n_eig
+        self.gamma = gamma
         self.degree = degree
         self.device = device
-        self.move_output_to_cpu = move_output_to_cpu
+        self.track_grad = track_grad
         self.make_orthogonal = make_orthogonal
 
-        self.subgraph_eigen_vector = None
-        self.eigen_value = None
-        self.subgraph_sample_indices = None
-        self.subgraph_features = None
+        self._config = _NYSTROM_CONFIG.copy()
+        self._config.update(kwargs)
 
-    def fit(self,
-            features: torch.Tensor,
-            precomputed_sampled_indices: torch.Tensor = None
-            ):
-        """Fit Nystrom Normalized Cut on the input features.
+        self._nystrom_x = None
+        self._nystrom_eigvec = None
+        self._eigval = None
+    
+    @property
+    def eigval(self):
+        return self._eigval
+
+    def fit(self, X: torch.Tensor) -> "Ncut":
+        """
         Args:
-            features (torch.Tensor): input features, shape (n_samples, n_features)
-            precomputed_sampled_indices (torch.Tensor): precomputed sampled indices, shape (num_sample,)
-                override the sample_method, if not None
+            X (torch.Tensor): input features, shape (N, D)
         Returns:
             (NCUT): self
         """
-        _n = features.shape[0]
-        if self.num_sample >= _n:
-            logging.info(
-                f"NCUT nystrom num_sample is larger than number of input samples, nyström approximation is not needed, setting num_sample={_n} and knn=1"
+        self._nystrom_eigvec, self._eigval, nystrom_indices, self.gamma = \
+            nystrom_ncut(
+                X,
+                n_eig=self.n_eig,
+                gamma=self.gamma,
+                degree=self.degree,
+                device=self.device,
+                track_grad=self.track_grad,
+                make_orthogonal=self.make_orthogonal,
+                no_propagation=True,
+                **self._config
             )
-            self.num_sample = _n
-            self.knn = 1
-
-        # save the eigenvectors solution on the sub-sampled graph, do not propagate to full graph yet
-        (self.subgraph_eigen_vector, self.eigen_value,
-        self.subgraph_sample_indices, self.affinity_focal_gamma) = nystrom_ncut(
-                                features,
-                                num_eig=self.num_eig,
-                                num_sample=self.num_sample,
-                                num_sample2=self.num_sample2,
-                                sample_method=self.sample_method,
-                                precomputed_sampled_indices=precomputed_sampled_indices,
-                                distance=self.distance,
-                                affinity_focal_gamma=self.affinity_focal_gamma,
-                                degree=self.degree,
-                                device=self.device,
-                                move_output_to_cpu=self.move_output_to_cpu,
-                                no_propagation=True,
-                            )
-        self.subgraph_features = features[self.subgraph_sample_indices]
+        self._nystrom_x = X[nystrom_indices]
         return self
 
-    def transform(self, features: torch.Tensor):
-        """Transform new features using the fitted Nystrom Normalized Cut.
+    def transform(self, X: torch.Tensor) -> torch.Tensor:
+        """
         Args:
-            features (torch.Tensor): new features, shape (n_samples, n_features)
+            X (torch.Tensor): input features, shape (N, D)
         Returns:
-            (torch.Tensor): eigen_vectors, shape (n_samples, num_eig)
-            (torch.Tensor): eigen_values, sorted in descending order, shape (num_eig,)
+            (torch.Tensor): eigenvectors, shape (N, n_eig)
         """
     
         # propagate eigenvectors from subgraph to full graph
-        eigen_vector = propagate_knn(
-            self.subgraph_eigen_vector,
-            features,
-            self.subgraph_features,
-            self.knn,
-            num_sample=self.num_sample2,
-            distance=self.distance,
-            affinity_focal_gamma=self.affinity_focal_gamma,
+        eigvec = nystrom_propagate(
+            self._nystrom_eigvec,
+            X,
+            self._nystrom_x,
+            n_neighbors=self._config['n_neighbors'],
+            n_sample=self._config['n_sample2'],
+            gamma=self.gamma,
             device=self.device,
-            move_output_to_cpu=self.move_output_to_cpu,
+            move_output_to_cpu=self._config['move_output_to_cpu'],
+            track_grad=self.track_grad,
         )
         if self.make_orthogonal:
-            eigen_vector = gram_schmidt(eigen_vector)
-        return eigen_vector, self.eigen_value
+            eigvec = gram_schmidt(eigvec)
+        return eigvec
 
-    def fit_transform(self,
-                      features: torch.Tensor,
-                      precomputed_sampled_indices: torch.Tensor = None
-                      ):
+    def fit_transform(self, X: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            features (torch.Tensor): input features, shape (n_samples, n_features)
-            precomputed_sampled_indices (torch.Tensor): precomputed sampled indices, shape (num_sample,)
-                override the sample_method, if not None
-                
+            X (torch.Tensor): input features, shape (N, D)
         Returns:
-            (torch.Tensor): eigen_vectors, shape (n_samples, num_eig)
-            (torch.Tensor): eigen_values, sorted in descending order, shape (num_eig,)
+            (torch.Tensor): eigenvectors, shape (N, n_eig)
         """
-        return self.fit(features, precomputed_sampled_indices=precomputed_sampled_indices).transform(features)
+        return self.fit(X).transform(X)
 
 
-def ncut(
-    A: torch.Tensor,
-    num_eig: int = 100,
+def nystrom_ncut(
+    X: torch.Tensor,
+    n_eig: int = 100,
+    track_grad: bool = False,
+    degree: float = 0.1,
+    gamma: float = None,
+    device: str = 'auto',
+    make_orthogonal: bool = False,
+    no_propagation: bool = False,
+    **kwargs,
 ):
-    """PyTorch implementation of Normalized cut without Nystrom-like approximation.
+    """Nystrom Normalized Cut.
+    Args:
+        X (torch.Tensor): input features, shape (N, D)
+        n_eig (int): number of eigenvectors
+        track_grad (bool): keep track of pytorch gradients
+        degree (float): degree for automatic gamma search,
+            lower degree results in sharper eigenvectors
+        gamma (float): affinity parameter, default None (auto search based on degree)
+        device (str): device, default 'auto' (auto detect GPU)
+        make_orthogonal (bool): make eigenvectors orthogonal
+    Returns:
+        (torch.Tensor): eigenvectors, shape (n_samples, num_eig)
+        (torch.Tensor): eigenvalues, sorted in descending order, shape (num_eig,)
+    Examples:
+        >>> from ncut_pytorch import nystrom_ncut
+        >>> import torch
+        >>> features = torch.rand(10000, 100)
+        >>> eigvec, eigval = nystrom_ncut(features, n_eig=20)
+        >>> print(eigvec.shape, eigval.shape)
+        >>> # (10000, 20) (20,)
+    """
+    config = _NYSTROM_CONFIG.copy()
+    config.update(kwargs)
+
+    # use GPU if available
+    device = auto_divice(X.device, device)
+
+    # skip pytorch gradient computation if track_grad is False
+    prev_grad_state = torch.is_grad_enabled()
+    torch.set_grad_enabled(track_grad)
+
+    # sub-sample for nystrom approximation
+    nystrom_indices = run_subgraph_sampling(X, n_sample=config['n_sample'], sample_method=config['sample_method'])
+    nystrom_X = X[nystrom_indices].to(device)
+
+    # find optimal gamma for affinity matrix
+    if gamma is None:
+        gamma = find_gamma_by_degree_after_fps(nystrom_X, degree)
+
+    # compute Ncut on the nystrom sampled subgraph
+    A = get_affinity(nystrom_X, gamma=gamma)
+    nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
+
+    if no_propagation:
+        torch.set_grad_enabled(prev_grad_state)
+        return nystrom_eigvec, eigval, nystrom_indices, gamma
+
+    # propagate eigenvectors from subgraph to full graph
+    eigvec = nystrom_propagate(
+        nystrom_eigvec,
+        X,
+        nystrom_X,
+        n_neighbors=config['n_neighbors'],
+        n_sample=config['n_sample2'],
+        gamma=gamma,
+        chunk_size=config['matmul_chunk_size'],
+        device=device,
+        move_output_to_cpu=config['move_output_to_cpu'],
+        track_grad=track_grad,
+    )
+
+    # post-hoc orthogonalization
+    if make_orthogonal:
+        eigvec = gram_schmidt(eigvec)
+
+    torch.set_grad_enabled(prev_grad_state)
+
+    return eigvec, eigval
+
+
+def _plain_ncut(
+    A: torch.Tensor,
+    n_eig: int = 100,
+):
+    """Normalized Cut.
 
     Args:
         A (torch.Tensor): affinity matrix, shape (n_samples, n_samples)
-        num_eig (int): number of eigenvectors to return
+        n_eig (int): number of eigenvectors to return
 
     Returns:
         (torch.Tensor): eigenvectors corresponding to the eigenvalues, shape (n_samples, num_eig)
@@ -297,35 +231,10 @@ def ncut(
     # normalization; A = D^(-1/2) A D^(-1/2)
     A = normalize_affinity(A)
 
-    eigen_vector, eigen_value, _ = svd_lowrank(A, num_eig)
+    eigvec, eigval, _ = svd_lowrank(A, n_eig)
 
     # correct the random rotation (flipping sign) of eigenvectors
-    eigen_vector = correct_rotation(eigen_vector)
+    eigvec = correct_rotation(eigvec)
 
-    return eigen_vector, eigen_value
+    return eigvec, eigval
 
-    
-
-## dirty hack for backward compatibility ##
-
-try:
-    from .math_utils import (
-        quantile_normalize,
-        quantile_min_max,
-    )
-    from .affinity_gamma import (
-        find_gamma_by_degree,
-        find_gamma_by_degree_after_fps,
-    )
-    from .visualize_utils import (
-        rgb_from_tsne_3d,
-        rgb_from_umap_sphere,
-        rgb_from_tsne_2d,
-        rgb_from_umap_3d,
-        rgb_from_umap_2d,
-        rotate_rgb_cube,
-        convert_to_lab_color,
-    )
-    from .kway_ncut import kway_ncut, axis_align
-except ImportError:
-    print("some of viualization and nystrom_utils are not imported")

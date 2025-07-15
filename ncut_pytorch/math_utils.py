@@ -5,50 +5,48 @@ from typing import Literal
 from torch.nn import functional as F
 
 
-def affinity_from_features(
-    features: torch.Tensor,
-    features_B: torch.Tensor = None,
-    affinity_focal_gamma: float = 1.0,
-    distance: Literal["cosine", "euclidean", "rbf"] = "rbf",
-    **kwargs,
+def get_affinity(
+    X1: torch.Tensor,
+    X2: torch.Tensor = None,
+    gamma: float = 1.0,
 ):
     """Compute affinity matrix from input features.
 
     Args:
-        features (torch.Tensor): input features, shape (n_samples, n_features)
-        feature_B (torch.Tensor, optional): optional, if not None, compute affinity between two features
-        affinity_focal_gamma (float): affinity matrix parameter, lower t reduce the edge weights
+        X1 (torch.Tensor): input features, shape (n_samples, n_features)
+        X2 (torch.Tensor, optional): optional, if not None, compute affinity between two features
+        gamma (float): affinity matrix parameter, lower t reduce the edge weights
             on weak connections, default 1.0
-        distance (str): distance metric, 'cosine' (default) or 'euclidean', 'rbf'.
-        normalize_features (bool): normalize input features before computing affinity matrix
 
     Returns:
         (torch.Tensor): affinity matrix, shape (n_samples, n_samples)
     """
-    # compute affinity matrix from input features
+    X2 = X1 if X2 is None else X2
 
-    features_B = features if features_B is None else features_B
-
-    if distance == "cosine":
-        features = F.normalize(features, dim=-1)
-        features_B = F.normalize(features_B, dim=-1)
-        A = 1 - features @ features_B.T
-    elif distance == "euclidean":
-        A = torch.cdist(features, features_B, p=2)
-    elif distance == "rbf":
-        d = torch.cdist(features, features_B, p=2)
-        A = torch.pow(d, 2)
-    else:
-        raise ValueError("distance should be 'cosine' or 'euclidean', 'rbf'")
-
-    if distance == "rbf":
-        sigma = 2 * affinity_focal_gamma * features.var(dim=0).sum()
-    else:
-        sigma = affinity_focal_gamma
-
-    A = torch.exp(-A / sigma)
+    distances = compute_l2_distance(X1, X2)
+    A = torch.exp(-distances / (2 * gamma * X1.var(dim=0).sum()))
 
     return A
+
+
+def compute_l2_distance(X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
+    
+    # Compute squared norms
+    X1_norm = (X1 ** 2).sum(dim=1, keepdim=True)
+    X2_norm = (X2 ** 2).sum(dim=1, keepdim=True)
+    
+    # Compute cross terms using einsum
+    # 'ik,jk->ij' means: sum over k (features) for all pairs of i (X1 samples) and j (X2 samples)
+    cross_term = torch.einsum('ik,jk->ij', X1, X2)
+    
+    # Combine terms to get squared distances: ||x-y||² = ||x||² + ||y||² - 2<x,y>
+    distances = X1_norm + X2_norm.T - 2 * cross_term
+    
+    # Ensure no negative distances due to numerical errors
+    distances = distances.clamp(min=0)
+    
+    return distances
+
 
 def svd_lowrank(mat, q):
     """
@@ -58,7 +56,7 @@ def svd_lowrank(mat, q):
     return: (n, q), (q,), (q, m)
     """
 
-    if mat.dtype == torch.float16:
+    if mat.dtype == torch.float16 or mat.dtype == torch.bfloat16:
         mat = mat.float()  # svd_lowrank does not support float16
 
     u, s, v = torch.svd_lowrank(mat, q=q+10)
@@ -257,13 +255,13 @@ def compute_riemann_curvature_loss(points, simplices=None, domain_min=0, domain_
     return total_curvature
 
 
-def compute_axis_align_loss(data):
+def compute_axis_align_loss(points):
     """ Encourage axis alignment by minimizing off-diagonal elements in the covariance matrix """
-    n, d = data.shape
-    centered_data = data - data.mean(dim=0)  # Center the data
+    n, d = points.shape
+    centered_data = points - points.mean(dim=0)  # Center the data
     cov_matrix = (centered_data.T @ centered_data) / n  # Compute covariance matrix
     
-    eye = torch.eye(d, device=data.device)
+    eye = torch.eye(d, device=points.device)
     return torch.mean((cov_matrix - eye) ** 2)
 
 def compute_repulsion_loss(points):
@@ -288,7 +286,10 @@ def compute_boundary_loss(points, domain_min=-1, domain_max=1):
     return torch.mean((torch.relu(domain_min - points))**2) + \
             torch.mean((torch.relu(points - domain_max))**2)
 
-# Use elbow method to find optimal number of eigenvalues
+
+
+
+
 def find_elbow(eigvals, n_elbows=5):
     # Convert to numpy array if tensor
     if torch.is_tensor(eigvals):

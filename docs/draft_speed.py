@@ -1,5 +1,5 @@
 # %%
-from ncut_pytorch import NCUT
+from ncut_pytorch import NCut
 import time
 import torch
 
@@ -15,7 +15,7 @@ for device in ['cpu']:
         input_feats = torch.nn.functional.normalize(input_feats, dim=1)
 
         start = time.time()
-        eigenvectors, eigenvalues = NCUT(
+        eigenvectors, eigenvalues = NCut(
             num_eig=50,
             num_sample=10000,
             knn=10,

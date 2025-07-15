@@ -7,7 +7,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
-from ncut_pytorch import NCUT, rgb_from_tsne_3d, convert_to_lab_color
+from ncut_pytorch import NCut, rgb_from_tsne_3d, convert_to_lab_color
 
 from nystrom_ncut import KernelNCut
 

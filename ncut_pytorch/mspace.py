@@ -20,7 +20,8 @@ logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFil
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
 
-from .ncut_pytorch import affinity_from_features, ncut, kway_ncut
+from .ncut_pytorch import get_affinity, _plain_ncut
+from .kway_ncut import kway_ncut
 from .affinity_gamma import find_gamma_by_degree_after_fps
 from .math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
 
@@ -58,9 +59,9 @@ def filter_closeby_eigval(eigvec, eigval, threshold=1e-12):
     keep_idx = torch.where(eigval_diff > threshold)[0]
     return eigvec[:, keep_idx], eigval[keep_idx]
 
-def ncut_wrapper(features, n_eig, distance='rbf', gamma=0.5):
-    A = affinity_from_features(features, distance=distance, gamma=gamma)
-    eigvec, eigval = ncut(A, n_eig)
+def ncut_wrapper(features, n_eig, gamma=0.5):
+    A = get_affinity(features, gamma=gamma)
+    eigvec, eigval = _plain_ncut(A, n_eig)
     eigvec, eigval = filter_closeby_eigval(eigvec, eigval)
     return eigvec, eigval
 
@@ -140,6 +141,8 @@ class TrainDecoder(pl.LightningModule):
         self.automatic_optimization = False
 
     def _log_loss(self, loss, name, log_grad_norm=False):
+        if self.logger is None:
+            return
         self.logger.log_metrics({f'decoder/loss/{name}': loss.item()}, step=self.global_step)
         self.loss_history[f"decoder/loss/{name}"].append(loss.item())
         if log_grad_norm:
@@ -301,6 +304,8 @@ class TrainEncoder(pl.LightningModule):
     
 
     def _log_loss(self, loss, name, log_grad_norm=False):
+        if self.logger is None:
+            return
         self.logger.log_metrics({f'loss/{name}': loss.item()}, step=self.global_step)
         self.loss_history[f"loss/{name}"].append(loss.item())
         if log_grad_norm:
@@ -343,16 +348,16 @@ class TrainEncoder(pl.LightningModule):
                 for i, degree, gamma, n_eig in zip(range(len(self.degree)), 
                                                 self.degree, self.gamma, self.n_eig):
                     if gamma is None:
-                        gamma = find_gamma_by_degree_after_fps(input_feats, degree, distance='rbf')
+                        gamma = find_gamma_by_degree_after_fps(input_feats, degree)
                         self.gamma[i] = gamma
                     if n_eig is None:
-                        eigvec_gt, eigval_gt = ncut_wrapper(input_feats, input_feats.shape[0]//2, gamma=gamma, distance='rbf')
+                        eigvec_gt, eigval_gt = ncut_wrapper(input_feats, input_feats.shape[0]//2, gamma=gamma)
                         n_eig = find_elbow(eigval_gt, n_elbows=self.n_elbow)[-1]
                         self.n_eig[i] = n_eig
                     
                     # Compute and store eigvec_gt
                     key = f"{i}_{degree}_{gamma}_{n_eig}"
-                    eigvec_gt, eigval_gt = ncut_wrapper(input_feats, n_eig, gamma=gamma, distance='rbf')
+                    eigvec_gt, eigval_gt = ncut_wrapper(input_feats, n_eig, gamma=gamma)
                     stored_eigvec_gt[key] = eigvec_gt
 
                     # Compute weight for each node, using kway ncut
@@ -378,7 +383,7 @@ class TrainEncoder(pl.LightningModule):
                     weight = stored_eigvec_weight[key]
 
                     # Compute eigvec_hat for each iteration
-                    eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, n_eig, gamma=gamma, distance='rbf')
+                    eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, n_eig, gamma=gamma)
                     eigvec_loss = flag_space_loss(eigvec_gt, eigvec_hat, n_eig=n_eig, weight=weight)
                     eigvec_loss = eigvec_loss * self.eigvec_loss
                     total_loss += eigvec_loss
@@ -433,7 +438,8 @@ class TrainEncoder(pl.LightningModule):
                 self._log_loss(zero_center_loss, "zero_center", log_grad_norm=log_grad_norm)
 
             # Log the loss for this iteration
-            self.logger.log_metrics({'loss/total': total_loss.item()}, step=self.global_step)
+            if self.logger is not None:
+                self.logger.log_metrics({'loss/total': total_loss.item()}, step=self.global_step)
             self.loss_history['loss/total'].append(total_loss.item())
             
             self.manual_backward(total_loss)
@@ -520,10 +526,11 @@ class BestModelsAvgCallback(pl.Callback):
                     param.data.copy_(avg_params[name])
             
             # Log the best loss and average loss
-            pl_module.logger.log_metrics({
-                'best_loss': self.best_loss,
-                'avg_loss': sum(loss for loss, _ in self.best_models) / len(self.best_models)
-            }, step=trainer.global_step)
+            if pl_module.logger is not None:
+                pl_module.logger.log_metrics({
+                    'best_loss': self.best_loss,
+                    'avg_loss': sum(loss for loss, _ in self.best_models) / len(self.best_models)
+                }, step=trainer.global_step)
 
             self.best_models = []
             self.best_loss = float('inf')
@@ -531,7 +538,7 @@ class BestModelsAvgCallback(pl.Callback):
 
 def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, decoder_training_steps=1000,
                     batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
-                    logger=None, use_wandb=False, model_avg_window=3, **model_kwargs):
+                    logger=False, use_wandb=False, model_avg_window=3, **model_kwargs):
     compress_feats = torch.tensor(compress_feats).float().cpu()
     uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
     l, c_in = compress_feats.shape
@@ -553,7 +560,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
         'callbacks': [BestModelsAvgCallback(top_k=model_avg_window)],
     }
 
-    if use_wandb and logger is None:
+    if use_wandb and not logger:
         logger = pl.loggers.WandbLogger(project='mspace', name='mspace')
 
     # train the autoencoder jointly
@@ -574,11 +581,11 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
 
     return model
 
-def mspace_viz_transform(feats, return_model=False, **kwargs):
-    model, trainer = train_mspace_model(feats, feats, return_trainer=True, **kwargs)
+def mspace_viz_transform(X, return_model=False, **kwargs):
+    model, trainer = train_mspace_model(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)
-    test_loader = torch.utils.data.DataLoader(TensorDataset(feats), batch_size=batch_size, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False)
     compressed = trainer.predict(model, test_loader)
     compressed = torch.cat(compressed, dim=0)
     if return_model:

@@ -4,7 +4,7 @@ from ncut_pytorch.new_ncut_pytorch import NewNCUT
 
 
 from typing import List, Tuple
-from ncut_pytorch import affinity_from_features, ncut, nystrom_ncut
+from ncut_pytorch import get_affinity, _plain_ncut, nystrom_ncut
 import torch
 import logging
 import numpy as np
@@ -50,8 +50,8 @@ def plot_eigvecs_dynamic(eigvec1, eigvec2, eigvec3, sample_index, x_2d, n_cols=6
     return fig
 
 def non_appriximation_ncut(features, num_eig, **config_kwargs):
-    aff = affinity_from_features(features, **config_kwargs)
-    eigvec, eigval = ncut(aff, num_eig)
+    aff = get_affinity(features, **config_kwargs)
+    eigvec, eigval = _plain_ncut(aff, num_eig)
     return eigvec, eigval
 
 from ncut_pytorch.new_ncut_pytorch import NewNCUT
@@ -60,9 +60,9 @@ def new_nystrom_ncut(features, num_eig, precomputed_sampled_indices, distance="r
         features, precomputed_sampled_indices=precomputed_sampled_indices)
     return eigvec, eigval
 
-from ncut_pytorch.ncut_pytorch import NCUT
+from ncut_pytorch.ncut_pytorch import NCut
 def knn_nystrom_ncut(features, num_eig, precomputed_sampled_indices, distance="rbf"):
-    eigvec, eigval = NCUT(num_eig=num_eig, knn=10, distance=distance).fit_transform(
+    eigvec, eigval = NCut(num_eig=num_eig, knn=10, distance=distance).fit_transform(
         features, precomputed_sampled_indices=precomputed_sampled_indices)
     return eigvec, eigval
 

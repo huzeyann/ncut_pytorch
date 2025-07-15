@@ -1,9 +1,9 @@
 # %%
 import torch
 
-from ncut_pytorch.nystrom_utils import farthest_point_sampling, propagate_knn, which_device
+from ncut_pytorch.nystrom_utils import farthest_point_sampling, nystrom_propagate, auto_divice
 from ncut_pytorch.affinity_gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.math_utils import affinity_from_features, normalize_affinity, svd_lowrank, correct_rotation
+from ncut_pytorch.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from ncut_pytorch.kway_ncut import kway_ncut
 
 def bias_ncut_multiclass(features, click_list, 
@@ -25,7 +25,7 @@ def bias_ncut_multiclass(features, click_list,
     n_nodes, n_features = features.shape
     num_sample = min(num_sample, n_nodes//4)
     # farthest point sampling
-    fps_idx = farthest_point_sampling(features, num_sample=num_sample)
+    fps_idx = farthest_point_sampling(features, n_sample=num_sample)
     fps_idx = torch.tensor(fps_idx, dtype=torch.long)
     # remove pos_idx and neg_idx from fps_idx
     click_idx = torch.cat(click_list)
@@ -39,11 +39,11 @@ def bias_ncut_multiclass(features, click_list,
         new_click_list.append(torch.arange(len(click_idx)) + count)
         count += len(click_idx)
     
-    device = which_device(features.device, device)
+    device = auto_divice(features.device, device)
     _input = features[fps_idx].to(device)
 
     gamma = find_gamma_by_degree_after_fps(_input, degree=degree, distance=distance)
-    affinity = affinity_from_features(_input, distance=distance, affinity_focal_gamma=gamma)
+    affinity = get_affinity(_input, distance=distance, gamma=gamma)
     affinity = normalize_affinity(affinity)
     
     # modify the affinity from the clicks
@@ -52,7 +52,7 @@ def bias_ncut_multiclass(features, click_list,
         click_f = 1 * affinity[click_idx].mean(0)
         click_fs.append(click_f)
     click_f = torch.stack(click_fs, dim=1)
-    click_affinity = affinity_from_features(click_f, distance=distance, affinity_focal_gamma=gamma)
+    click_affinity = get_affinity(click_f, distance=distance, gamma=gamma)
     click_affinity = normalize_affinity(click_affinity)
     
     _A = bias_factor * click_affinity + (1 - bias_factor) * affinity
@@ -61,7 +61,7 @@ def bias_ncut_multiclass(features, click_list,
     eigvecs = correct_rotation(eigvecs)
 
     # propagate the eigenvectors to the full graph
-    eigvecs = propagate_knn(eigvecs, features, features[fps_idx], distance=distance, device=device)
+    eigvecs = nystrom_propagate(eigvecs, features, features[fps_idx], distance=distance, device=device)
         
     return eigvecs, eigvals
 

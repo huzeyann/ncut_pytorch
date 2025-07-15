@@ -1,9 +1,9 @@
 # %%
 import torch
 
-from ncut_pytorch.nystrom_utils import farthest_point_sampling, propagate_knn, which_device
+from ncut_pytorch.nystrom_utils import farthest_point_sampling, nystrom_propagate, auto_divice
 from ncut_pytorch.affinity_gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.math_utils import affinity_from_features, normalize_affinity, svd_lowrank, correct_rotation
+from ncut_pytorch.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from ncut_pytorch.kway_ncut import kway_ncut
 
 # %%
