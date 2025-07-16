@@ -22,7 +22,7 @@ logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilte
 
 from .ncut_pytorch import get_affinity, _plain_ncut
 from .kway_ncut import kway_ncut
-from .affinity_gamma import find_gamma_by_degree_after_fps
+from .gamma import find_gamma_by_degree_after_fps
 from .math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
 
 
@@ -361,7 +361,7 @@ class TrainEncoder(pl.LightningModule):
                     stored_eigvec_gt[key] = eigvec_gt
 
                     # Compute weight for each node, using kway ncut
-                    eigvec_gt_kway = kway_ncut(eigvec_gt, return_continuous=True)
+                    eigvec_gt_kway = kway_ncut(eigvec_gt)
                     weight = eigvec_gt_kway.max(1).values.flatten()
                     weight = weight ** self.kway_weight_gamma
                     stored_eigvec_weight[key] = weight

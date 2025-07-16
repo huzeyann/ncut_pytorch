@@ -1,78 +1,29 @@
-import logging
+import warnings
 from typing import Any, Callable, Dict, Literal, Tuple
 
 import numpy as np
 import torch
-import torch.nn.functional as F
-from sklearn.base import BaseEstimator
 
-from .nystrom_utils import (
-    run_subgraph_sampling,
-    nystrom_propagate,
-    auto_divice,
-)
-from .math_utils import (
-    quantile_normalize,
-    quantile_min_max,
-    check_if_normalized,
-)
+from .ncut_pytorch import _nystrom_propagate
+from .nystrom_utils import farthest_point_sampling
+from .math_utils import quantile_normalize
+
+from .mspace import mspace_viz_transform
 
 
 def _identity(X: torch.Tensor) -> torch.Tensor:
     return X
 
 
-def _rgb_with_dimensionality_reduction(
-    X: torch.Tensor,
-    num_sample: int,
-    metric: Literal["cosine", "euclidean"],
-    rgb_func: Callable[[torch.Tensor, float], torch.Tensor],
-    q: float, 
-    knn: int,
-    seed: int, 
-    device: str,
-    reduction: Callable[..., BaseEstimator],
-    reduction_dim: int,
-    reduction_kwargs: Dict[str, Any],
-    transform_func: Callable[[torch.Tensor], torch.Tensor] = _identity,
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    subgraph_indices = run_subgraph_sampling(
-        X,
-        n_sample=num_sample,
-        sample_method="farthest",
-    )
-
-    _inp = X[subgraph_indices].cpu().numpy()
-    _subgraph_embed = reduction(
-        n_components=reduction_dim,
-        metric=metric,
-        random_state=seed,
-        **reduction_kwargs
-    ).fit_transform(_inp)
-
-    _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
-    X_nd = transform_func(nystrom_propagate(
-        _subgraph_embed,
-        X,
-        X[subgraph_indices],
-        n_neighbors=knn,
-        device=device,
-        move_output_to_cpu=True,
-    ))
-    rgb = rgb_func(X_nd, q)
-    return X_nd, rgb
-
-
 def mspace_color(
     X: torch.Tensor,
     q: float = 0.95,
-    n_eig: int = 32,
+    n_eig: int | None = 32,
     n_dim: int = 3,
     training_steps: int = 100,
     progress_bar: bool = False,
     **kwargs: Any,
 ):
-    from .mspace import mspace_viz_transform
     """
     Returns:
         (torch.Tensor): Embedding in 2D, shape (n_samples, 2)
@@ -101,6 +52,8 @@ def mspace_color(
     return rgb
 
 
+
+
 def tsne_color(
     X: torch.Tensor,
     num_sample: int = 1000,
@@ -126,8 +79,10 @@ def tsne_color(
         )
     num_sample = min(num_sample, X.shape[0])
     if perplexity > num_sample // 2:
-        logging.warning(
-            f"perplexity is larger than num_sample, set perplexity to {num_sample // 2}"
+        warnings.warn(
+            f"perplexity is larger than num_sample, set perplexity to {num_sample // 2}",
+            stacklevel=2,
+            category=UserWarning,
         )
         perplexity = num_sample // 2
 
@@ -231,6 +186,43 @@ def umap_sphere_color(
     )
     
     return rgb
+
+
+def _rgb_with_dimensionality_reduction(
+    X: torch.Tensor,
+    num_sample: int,
+    metric: Literal["cosine", "euclidean"],
+    rgb_func: Callable[[torch.Tensor, float], torch.Tensor],
+    q: float, 
+    knn: int,
+    seed: int, 
+    device: str,
+    reduction: Callable[..., "sklearn.base.BaseEstimator"],
+    reduction_dim: int,
+    reduction_kwargs: Dict[str, Any],
+    transform_func: Callable[[torch.Tensor], torch.Tensor] = _identity,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    subgraph_indices = farthest_point_sampling(X, n_sample=num_sample, device=device)
+
+    _inp = X[subgraph_indices].cpu().numpy()
+    _subgraph_embed = reduction(
+        n_components=reduction_dim,
+        metric=metric,
+        random_state=seed,
+        **reduction_kwargs
+    ).fit_transform(_inp)
+
+    _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
+    X_nd = transform_func(_nystrom_propagate(
+        _subgraph_embed,
+        X,
+        X[subgraph_indices],
+        n_neighbors=knn,
+        device=device,
+        move_output_to_cpu=True,
+    ))
+    rgb = rgb_func(X_nd, q)
+    return X_nd, rgb
 
 
 def flatten_sphere(X_3d):

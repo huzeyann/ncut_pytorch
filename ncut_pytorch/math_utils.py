@@ -48,6 +48,20 @@ def compute_l2_distance(X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
     return distances
 
 
+def keep_topk_per_row(A: torch.Tensor, k: int = 10):
+    """
+    Args:
+        A (torch.Tensor): affinity matrix, shape (n_samples, n_samples)
+        k (int): number of topk values to return
+    Returns:
+        (torch.Tensor): topk values, shape (n_samples, k)
+    """
+    topk_A, topk_indices = A.topk(k=k, dim=-1, largest=True)
+    # normalize each row to sum to 1
+    _D = topk_A.sum(-1)
+    topk_A = topk_A / _D[:, None]
+    return topk_A, topk_indices
+
 def svd_lowrank(mat, q):
     """
     SVD lowrank

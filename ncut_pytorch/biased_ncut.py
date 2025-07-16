@@ -1,9 +1,12 @@
 import torch
 
-from .nystrom_utils import farthest_point_sampling, nystrom_propagate, auto_divice
+from .ncut_pytorch import _nystrom_propagate
+from .nystrom_utils import farthest_point_sampling, auto_divice
 from .gamma import find_gamma_by_degree_after_fps
 from .math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from .kway_ncut import kway_ncut
+
+# TODO: UPDATE THIS FILE
 
 def bias_ncut_soft(features, fg_idx, bg_idx=None,
                  num_eig=50, 
@@ -29,7 +32,7 @@ def bias_ncut_soft(features, fg_idx, bg_idx=None,
     n_nodes, n_features = features.shape
     num_sample = min(num_sample, n_nodes//4)
     # farthest point sampling
-    fps_idx = farthest_point_sampling(features, n_sample=num_sample)
+    fps_idx = farthest_point_sampling(features, n_sample=num_sample, device=device)
     fps_idx = torch.tensor(fps_idx, dtype=torch.long)
     # remove pos_idx and neg_idx from fps_idx
     fps_idx = fps_idx[~torch.isin(fps_idx, torch.cat([fg_idx, bg_idx]))]
@@ -41,7 +44,7 @@ def bias_ncut_soft(features, fg_idx, bg_idx=None,
     device = auto_divice(features.device, device)
     _input = features[fps_idx].to(device)
 
-    gamma = find_gamma_by_degree_after_fps(_input, degree=degree)
+    gamma = find_gamma_by_degree_after_fps(_input, d_gamma=degree)
     affinity = get_affinity(_input, gamma=gamma)
     affinity = normalize_affinity(affinity)
     
@@ -58,7 +61,7 @@ def bias_ncut_soft(features, fg_idx, bg_idx=None,
     eigvecs = correct_rotation(eigvecs)
 
     # propagate the eigenvectors to the full graph
-    eigvecs = nystrom_propagate(eigvecs, features, features[fps_idx], device=device)
+    eigvecs = _nystrom_propagate(eigvecs, features, features[fps_idx], device=device)
         
     return eigvecs, eigvals
 

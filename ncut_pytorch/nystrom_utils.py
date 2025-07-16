@@ -1,13 +1,10 @@
-import logging
+import warnings
 from typing import Literal
 
 import numpy as np
 import torch
 
-import functools
-
 from .math_utils import pca_lowrank
-from .math_utils import get_affinity
 
 import fpsample
 
@@ -98,8 +95,7 @@ def _farthest_point_sampling(
     if isinstance(X, np.ndarray):
         X = torch.from_numpy(X)
     
-    if device is None:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = auto_divice(X.device, device)
     X = X.to(device)
 
     # PCA to reduce the dimension, because fpsample.bucket_fps_kdline_sampling only supports up to 8 dimensions
@@ -144,92 +140,7 @@ def _is_fast_fps_available():
         ---
         ---
         """
-        logger = logging.getLogger("ncut_pytorch")
-        logger.warning(message)
+        warnings.warn(message, stacklevel=2, category=ImportWarning)
         return False
 
 
-def nystrom_propagate(
-    nystrom_out: torch.Tensor,
-    X: torch.Tensor,
-    nystrom_X: torch.Tensor,
-    n_neighbors: int = 10,
-    gamma: float = 1.0,
-    n_sample: int = 1024,
-    chunk_size: int = 16384,
-    device: str = None,
-    move_output_to_cpu: bool = False,
-    track_grad: bool = False,
-    **kwargs,
-):
-    """A generic function to propagate new nodes using KNN.
-    nystrom_out is propagated to fullgraph, using KNN look up from nystrom_X to X.
-
-    Args:
-        nystrom_out (torch.Tensor): output from subgraph, shape (num_sample, D)
-        X (torch.Tensor): features from existing nodes, shape (new_num_samples, n_features)
-        nystrom_X (torch.Tensor): features from subgraph, shape (num_sample, n_features)
-        knn (int): number of KNN to propagate eigenvectors
-        chunk_size (int): chunk size for matrix multiplication
-        device (str): device to use for computation, if None, will not change device
-        move_output_to_cpu (bool): move output to cpu to save GPU memory
-        track_grad (bool): keep track of pytorch gradients, default False
-
-    Returns:
-        torch.Tensor: propagated eigenvectors, shape (new_num_samples, D)
-
-    Examples:
-        >>> old_eigenvectors = torch.randn(3000, 20)
-        >>> old_features = torch.randn(3000, 100)
-        >>> new_features = torch.randn(200, 100)
-        >>> new_eigenvectors = propagate_knn(old_eigenvectors, new_features, old_features, knn=3)
-        >>> # new_eigenvectors.shape = (200, 20)
-
-    """
-
-    prev_grad_state = torch.is_grad_enabled()
-    torch.set_grad_enabled(track_grad)
-
-    nystrom_indices = farthest_point_sampling(nystrom_out, n_sample)
-    nystrom_out = nystrom_out[nystrom_indices]
-    nystrom_X = nystrom_X[nystrom_indices]
-    
-    device = auto_divice(nystrom_out.device, device)
-
-    nystrom_out = nystrom_out.to(device)
-    nystrom_X = nystrom_X.to(device)
-
-    # eigvec of each data point is a weighted sum of the nystrom_out eigvecs
-    # the weighted sum is only on the topk nearest neighbors of the data point
-    all_outs = []
-    for i in range(0, X.shape[0], chunk_size):
-        end = min(i + chunk_size, X.shape[0])
-
-        _Xi = X[i:end].to(device)
-
-        # compute affinity matrix from each chunk of data points to the nystrom sampled nodes
-        _Ai = get_affinity(_Xi, nystrom_X, gamma=gamma)
-
-        # keep topk nearest neighbors for each row (sampled nodes)
-        topk_A, topk_indices = _Ai.topk(k=n_neighbors, dim=-1, largest=True)
-        # normalize the topk neighbors affinity to sum to 1 on each row
-        _D = topk_A.sum(-1)
-        topk_A = topk_A / _D[:, None]
-        _weights = topk_A.flatten()  # (n * n_neighbors)
-        
-        # for each data point (row), it's output eigvec is a weighted sum of 
-        # the topk neighbors eigvecs, each row of affinity matrix is normalized to sum to 1
-        _values = nystrom_out[topk_indices.flatten()]  # (n * n_neighbors, d)
-        topk_output = _values * _weights[:, None]  # (n * n_neighbors, d)
-        topk_output = topk_output.reshape(-1, n_neighbors, _values.shape[-1])  # (n, n_neighbors, d)
-        topk_output = topk_output.sum(dim=1)  # (n, d)
-
-        if move_output_to_cpu and not track_grad:  # move output to cpu to save GPU memory
-            topk_output = topk_output.cpu()
-        all_outs.append(topk_output)
-
-    all_outs = torch.cat(all_outs, dim=0)
-
-    torch.set_grad_enabled(prev_grad_state)
-
-    return all_outs
