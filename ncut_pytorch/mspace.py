@@ -1,13 +1,13 @@
 import logging
 from collections import defaultdict
-import numpy as np
+from functools import partial
+
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
-from functools import partial
-from tqdm import tqdm
 from torch.utils.data import TensorDataset
+from tqdm import tqdm
 
 # disable lightning logs
 logging.getLogger('lightning').setLevel(0)
@@ -20,7 +20,8 @@ logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFil
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
 
-from .ncut_pytorch import get_affinity, _plain_ncut
+from .math_utils import get_affinity
+from .nystrom_ncut import _plain_ncut
 from .kway_ncut import kway_ncut
 from .gamma import find_gamma_by_degree_after_fps
 from .math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
@@ -547,7 +548,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
     model = TrainEncoder(c_in, c_out, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
     
     dataset = TensorDataset(compress_feats, uncompress_feats)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
     is_cuda = torch.cuda.is_available()
 
@@ -585,7 +586,7 @@ def mspace_viz_transform(X, return_model=False, **kwargs):
     model, trainer = train_mspace_model(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)
-    test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False, num_workers=4)
     compressed = trainer.predict(model, test_loader)
     compressed = torch.cat(compressed, dim=0)
     if return_model:

@@ -17,7 +17,10 @@ def truncate_inv(A, n_inv=-1):
 
 
 
-from ncut_pytorch.ncut_pytorch import correct_rotation, get_affinity, _plain_ncut
+from ncut_pytorch.ncut_pytorch import correct_rotation, get_affinity
+from ncut_pytorch.nystrom_ncut import _plain_ncut
+
+
 @torch.no_grad()
 def force_nystrom_ncut(
     features,

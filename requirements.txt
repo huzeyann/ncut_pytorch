@@ -1,5 +1,5 @@
 torch
 fpsample
-einops
-scikit-learn
-pycolormap-2d
+pytorch-lightning
+numpy
+tqdm

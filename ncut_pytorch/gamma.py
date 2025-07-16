@@ -1,6 +1,7 @@
 import torch
+
 from .math_utils import get_affinity
-from .nystrom_utils import farthest_point_sampling
+from .sample_utils import farthest_point_sampling
 
 
 @torch.no_grad()
@@ -8,6 +9,7 @@ def find_gamma_by_degree(X, d_gamma, X2=None, init_gamma=0.5, r_tol=1e-2, max_it
     # X: (n_samples, n_features)
     # d_gamma: target mean edge weight
     # binary search for optimal gamma, such that the mean edge weight is close to d_gamma
+    assert d_gamma > 0, "d_gamma should be positive, d_gamma>0"
     gamma = init_gamma
     current_degree = get_affinity(X, X2=X2, gamma=gamma).mean()
     i_iter = 0

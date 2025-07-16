@@ -1,13 +1,11 @@
 import warnings
 from typing import Literal
 
+import fpsample
 import numpy as np
 import torch
 
 from .math_utils import pca_lowrank
-
-import fpsample
-
 
 # internal configuration for nystrom approximation, can be overridden by kwargs
 # values are optimized based on empirical experiments, no need to change the values
@@ -22,17 +20,18 @@ _NYSTROM_CONFIG = {
 
 
 def auto_divice(feature_device = "cuda:0", user_input_device = None):
-    if str(user_input_device) == "cpu":
-        return "cpu"
+    if user_input_device is not None and str(user_input_device) != "auto":
+        try:
+            torch.device(str(user_input_device))
+            return str(user_input_device)
+        except RuntimeError:
+            raise ValueError(f"Invalid device: {user_input_device}")
+
     is_cuda_available = torch.cuda.is_available()
     if not is_cuda_available:
         return "cpu"
     if is_cuda_available:
-        if "cuda" in str(feature_device):
-            # cuda:1, cuda:2, etc.
-            return feature_device
-        else:
-            return "cuda:0"
+        return "cuda"
 
 @torch.no_grad()
 def run_subgraph_sampling(

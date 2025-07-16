@@ -1,10 +1,11 @@
 import torch
 
-from .ncut_pytorch import _nystrom_propagate
-from .nystrom_utils import farthest_point_sampling, auto_divice
 from .gamma import find_gamma_by_degree_after_fps
-from .math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from .kway_ncut import kway_ncut
+from .math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
+from .nystrom_ncut import _nystrom_propagate
+from .sample_utils import farthest_point_sampling, auto_divice
+
 
 # TODO : UPDATE THIS FILE
 
@@ -73,7 +74,7 @@ def get_mask_and_heatmap(eigvecs, click_idx, num_cluster=2, device=None):
     device = auto_divice(eigvecs.device, device)
     eigvecs = eigvecs[:, :num_cluster].to(device)
 
-    eigvecs = kway_ncut(eigvecs, return_continuous=True)
+    eigvecs = kway_ncut(eigvecs)
     # find which cluster is the foreground
     fg_eigvecs = eigvecs[click_idx]
     fg_idx = fg_eigvecs.mean(0).argmax().item()

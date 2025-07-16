@@ -1,8 +1,7 @@
-import torch
 import math
+
 import numpy as np
-from typing import Literal
-from torch.nn import functional as F
+import torch
 
 
 def get_affinity(

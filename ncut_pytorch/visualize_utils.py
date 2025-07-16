@@ -4,11 +4,10 @@ from typing import Any, Callable, Dict, Literal, Tuple
 import numpy as np
 import torch
 
-from .ncut_pytorch import _nystrom_propagate
-from .nystrom_utils import farthest_point_sampling
 from .math_utils import quantile_normalize
-
 from .mspace import mspace_viz_transform
+from .nystrom_ncut import _nystrom_propagate
+from .sample_utils import farthest_point_sampling
 
 
 def _identity(X: torch.Tensor) -> torch.Tensor:
@@ -16,13 +15,13 @@ def _identity(X: torch.Tensor) -> torch.Tensor:
 
 
 def mspace_color(
-    X: torch.Tensor,
-    q: float = 0.95,
-    n_eig: int | None = 32,
-    n_dim: int = 3,
-    training_steps: int = 100,
-    progress_bar: bool = False,
-    **kwargs: Any,
+        X: torch.Tensor,
+        q: float = 0.95,
+        n_eig: int | None = 32,
+        n_dim: int = 3,
+        training_steps: int = 100,
+        progress_bar: bool = False,
+        **kwargs: Any,
 ):
     """
     Returns:
@@ -30,41 +29,39 @@ def mspace_color(
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
 
-    low_dim_embedding = mspace_viz_transform(  
-                    X=X,
-                    n_eig=n_eig, 
-                    mood_dim=n_dim, 
-                    training_steps=training_steps,
-                    progress_bar=progress_bar,
-                    eigvec_loss=1.0,
-                    recon_loss=0.0, 
-                    decoder_training_steps=0, 
-                    boundary_loss=100., 
-                    zero_center_loss=0.0, 
-                    repulsion_loss=1.0,
-                    attraction_loss=100.,
-                    axis_align_loss=100.,
-                    degree=[0.1, 0.5],
-                    **kwargs)
-                    
+    low_dim_embedding = mspace_viz_transform(
+        X=X,
+        n_eig=n_eig,
+        mood_dim=n_dim,
+        training_steps=training_steps,
+        progress_bar=progress_bar,
+        eigvec_loss=1.0,
+        recon_loss=0.0,
+        decoder_training_steps=0,
+        boundary_loss=100.,
+        zero_center_loss=0.0,
+        repulsion_loss=1.0,
+        attraction_loss=100.,
+        axis_align_loss=100.,
+        degree=[0.1, 0.5],
+        **kwargs)
+
     rgb = rgb_from_nd_colormap(low_dim_embedding, q=q)
 
     return rgb
 
 
-
-
 def tsne_color(
-    X: torch.Tensor,
-    num_sample: int = 1000,
-    perplexity: int = 150,
-    n_dim: int = 2,
-    metric: Literal["cosine", "euclidean"] = "cosine",
-    device: str = None,
-    seed: int = 0,
-    q: float = 0.95,
-    knn: int = 10,
-    **kwargs: Any,
+        X: torch.Tensor,
+        num_sample: int = 1000,
+        perplexity: int = 150,
+        n_dim: int = 2,
+        metric: Literal["cosine", "euclidean"] = "cosine",
+        device: str = None,
+        seed: int = 0,
+        q: float = 0.95,
+        knn: int = 10,
+        **kwargs: Any,
 ):
     """
     Returns:
@@ -97,23 +94,22 @@ def tsne_color(
             "perplexity": perplexity,
         },
     )
-    
-    
+
     return rgb
 
 
 def umap_color(
-    X: torch.Tensor,
-    num_sample: int = 1000,
-    n_neighbors: int = 150,
-    min_dist: float = 0.1,
-    n_dim: int = 2,
-    metric: Literal["cosine", "euclidean"] = "cosine",
-    device: str = None,
-    seed: int = 0,
-    q: float = 0.95,
-    knn: int = 10,
-    **kwargs: Any,
+        X: torch.Tensor,
+        num_sample: int = 1000,
+        n_neighbors: int = 150,
+        min_dist: float = 0.1,
+        n_dim: int = 2,
+        metric: Literal["cosine", "euclidean"] = "cosine",
+        device: str = None,
+        seed: int = 0,
+        q: float = 0.95,
+        knn: int = 10,
+        **kwargs: Any,
 ):
     """
     Returns:
@@ -137,21 +133,21 @@ def umap_color(
             "min_dist": min_dist,
         },
     )
-    
+
     return rgb
 
 
 def umap_sphere_color(
-    X: torch.Tensor,
-    num_sample: int = 1000,
-    n_neighbors: int = 150,
-    min_dist: float = 0.1,
-    metric: Literal["cosine", "euclidean"] = "cosine",
-    device: str = None,
-    seed: int = 0,
-    q: float = 0.95,
-    knn: int = 10,
-    **kwargs: Any,
+        X: torch.Tensor,
+        num_sample: int = 1000,
+        n_neighbors: int = 150,
+        min_dist: float = 0.1,
+        metric: Literal["cosine", "euclidean"] = "cosine",
+        device: str = None,
+        seed: int = 0,
+        q: float = 0.95,
+        knn: int = 10,
+        **kwargs: Any,
 ):
     """
     Returns:
@@ -184,23 +180,23 @@ def umap_sphere_color(
         },
         transform_func=transform_func
     )
-    
+
     return rgb
 
 
 def _rgb_with_dimensionality_reduction(
-    X: torch.Tensor,
-    num_sample: int,
-    metric: Literal["cosine", "euclidean"],
-    rgb_func: Callable[[torch.Tensor, float], torch.Tensor],
-    q: float, 
-    knn: int,
-    seed: int, 
-    device: str,
-    reduction: Callable[..., "sklearn.base.BaseEstimator"],
-    reduction_dim: int,
-    reduction_kwargs: Dict[str, Any],
-    transform_func: Callable[[torch.Tensor], torch.Tensor] = _identity,
+        X: torch.Tensor,
+        num_sample: int,
+        metric: Literal["cosine", "euclidean"],
+        rgb_func: Callable[[torch.Tensor, float], torch.Tensor],
+        q: float,
+        knn: int,
+        seed: int,
+        device: str,
+        reduction: Callable[..., "sklearn.base.BaseEstimator"],
+        reduction_dim: int,
+        reduction_kwargs: Dict[str, Any],
+        transform_func: Callable[[torch.Tensor], torch.Tensor] = _identity,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     subgraph_indices = farthest_point_sampling(X, n_sample=num_sample, device=device)
 
@@ -322,6 +318,7 @@ def rgb_from_2d_colormap(X_2d, q=0.95):
     rgb = cmap._cmap_data[x, y]
     rgb = torch.tensor(rgb, dtype=torch.float32) / 255
     return rgb
+
 
 def rgb_from_nd_colormap(X_nd, q=0.95, lab_color=False):
     """

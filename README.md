@@ -143,6 +143,28 @@ tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device='cuda:0')
 
 ---
 
+## Testing
+
+The package includes a comprehensive test suite to ensure its functionality works as expected. The tests are located in the `unit_tests` directory and are written using the pytest framework.
+
+### Running the Tests
+
+To run the tests, first install the development dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Then run the tests using pytest:
+
+```bash
+pytest
+```
+
+For more information about the tests, see the [unit_tests/README.md](unit_tests/README.md) file.
+
+---
+
 > paper in prep, Yang 2024
 >
 > AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*,2024
