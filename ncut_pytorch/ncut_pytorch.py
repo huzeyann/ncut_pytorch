@@ -29,7 +29,7 @@ class Ncut:
         """
         Normalized Cut, balanced sampling and nystrom approximation.
         
-        Args:
+        Args:       
             n_eig (int): number of eigenvectors
             track_grad (bool): keep track of pytorch gradients
             d_gamma (float): affinity gamma parameter, lower d_gamma results in sharper eigenvectors

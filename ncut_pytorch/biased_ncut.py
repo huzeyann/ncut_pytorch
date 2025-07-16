@@ -6,18 +6,20 @@ from .gamma import find_gamma_by_degree_after_fps
 from .math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from .kway_ncut import kway_ncut
 
-# TODO: UPDATE THIS FILE
+# TODO : UPDATE THIS FILE
 
-def bias_ncut_soft(features, fg_idx, bg_idx=None,
-                 num_eig=50, 
-                 bias_factor=0.5, 
-                 bg_factor=0.1,
-                 num_sample=10240,
-                 degree=0.1, 
-                 device=None):
+def bias_ncut_soft(X, 
+                fg_idx, 
+                bg_idx=None,
+                num_eig=50, 
+                bias_factor=0.5, 
+                bg_factor=0.1,
+                num_sample=10240,
+                degree=0.1, 
+                device=None):
     """
     Args:
-        features: (n_nodes, n_features)
+        X: (n_nodes, n_features)
         fg_idx: (n_clicks) indices of the clicked points for the foreground
         bg_idx: (n_clicks) indices of the clicked points for the background
         bias_factor: (float) the factor of the bias term, decrease it to grow the mask bigger, need to be tuned for different images
@@ -29,10 +31,10 @@ def bias_ncut_soft(features, fg_idx, bg_idx=None,
     if bg_idx is None:
         bg_idx = torch.tensor([], dtype=torch.long)
 
-    n_nodes, n_features = features.shape
+    n_nodes, n_features = X.shape
     num_sample = min(num_sample, n_nodes//4)
     # farthest point sampling
-    fps_idx = farthest_point_sampling(features, n_sample=num_sample, device=device)
+    fps_idx = farthest_point_sampling(X, n_sample=num_sample, device=device)
     fps_idx = torch.tensor(fps_idx, dtype=torch.long)
     # remove pos_idx and neg_idx from fps_idx
     fps_idx = fps_idx[~torch.isin(fps_idx, torch.cat([fg_idx, bg_idx]))]
@@ -41,8 +43,8 @@ def bias_ncut_soft(features, fg_idx, bg_idx=None,
     fg_idx = torch.arange(len(fg_idx))
     bg_idx = torch.arange(len(bg_idx)) + len(fg_idx)
     
-    device = auto_divice(features.device, device)
-    _input = features[fps_idx].to(device)
+    device = auto_divice(X.device, device)
+    _input = X[fps_idx].to(device)
 
     gamma = find_gamma_by_degree_after_fps(_input, d_gamma=degree)
     affinity = get_affinity(_input, gamma=gamma)
@@ -61,7 +63,7 @@ def bias_ncut_soft(features, fg_idx, bg_idx=None,
     eigvecs = correct_rotation(eigvecs)
 
     # propagate the eigenvectors to the full graph
-    eigvecs = _nystrom_propagate(eigvecs, features, features[fps_idx], device=device)
+    eigvecs = _nystrom_propagate(eigvecs, X, X[fps_idx], device=device)
         
     return eigvecs, eigvals
 
