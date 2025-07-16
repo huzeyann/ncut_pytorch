@@ -1,11 +1,10 @@
 # %%
 from einops import rearrange
-import numpy as np
 from PIL import Image
 import torch
 import matplotlib.pyplot as plt
 
-from ncut_pytorch.biased_ncut import get_mask_and_heatmap, bias_ncut_soft
+from ncut_pytorch.ncuts.ncut_biased import get_mask_and_heatmap, bias_ncut_soft
 # %%
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', 

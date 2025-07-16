@@ -1,7 +1,6 @@
-import pytest
 import torch
 from ncut_pytorch import ncut_fn
-from ncut_pytorch.nystrom_ncut import _plain_ncut, _nystrom_propagate
+from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, _nystrom_propagate
 
 
 class TestNystromNcut:

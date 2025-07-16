@@ -1,10 +1,20 @@
 import torch
 
-from ncut_pytorch.gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.math_utils import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
+from ..utils.gamma import find_gamma_by_degree_after_fps
+from ..utils.math_utils import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
     keep_topk_per_row
-from ncut_pytorch.sample_utils import _NYSTROM_CONFIG, auto_divice, farthest_point_sampling
+from ..utils.sample_utils import auto_divice, farthest_point_sampling
 
+# internal configuration for nystrom approximation, can be overridden by kwargs
+# values are optimized based on empirical experiments, no need to change the values
+_NYSTROM_CONFIG = {
+    'n_sample': 10240,  # number of samples for nystrom approximation, 10240 is large enough for most cases
+    'n_sample2': 1024,  # number of samples for eigenvector propagation, 1024 is large enough for most cases
+    'n_neighbors': 10,  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
+    'matmul_chunk_size': 16384,  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
+    'sample_method': "farthest",  # sample method for nystrom approximation, 'farthest' is FPS(Farthest Point Sampling)
+    'move_output_to_cpu': True,  # if True, will move output to cpu, which saves memory but loses gradients
+}
 
 def ncut_fn(
         X: torch.Tensor,
@@ -174,3 +184,6 @@ def _nystrom_propagate(
     torch.set_grad_enabled(prev_grad_state)
 
     return all_outs
+
+
+

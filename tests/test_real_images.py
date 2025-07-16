@@ -4,11 +4,8 @@ from einops import rearrange
 from ncut_pytorch.new_ncut_pytorch import NewNCUT
 
 
-from typing import List, Tuple
-from ncut_pytorch import get_affinity, _plain_ncut, nystrom_ncut
-import torch
-import logging
-import numpy as np
+from typing import List
+from ncut_pytorch import get_affinity, _plain_ncut
 import matplotlib.pyplot as plt
 
 
@@ -61,7 +58,7 @@ def original_nystrom_ncut(features, num_eig, precomputed_sampled_indices, distan
         features, precomputed_sampled_indices=precomputed_sampled_indices)
     return eigvec, eigval
 
-from ncut_pytorch.ncut_pytorch import NCut
+from ncut_pytorch.ncut import NCut
 def knn_nystrom_ncut(features, num_eig, precomputed_sampled_indices, distance="rbf"):
     eigvec, eigval = NCut(num_eig=num_eig, knn=10, distance=distance,
                           indirect_connection=False,
@@ -69,7 +66,7 @@ def knn_nystrom_ncut(features, num_eig, precomputed_sampled_indices, distance="r
         features, precomputed_sampled_indices=precomputed_sampled_indices)
     return eigvec, eigval
 
-from myold_nystrom import nystrom_ncut
+
 from bruteforce_nystrom import force_nystrom_ncut
 
 

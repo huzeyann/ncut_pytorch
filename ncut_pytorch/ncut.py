@@ -1,10 +1,6 @@
 import torch
 
-from .nystrom_ncut import ncut_fn, _nystrom_propagate
-from .sample_utils import (
-    _NYSTROM_CONFIG,
-)
-
+from .ncuts.ncut_nystrom import ncut_fn, _nystrom_propagate
 
 class Ncut:
 
@@ -49,9 +45,7 @@ class Ncut:
         self.d_gamma = d_gamma
         self.device = device
         self.track_grad = track_grad
-
-        self._config = _NYSTROM_CONFIG.copy()
-        self._config.update(kwargs)
+        self.kwargs = kwargs
 
         self._nystrom_x = None
         self._nystrom_eigvec = None
@@ -80,7 +74,7 @@ class Ncut:
                 device=self.device,
                 track_grad=self.track_grad,
                 no_propagation=True,
-                **self._config
+                **self.kwargs
             )
         # store Ncut state to use in transform()
         self._nystrom_x = X[indices]
@@ -108,6 +102,7 @@ class Ncut:
             gamma=self.gamma,
             device=self.device,
             track_grad=self.track_grad,
+            **self.kwargs
         )
         return eigvec
 
@@ -122,5 +117,3 @@ class Ncut:
 
     def __call__(self, X: torch.Tensor) -> torch.Tensor:
         return self.fit_transform(X)
-
-

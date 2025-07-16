@@ -4,10 +4,10 @@ from typing import Any, Callable, Dict, Literal, Tuple
 import numpy as np
 import torch
 
-from .math_utils import quantile_normalize
+from ..utils.math_utils import quantile_normalize
 from .mspace import mspace_viz_transform
-from .nystrom_ncut import _nystrom_propagate
-from .sample_utils import farthest_point_sampling
+from ..ncuts.ncut_nystrom import _nystrom_propagate
+from ..utils.sample_utils import farthest_point_sampling
 
 
 def _identity(X: torch.Tensor) -> torch.Tensor:
@@ -273,24 +273,6 @@ def rgb_from_3d_rgb_cube(X_3d, q=0.95):
     return rgb
 
 
-def convert_to_lab_color(rgb, full_range=True):
-    from skimage import color
-    import copy
-
-    if isinstance(rgb, torch.Tensor):
-        rgb = rgb.cpu().numpy()
-    _rgb = copy.deepcopy(rgb)
-    _rgb[..., 0] = _rgb[..., 0] * 100
-    if full_range:
-        _rgb[..., 1] = _rgb[..., 1] * 255 - 128
-        _rgb[..., 2] = _rgb[..., 2] * 255 - 128
-    else:
-        _rgb[..., 1] = _rgb[..., 1] * 100 - 50
-        _rgb[..., 2] = _rgb[..., 2] * 100 - 50
-    lab_rgb = color.lab2rgb(_rgb)
-    return lab_rgb
-
-
 def rgb_from_2d_colormap(X_2d, q=0.95):
     xy = X_2d.clone()
     for i in range(2):
@@ -320,7 +302,7 @@ def rgb_from_2d_colormap(X_2d, q=0.95):
     return rgb
 
 
-def rgb_from_nd_colormap(X_nd, q=0.95, lab_color=False):
+def rgb_from_nd_colormap(X_nd, q=0.95):
     """
     Returns:
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
@@ -329,10 +311,24 @@ def rgb_from_nd_colormap(X_nd, q=0.95, lab_color=False):
     if d == 2:
         return rgb_from_2d_colormap(X_nd, q=q)
     elif d == 3:
-        rgb = rgb_from_3d_rgb_cube(X_nd, q=q)
-        if lab_color:
-            rgb = convert_to_lab_color(rgb)
-            rgb = torch.from_numpy(rgb)
-        return rgb
+        return rgb_from_3d_rgb_cube(X_nd, q=q)
     else:
         raise ValueError(f"Unsupported dimensionality: {d}")
+
+
+def convert_to_lab_color(rgb, full_range=True):
+    from skimage import color
+    import copy
+
+    if isinstance(rgb, torch.Tensor):
+        rgb = rgb.cpu().numpy()
+    _rgb = copy.deepcopy(rgb)
+    _rgb[..., 0] = _rgb[..., 0] * 100
+    if full_range:
+        _rgb[..., 1] = _rgb[..., 1] * 255 - 128
+        _rgb[..., 2] = _rgb[..., 2] * 255 - 128
+    else:
+        _rgb[..., 1] = _rgb[..., 1] * 100 - 50
+        _rgb[..., 2] = _rgb[..., 2] * 100 - 50
+    lab_rgb = color.lab2rgb(_rgb)
+    return lab_rgb

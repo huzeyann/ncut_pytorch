@@ -1,19 +1,16 @@
 # %%
-import torch
 
 from ncut_pytorch.sample_utils import farthest_point_sampling, nystrom_propagate, auto_divice
 from ncut_pytorch.affinity_gamma import find_gamma_by_degree_after_fps
 from ncut_pytorch.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
-from ncut_pytorch.kway_ncut import kway_ncut
 
 # %%
 from einops import rearrange
-import numpy as np
 from PIL import Image
 import torch
 import matplotlib.pyplot as plt
 
-from ncut_pytorch.biased_ncut import get_mask_and_heatmap, bias_ncut_soft
+from ncut_pytorch.ncuts.ncut_biased import get_mask_and_heatmap, bias_ncut_soft
 # %%
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', 

@@ -116,7 +116,7 @@ def symmetric_normalize(A, B, D):
     return A, B
 
 
-from ncut_pytorch.ncut_pytorch import correct_rotation, get_affinity
+from ncut_pytorch.ncut import correct_rotation, get_affinity
 @torch.no_grad()
 def nystrom_ncut(
     features,

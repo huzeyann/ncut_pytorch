@@ -20,11 +20,11 @@ logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFil
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
 
-from .math_utils import get_affinity
-from .nystrom_ncut import _plain_ncut
-from .kway_ncut import kway_ncut
-from .gamma import find_gamma_by_degree_after_fps
-from .math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
+from ..utils.math_utils import get_affinity
+from ..ncuts.ncut_nystrom import _plain_ncut
+from ..ncuts.ncut_kway import kway_ncut
+from ..utils.gamma import find_gamma_by_degree_after_fps
+from ..utils.math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
 
 
 def _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight):

@@ -7,18 +7,6 @@ import torch
 
 from .math_utils import pca_lowrank
 
-# internal configuration for nystrom approximation, can be overridden by kwargs
-# values are optimized based on empirical experiments, no need to change the values
-_NYSTROM_CONFIG = {
-    'n_sample': 10240,  # number of samples for nystrom approximation, 10240 is large enough for most cases
-    'n_sample2': 1024,  # number of samples for eigenvector propagation, 1024 is large enough for most cases
-    'n_neighbors': 10,  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
-    'matmul_chunk_size': 16384,  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
-    'sample_method': "farthest",  # sample method for nystrom approximation, 'farthest' is FPS(Farthest Point Sampling)
-    'move_output_to_cpu': True,  # if True, will move output to cpu, which saves memory but loses gradients
-}
-
-
 def auto_divice(feature_device = "cuda:0", user_input_device = None):
     if user_input_device is not None and str(user_input_device) != "auto":
         try:

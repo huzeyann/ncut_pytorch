@@ -1,4 +1,6 @@
 torch
+torchvision
+pillow
 fpsample
 pytorch-lightning
 numpy
