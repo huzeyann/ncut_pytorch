@@ -1,6 +1,6 @@
 import torch
 
-from .ncuts.ncut_nystrom import ncut_fn, _nystrom_propagate
+from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, _nystrom_propagate
 
 class Ncut:
 

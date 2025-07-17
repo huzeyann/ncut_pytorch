@@ -1,9 +1,9 @@
 import torch
 
-from ..utils.gamma import find_gamma_by_degree_after_fps
-from ..utils.math_utils import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
+from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
+from ncut_pytorch.utils.math_utils import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
     keep_topk_per_row
-from ..utils.sample_utils import auto_divice, farthest_point_sampling
+from ncut_pytorch.utils.sample_utils import auto_divice, farthest_point_sampling
 
 # internal configuration for nystrom approximation, can be overridden by kwargs
 # values are optimized based on empirical experiments, no need to change the values

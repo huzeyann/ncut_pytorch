@@ -4,10 +4,10 @@ from typing import Any, Callable, Dict, Literal, Tuple
 import numpy as np
 import torch
 
-from ..utils.math_utils import quantile_normalize
-from .mspace import mspace_viz_transform
-from ..ncuts.ncut_nystrom import _nystrom_propagate
-from ..utils.sample_utils import farthest_point_sampling
+from ncut_pytorch.utils.math_utils import quantile_normalize
+from ncut_pytorch.color.mspace import mspace_viz_transform
+from ncut_pytorch.ncuts.ncut_nystrom import _nystrom_propagate
+from ncut_pytorch.utils.sample_utils import farthest_point_sampling
 
 
 def _identity(X: torch.Tensor) -> torch.Tensor:

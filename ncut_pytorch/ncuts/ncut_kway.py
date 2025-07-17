@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from ..utils.sample_utils import farthest_point_sampling
+from ncut_pytorch.utils.sample_utils import farthest_point_sampling
 
 
 def kway_ncut(eigvec: torch.Tensor, **kwargs):

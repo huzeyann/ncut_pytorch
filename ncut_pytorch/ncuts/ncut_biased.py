@@ -1,10 +1,10 @@
 import torch
 
-from ..utils.gamma import find_gamma_by_degree_after_fps
+from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
+from ncut_pytorch.utils.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
+from ncut_pytorch.utils.sample_utils import farthest_point_sampling, auto_divice
 from .ncut_kway import kway_ncut
-from ..utils.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from .ncut_nystrom import _nystrom_propagate
-from ..utils.sample_utils import farthest_point_sampling, auto_divice
 
 
 # TODO : UPDATE THIS FILE

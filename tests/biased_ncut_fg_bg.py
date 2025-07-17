@@ -1,8 +1,7 @@
 # %%
 
-from ncut_pytorch.sample_utils import farthest_point_sampling, nystrom_propagate, auto_divice
+from ncut_pytorch.utils.sample_utils import nystrom_propagate
 from ncut_pytorch.affinity_gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 
 # %%
 from einops import rearrange

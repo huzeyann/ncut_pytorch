@@ -1,7 +1,7 @@
 from .ncut import Ncut
-from .ncuts.ncut_nystrom import ncut_fn
-from .ncuts.ncut_kway import kway_ncut, axis_align
-from .color.color import (
+from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn
+from ncut_pytorch.ncuts.ncut_kway import kway_ncut, axis_align
+from ncut_pytorch.color.coloring import (
     mspace_color,
     tsne_color,
     umap_color,
