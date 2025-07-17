@@ -23,9 +23,11 @@ classifiers = [
 dependencies = [
     "torch",
     "fpsample",
-    "einops",
-    "scikit-learn",
-    "pycolormap-2d",
+    "torchvision",
+    "pillow",
+    "pytorch-lightning",
+    "numpy",
+    "tqdm"
 ]
 
 [project.urls]
@@ -34,7 +36,7 @@ Github = "https://github.com/huzeyann/ncut_pytorch/"
 PyPI = "https://pypi.org/project/ncut_pytorch/"
 
 [tool.setuptools]
-packages = ["ncut_pytorch"]
+packages = ["ncut_pytorch", "ncut_pytorch.ncuts", "ncut_pytorch.color", "ncut_pytorch.utils", "ncut_pytorch.dino"]
 
 [tool.setuptools.package-data]
-"ncut_pytorch" = ["*.txt", "*.md"] 
+"ncut_pytorch" = ["*.txt", "*.md"]
