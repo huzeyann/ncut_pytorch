@@ -21,13 +21,13 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "torch",
-    "fpsample",
-    "torchvision",
-    "pillow",
-    "pytorch-lightning",
-    "numpy",
-    "tqdm"
+    "torch>=2.0.0",
+    "fpsample>=0.2.0",
+    "torchvision>=0.15.0",
+    "pillow==*",
+    "pytorch-lightning>=2.0.0",
+    "numpy==*",
+    "tqdm==*"
 ]
 
 [project.urls]
