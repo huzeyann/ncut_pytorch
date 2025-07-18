@@ -1,53 +1,30 @@
 # %%
-from re import M
 import torch
-from ncut_pytorch.dino import HighResDINO
-from ncut_pytorch.dino import hires_dino_base
-from ncut_pytorch.dino import hires_dino_small
-from ncut_pytorch.dino import hires_dino_large
-from ncut_pytorch.dino import hires_dinov2
-from ncut_pytorch.dino import hires_dino
-from ncut_pytorch.dino import get_input_transform, unnormalize
+from ncut_pytorch import Ncut, tsne_color, convert_to_lab_color, mspace_color, umap_color
+from ncut_pytorch.dino import hires_dino_256, hires_dino_512, hires_dino_1024, hires_dinov2
 
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-
-# %%
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-
-# Add the current directory to the Python path
-import sys
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
-from ncut_pytorch import Ncut, tsne_color, convert_to_lab_color, mspace_color, umap_color
+# %%
+model, transform = hires_dino_512()
 # %%
 from PIL import Image
 
 default_images = ['./image_0.jpg', './image_1.jpg', './guitar_ego.jpg']
 
-transform = get_input_transform(resize=512)
-
 images = [transform(Image.open(image_path)) for image_path in default_images]
 images = torch.stack(images)
 print(images.shape)
 # %%
-mask_ratio = 0.001
-model = hires_dino(
-    dino_name="dino_vitb8",
-    stride=6,
-    shift_dists=[1, 2, 3],
-    flip_transforms=True,
-    attention_mask_ratio=mask_ratio,
-)
-# model = hires_dino_base()
 model.to('cuda')
 
 import time
@@ -61,7 +38,7 @@ print(f"GPU feature extraction took {gpu_time:.2f} seconds")
 hr_feats_tensor = hr_feats_tensor_gpu
 # %%
 from ncut_pytorch import kway_ncut
-from ncut_pytorch.kway_ncut import _onehot_discretize
+from ncut_pytorch.ncuts.ncut_kway import _onehot_discretize
 
 
 @torch.no_grad()
@@ -78,7 +55,7 @@ def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10
     discrete_rgbs = []
     for num_cluster in num_clusters:
         # discretize the eigvecs, k-way NCUT
-        kway_eigvec = kway_ncut(eigvecs[:, :num_cluster])
+        kway_eigvec = kway_ncut(eigvecs[:, :num_cluster], n_sample=10240)
         kway_eigvec = _onehot_discretize(kway_eigvec)
         kway_eigvec = kway_eigvec.cpu()
         discrete_rgb = torch.zeros_like(rgb)
@@ -159,7 +136,7 @@ for i in range(3):
         axes[i][j + 1].imshow(ncut_discrete_rgbs[j][i])
         axes[i][j + 1].set_title(f'k-way ({num_cluster})')
 # plt.suptitle(f'dino_vitb16 no_norm 512x512, degree={degree}', fontsize=16)
-plt.suptitle(f'mask_ratio={mask_ratio}', fontsize=28)
+plt.suptitle(f'dino_vitb8 1024x1024, degree={degree}', fontsize=28)
 # plt.suptitle(f'hr_dv2 dino_vitb16 1024x1024 stride=4, shift_dists={shift_dists}, no flip, degree={degree}', fontsize=16)
 plt.tight_layout()
 plt.show()

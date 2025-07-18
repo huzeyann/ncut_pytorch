@@ -28,10 +28,12 @@ class HighResDINO(nn.Module):
     def __init__(
         self,
         dino_name: DINONameOptions,
-        stride: int = 6,
-        dtype: torch.dtype | int = torch.float32,
+        stride: int = 5,
+        dtype: torch.dtype | int = torch.float16,
         track_grad: bool = False,
-        attention_mask_ratio: float = 0.25,
+        attention_mask_ratio: float = 0.1,
+        chunk_size: int = 4,
+        feature_resolution: int = 1024,
     ) -> None:
         super().__init__()
 
@@ -60,7 +62,9 @@ class HighResDINO(nn.Module):
         self.feat_dim: int = feat
         self.n_heads: int = 6
         self.n_register_tokens = 4
-
+        self.chunk_size = chunk_size
+        self.feature_resolution = feature_resolution
+        
         # mask out some of the attention Keys (K) to save compute
         self.attention_mask_ratio = attention_mask_ratio
 
@@ -142,7 +146,7 @@ class HighResDINO(nn.Module):
         attn_block = final_block.attn  # type: ignore
         # hilariously this also works for dino i.e we can patch dino's attn block forward to
         # use the memeory efficienty attn like in dinov2
-        attn_block.forward = MethodType(Patch._fix_mem_eff_attn(self.attention_mask_ratio), attn_block)
+        attn_block.forward = MethodType(Patch._fix_attn_masking(self.attention_mask_ratio), attn_block)
         if "dinov2" in dino_name:
             final_block.forward = MethodType(Patch._fix_block_forward_dv2(), final_block)  # type: ignore
             dino_model.forward_feats_attn = MethodType(  # type: ignore
@@ -152,7 +156,7 @@ class HighResDINO(nn.Module):
             for i, blk in enumerate(dino_model.blocks):
                 blk.forward = MethodType(Patch._fix_block_forward_dino(), blk)
                 attn_block = blk.attn
-                attn_block.forward = MethodType(Patch._fix_mem_eff_attn(self.attention_mask_ratio), attn_block)
+                attn_block.forward = MethodType(Patch._fix_attn_masking(self.attention_mask_ratio), attn_block)
             final_block.forward = MethodType(Patch._fix_block_forward_dino(), final_block)  # type: ignore
             dino_model.forward_feats_attn = MethodType(  # type: ignore
                 Patch._add_new_forward_features_dino(), dino_model
@@ -161,7 +165,7 @@ class HighResDINO(nn.Module):
             for i, blk in enumerate(dino_model.blocks):
                 blk.forward = MethodType(Patch._fix_block_forward_dino(), blk)
                 attn_block = blk.attn
-                attn_block.forward = MethodType(Patch._fix_mem_eff_attn(self.attention_mask_ratio), attn_block)
+                attn_block.forward = MethodType(Patch._fix_attn_masking(self.attention_mask_ratio), attn_block)
             final_block.forward = MethodType(Patch._fix_block_forward_dino(), final_block)  # type: ignore
             dino_model.forward_feats_attn = MethodType(  # type: ignore
                 Patch._add_new_forward_features_vit(), dino_model
@@ -244,8 +248,8 @@ class HighResDINO(nn.Module):
         out_feature_img: torch.Tensor = torch.zeros(
             1,
             c,
-            img_h,
-            img_w,
+            self.feature_resolution,
+            self.feature_resolution,
             device=x.device,
             dtype=self.dtype,
             requires_grad=self.track_grad,
@@ -264,7 +268,15 @@ class HighResDINO(nn.Module):
                 mode=self.interpolation_mode,
             )
             inverted: torch.Tensor = inv_transform(full_size)
-            out_feature_img += inverted
+            
+            # resize the inverted feature map to the output resolution
+            out = F.interpolate(
+                inverted, 
+                (self.feature_resolution, self.feature_resolution), 
+                mode=self.interpolation_mode
+            )
+            
+            out_feature_img += out
 
         n_imgs: int = feature_batch.shape[0]
         mean = out_feature_img / n_imgs
@@ -275,13 +287,11 @@ class HighResDINO(nn.Module):
         self,
         x: torch.Tensor,
         attn_choice: AttentionOptions = "none",
-        chunk_size: int = 6,
     ) -> torch.Tensor:
         """Feed input img $x through network and get high-res features.
 
         :param x: unbatched image tensor, (c, h, w)
         :param attn_choice: choice of attention, "none" or "q", "k", "v", "o"
-        :param chunk_size: number of images to process in one chunk, default 6, in case of OOM
         :return: upsampled features, (c, h, w)
         """
         if self.dtype != torch.float32:  # cast (i.e to f16)
@@ -291,8 +301,8 @@ class HighResDINO(nn.Module):
         N_imgs = img_batch.shape[0]
         
         all_features = []
-        for i in range(0, N_imgs, chunk_size):
-            _img_batch = img_batch[i:i+chunk_size]
+        for i in range(0, N_imgs, self.chunk_size):
+            _img_batch = img_batch[i:i+self.chunk_size]
             out_dict = self.dinov2.forward_feats_attn(_img_batch, None, attn_choice)  # type: ignore
             if attn_choice != "none":
                 feats, attn = out_dict["x_norm_patchtokens"], out_dict["x_patchattn"]
@@ -314,23 +324,21 @@ class HighResDINO(nn.Module):
         self,
         x: torch.Tensor,
         attn_choice: AttentionOptions = "none",
-        chunk_size: int = 6,
     ) -> torch.Tensor:
         """Feed input img $x through network and get low and high res features.
 
         :param x: batched image tensor, (b, c, h, w)
         :param attn_choice: choice of attention, "none" or "q", "k", "v", "o"
-        :param chunk_size: number of images to process in one chunk, default 6, in case of OOM
         :return: upsampled features, (b, c, h, w)
         :rtype: torch.Tensor
         """
         upsampled_features = []
         for i in range(x.shape[0]):
             if self.track_grad:
-                out = self._forward_one_image(x[i], attn_choice, chunk_size)
+                out = self._forward_one_image(x[i], attn_choice)
             else:
                 with torch.no_grad():
-                    out = self._forward_one_image(x[i], attn_choice, chunk_size)
+                    out = self._forward_one_image(x[i], attn_choice)
             upsampled_features.append(out)
         upsampled_features = torch.stack(upsampled_features, dim=0)
         return upsampled_features
@@ -338,13 +346,28 @@ class HighResDINO(nn.Module):
 
 def hires_dino(dino_name: DINONameOptions = "dino_vitb8", 
                stride: int = 6, 
-               attention_mask_ratio: float = 0.1,
-               shift_dists: List[int] = [1, 2],
+               shift_dists: List[int] = [1, 2, 3],
                flip_transforms: bool = True,
+               attention_mask_ratio: float = 0.1,
                dtype: torch.dtype | int = torch.float16, 
-               track_grad: bool = False) -> HighResDINO:
+               track_grad: bool = False,
+               chunk_size: int = 4,
+               feature_resolution: int = 1024
+               ) -> HighResDINO:
+    """
+    Args:
+        dino_name: name of the DINO model to use
+        stride: stride size of the tokenization, smaller is better but slower
+        shift_dists: pixel shifts for multiple image transformations, more shifts means more crispy features
+        flip_transforms: whether to use flip transforms, remove positional features
+        attention_mask_ratio: ratio of attention keys to mask out
+        dtype: data type of the model
+        track_grad: whether to track gradients
+        chunk_size: number of images to process in one batch, in case of OOM
+        feature_resolution: resolution of the output features
+    """
 
-    model = HighResDINO(dino_name, stride, dtype, track_grad, attention_mask_ratio)
+    model = HighResDINO(dino_name, stride, dtype, track_grad, attention_mask_ratio, chunk_size, feature_resolution)
 
     fwd_shift, inv_shift = get_shift_transforms(shift_dists)
     if flip_transforms:  # add flip transforms
@@ -359,34 +382,3 @@ def hires_dino(dino_name: DINONameOptions = "dino_vitb8",
     return model
 
 
-# ==================== MODEL PRESETS ====================
-
-# stride: stride size of the tokenization, the original model use patch size as stride size
-#         reduce stride size to get more tokens and crispy features
-# shift_dists: pixel shifts for multiple image transformations, more shifts means more crispy features
-# flip_transforms: whether to use flip transforms, remove positional features
-
-
-def hires_dino_small() -> HighResDINO:
-    return hires_dino(dino_name="dino_vitb8", 
-                    stride=6, 
-                    shift_dists=[1, 2, 3],
-                    flip_transforms=True)
-
-def hires_dino_base() -> HighResDINO:
-    return hires_dino(dino_name="dino_vitb8", 
-                    stride=4, 
-                    shift_dists=[1, 2, 3],
-                    flip_transforms=True)
-
-def hires_dino_large() -> HighResDINO:
-    return hires_dino(dino_name="dino_vitb8", 
-                    stride=3, 
-                    shift_dists=[1, 2, 3],
-                    flip_transforms=True)
-
-def hires_dinov2() -> HighResDINO:
-    return hires_dino(dino_name="dinov2_vitb14_reg", 
-                    stride=4, 
-                    shift_dists=[1, 2, 3],
-                    flip_transforms=True)

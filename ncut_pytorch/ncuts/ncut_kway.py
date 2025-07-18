@@ -1,3 +1,4 @@
+from re import U
 import torch
 import torch.nn.functional as F
 
@@ -60,6 +61,7 @@ def axis_align(eigvec: torch.Tensor, max_iter=1000, n_sample=10240):
         _out = _eigenvectors_discrete.T @ eigvec
         U, S, Vh = torch.linalg.svd(_out, full_matrices=False)
         V = Vh.T
+        # U, S, V = svd_lowrank(_out, 100)
 
         # Compute the Ncut value
         ncut_value = 2 * (n - torch.sum(S))

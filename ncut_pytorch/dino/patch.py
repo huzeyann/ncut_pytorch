@@ -161,7 +161,7 @@ class Patch:
         return forward
 
     @staticmethod
-    def _fix_mem_eff_attn(attention_mask_ratio: float = 0.25) -> Callable:
+    def _fix_attn_masking(attention_mask_ratio: float) -> Callable:
         """Replaces normal 'forward()' method of the memory efficient attention layer (block.attn)
         in the Dv2 model with an optional early return with attention. Used if xformers used.
 
@@ -196,8 +196,8 @@ class Patch:
                                                 k.transpose(1, 2), 
                                                 v.transpose(1, 2), 
                                                 attn_mask=attn_bias)
-
             x = x.transpose(1, 2)
+            
             to_append: torch.Tensor
             if attn_choice != "none":
                 to_append = get_qkvo_per_head(q, k, v, x, attn_choice, self.attn_drop)
