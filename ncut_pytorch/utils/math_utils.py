@@ -23,7 +23,8 @@ def get_affinity(
     X2 = X1 if X2 is None else X2
 
     distances = compute_l2_distance(X1, X2)
-    A = torch.exp(-distances / (2 * gamma * X1.var(dim=0).sum()))
+    # A = torch.exp(-distances / (2 * gamma * X1.var(dim=0).sum() + 1e-8))
+    A = torch.exp(-distances / (2 * gamma * X1.shape[1] + 1e-8))
 
     return A
 

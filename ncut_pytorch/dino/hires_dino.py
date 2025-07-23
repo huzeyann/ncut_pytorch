@@ -324,6 +324,7 @@ class HighResDINO(nn.Module):
         self,
         x: torch.Tensor,
         attn_choice: AttentionOptions = "none",
+        move_to_cpu: bool = True,
     ) -> torch.Tensor:
         """Feed input img $x through network and get low and high res features.
 
@@ -339,6 +340,8 @@ class HighResDINO(nn.Module):
             else:
                 with torch.no_grad():
                     out = self._forward_one_image(x[i], attn_choice)
+                    if move_to_cpu:
+                        out = out.cpu()
             upsampled_features.append(out)
         upsampled_features = torch.stack(upsampled_features, dim=0)
         return upsampled_features

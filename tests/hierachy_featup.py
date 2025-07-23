@@ -1,32 +1,27 @@
 # %%
+import torch
+from ncut_pytorch import Ncut, tsne_color, convert_to_lab_color, mspace_color, umap_color
+from ncut_pytorch.dino import hires_dino_256, hires_dino_512, hires_dino_1024, hires_dinov2
 
+import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
 import os
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
-from ncut_pytorch import Ncut, tsne_color, convert_to_lab_color
+# %%
+model, transform = hires_dino_1024()
 # %%
 from PIL import Image
-# image = Image.open("/workspace/data/egoexo_0001.jpg")
 
-default_images = ['/images/image_0.jpg', '/images/image_1.jpg', 
-                  '/images/guitar_ego.jpg']
+default_images = ['./image_0.jpg', './image_1.jpg', './guitar_ego.jpg']
 
-
-from torchvision import transforms
-transform = transforms.Compose([
-    transforms.Resize((1024, 1024)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-])
-images = []
-for image_path in default_images:
-    image = Image.open(image_path)
-    image = transform(image)
-    images.append(image)
+images = [transform(Image.open(image_path)) for image_path in default_images]
 images = torch.stack(images)
 print(images.shape)
 # %%
@@ -41,61 +36,41 @@ def my_highreso_feature(upsampler, images):
         featups.append(featup)
     featup = torch.cat(featups, dim=0)
     return featup
+
     
 upsampler = torch.hub.load("huzeyann/FeatUp", 'dino', use_norm=False, force_reload=True)
 featup1 = my_highreso_feature(upsampler, images)
 
-## uncomment this to use DINO+SAM features
-# upsampler = torch.hub.load("huzeyann/FeatUp", 'sam', use_norm=False, force_reload=False)
-# featup2 = my_highreso_feature(upsampler, images)
-# featup = torch.cat([featup1, featup2], dim=1)
-
-
 featup = featup1
 print(featup.shape)
 # torch.Size([3, 384, 1024, 1024])
-
-
+hr_feats_tensor = featup
 # %%
 from ncut_pytorch import kway_ncut
+from ncut_pytorch.ncuts.ncut_kway import _onehot_discretize
 
 
 @torch.no_grad()
-def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10, 50, 250], 
-                                       num_sample=10000, degree=0.1, distance='rbf'):
-    
-    num_eig = max(color_num_eig, np.max(num_clusters))
+def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10, 50, 250],
+                                       degree=0.1):
+    n_eig = max(color_num_eig, np.max(num_clusters))
     b, c, h, w = feats.shape
     feats = rearrange(feats, 'b c h w -> (b h w) c')
 
-    # num_sample should be at least 1/4 of the number of features, 
-    # otherwise the NCUT would not be balanced and high-quality
-    num_sample = min(num_sample, feats.shape[0]//4)
-
-    # find the optimal gamma for the given degree
-    # gamma = find_gamma_by_degree_after_fps(feats, degree, distance=distance, num_sample=num_sample)
-    # print(f'gamma: {gamma}')
-
-    # run NCUT
-    eigvecs = Ncut(n_eig=num_eig, device='cuda:0').fit_transform(feats)
-    # return None, None
-    
-    # use t-SNE to fill a base color palette
-    rgb = tsne_color(eigvecs[:, :color_num_eig], device='cuda:1', num_sample=1000, perplexity=500)
-    # rgb = convert_to_lab_color(rgb)
-    # rgb = torch.from_numpy(rgb)
-    
+    eigvecs = Ncut(n_eig=n_eig, degree=degree).fit_transform(feats)
+    rgb = mspace_color(eigvecs[:, :color_num_eig])
 
     # discretize the eigvecs and fill the discrete_rgb with the mean color of t-SNE colors
     discrete_rgbs = []
     for num_cluster in num_clusters:
         # discretize the eigvecs, k-way NCUT
-        kway_onehot = kway_ncut(eigvecs[:, :num_cluster])
-        kway_onehot = kway_onehot.cpu()
+        kway_eigvec = kway_ncut(eigvecs[:, :num_cluster], n_sample=10240)
+        kway_eigvec = _onehot_discretize(kway_eigvec)
+        kway_eigvec = kway_eigvec.cpu()
         discrete_rgb = torch.zeros_like(rgb)
         # fill the discrete_rgb with the mean color of the cluster
         for i in range(num_cluster):
-            mask = kway_onehot[:, i] == 1
+            mask = kway_eigvec[:, i] == 1
             discrete_rgb[mask] = rgb[mask].mean(0)
         discrete_rgb = rearrange(discrete_rgb, '(b h w) c -> b h w c', b=b, h=h, w=w)
         discrete_rgb = discrete_rgb.cpu().numpy()
@@ -103,28 +78,26 @@ def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10
     continues_rgb = rearrange(rgb, '(b h w) c -> b h w c', b=b, h=h, w=w)
     continues_rgb = continues_rgb.cpu().numpy()
     return discrete_rgbs, continues_rgb
+
+
 # %%
 import gc
+
 torch.cuda.empty_cache()
 gc.collect()
 # %%
 num_clusters = [16, 32, 64, 128, 256]
-ncut_discrete_rgbs, continues_rgb = rgb_from_ncut_discrete_hirarchical(featup, color_num_eig=50, num_clusters=num_clusters, 
-                                                           num_sample=10000, degree=0.1, distance='rbf')
+degree = 0.1
+ncut_discrete_rgbs, continues_rgb = rgb_from_ncut_discrete_hirarchical(hr_feats_tensor, color_num_eig=20,
+                                                                       num_clusters=num_clusters,
+                                                                       degree=degree)
 
-# try a different degree=0.1, 
-# smaller degree means less connected affinity and sharper NCUT eigvecs
-# smaller degree can counter the blurriness from FeatUp features
-
-# ncut_discrete_rgbs_degree, continues_rgb_degree = rgb_from_ncut_discrete_hirarchical(featup, color_num_eig=50, num_clusters=num_clusters, 
-#                                                            num_sample=10000, degree=0.05, distance='rbf')
 # %%
 import cv2
 import numpy as np
 
 
 def draw_component_boundaries(image):
-
     # Get unique colors (excluding black as background if necessary)
     unique_colors = np.unique(image.reshape(-1, 3), axis=0)
 
@@ -140,13 +113,15 @@ def draw_component_boundaries(image):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # Draw black boundary only if the component is large enough
-        min_size = 50
+        min_size = 100
         for contour in contours:
             area = cv2.contourArea(contour)
             if area >= min_size:
-                cv2.drawContours(output, [contour], -1, (0, 0, 0), 2)
+                cv2.drawContours(output, [contour], -1, (0, 0, 0), 1)
 
     return output
+
+
 # %%
 draw_boundaries = True
 # draw the boundaries of connected components, looks nice but can be slow
@@ -156,7 +131,7 @@ if draw_boundaries:
         ncut_discrete_rgbs_draw.append([draw_component_boundaries(rgb) for rgb in ncut_discrete_rgbs[i]])
     ncut_discrete_rgbs = ncut_discrete_rgbs_draw
 # %%
-fig, axes = plt.subplots(3, 6, figsize=(20,10))
+fig, axes = plt.subplots(3, 6, figsize=(20, 10))
 for ax in axes.flatten():
     ax.axis('off')
 for i in range(3):
@@ -167,11 +142,11 @@ for i in range(3):
     axes[i][0].imshow(image)
     axes[i][0].set_title('Original Image')
     for j, num_cluster in enumerate(num_clusters):
-        axes[i][j+1].imshow(ncut_discrete_rgbs[j][i])
-        axes[i][j+1].set_title(f'k-way ({num_cluster})')
-plt.suptitle('DiNO Features (sample=10000,1024,p**2+1/D+gamma, knn=100)', fontsize=16)
+        axes[i][j + 1].imshow(ncut_discrete_rgbs[j][i])
+        axes[i][j + 1].set_title(f'k-way ({num_cluster})')
+# plt.suptitle(f'dino_vitb16 no_norm 512x512, degree={degree}', fontsize=16)
+plt.suptitle(f'featup 1024x1024, degree={degree}', fontsize=28)
+# plt.suptitle(f'hr_dv2 dino_vitb16 1024x1024 stride=4, shift_dists={shift_dists}, no flip, degree={degree}', fontsize=16)
 plt.tight_layout()
 plt.show()
-    
-
 # %%

@@ -8,3 +8,4 @@ build/
 .vscode/
 .vscode
 /.venv/
+pyrightconfig.json

@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from einops import rearrange, repeat
 # %%
 model, transform = hires_dino_512()
+model.feature_resolution = 512
 # %%
 from PIL import Image
 

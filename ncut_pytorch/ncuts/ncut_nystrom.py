@@ -12,7 +12,6 @@ _NYSTROM_CONFIG = {
     'n_sample2': 1024,  # number of samples for eigenvector propagation, 1024 is large enough for most cases
     'n_neighbors': 10,  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
     'matmul_chunk_size': 16384,  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
-    'sample_method': "farthest",  # sample method for nystrom approximation, 'farthest' is FPS(Farthest Point Sampling)
     'move_output_to_cpu': True,  # if True, will move output to cpu, which saves memory but loses gradients
 }
 
@@ -102,17 +101,6 @@ def _plain_ncut(
         A: torch.Tensor,
         n_eig: int = 100,
 ):
-    """Normalized Cut.
-
-    Args:
-        A (torch.Tensor): affinity matrix, shape (N, N)
-        n_eig (int): number of eigenvectors to return
-
-    Returns:
-        (torch.Tensor): eigenvectors corresponding to the eigenvalues, shape (N, n_eig)
-        (torch.Tensor): eigenvalues of the eigenvectors, sorted in descending order
-    """
-
     # normalization; A = D^(-1/2) A D^(-1/2)
     A = normalize_affinity(A)
 
@@ -120,6 +108,11 @@ def _plain_ncut(
 
     # correct the random rotation (flipping sign) of eigenvectors
     eigvec = correct_rotation(eigvec)
+    
+    assert not torch.any(torch.isnan(eigvec)), "eigvec contains NaN"
+    assert not torch.any(torch.isinf(eigvec)), "eigvec contains Inf"
+    assert not torch.any(torch.isnan(eigval)), "eigval contains NaN"
+    assert not torch.any(torch.isinf(eigval)), "eigval contains Inf"
 
     return eigvec, eigval
 

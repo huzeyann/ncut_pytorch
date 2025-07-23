@@ -7,7 +7,7 @@ import torch
 
 from .math_utils import pca_lowrank
 
-def auto_divice(feature_device = "cuda:0", user_input_device = None):
+def auto_divice(feature_device, user_input_device):
     if user_input_device is not None and str(user_input_device) != "auto":
         try:
             torch.device(str(user_input_device))
@@ -19,7 +19,10 @@ def auto_divice(feature_device = "cuda:0", user_input_device = None):
     if not is_cuda_available:
         return "cpu"
     if is_cuda_available:
-        return "cuda"
+        if "cuda" in str(feature_device):
+            return str(feature_device)
+        else:
+            return "cuda"
 
 @torch.no_grad()
 def run_subgraph_sampling(
@@ -89,6 +92,13 @@ def _farthest_point_sampling(
     if X.shape[1] > 8:
         X = pca_lowrank(X, q=8)
 
+    assert X.ndim == 2, "X should be a 2D tensor"
+    assert X.shape[0] > 0, "X should have at least 1 data point"
+    assert X.shape[1] <= 8, "fpsample only supports up to 8 dimensions"
+    assert X.shape[1] > 0, "X should have at least 1 dimension"
+    assert not torch.any(torch.isnan(X)), "X contains NaN"
+    assert not torch.any(torch.isinf(X)), "X contains Inf"
+    
     if _is_fast_fps_available():
         h = min(h, int(np.log2(num_data)))
         samples_idx = fpsample.bucket_fps_kdline_sampling(
@@ -112,13 +122,13 @@ def _is_fast_fps_available():
         message = """
         ---
         Farthest Point Sampling (fpsample>=0.3.3) installation Not Found. 
-        Using a old and slower implementation.
+        Using an old and slower implementation.
         ---
         To install fpsample, run:
         
         >>> pip install fpsample==0.3.3
         
-        if the above pip install fails, try install build dependencies first:
+        if the above pip install fails, please try install build dependencies (Rust) first:
         >>> sudo apt-get update && sudo apt-get install build-essential cargo rustc -y
         or 
         >>> conda install rust -c conda-forge

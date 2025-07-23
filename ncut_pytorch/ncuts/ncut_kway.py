@@ -3,9 +3,13 @@ import torch
 import torch.nn.functional as F
 
 from ncut_pytorch.utils.sample_utils import farthest_point_sampling
+from ncut_pytorch.utils.sample_utils import auto_divice
 
+def __check_input_tensor(X: torch.Tensor):
+    assert torch.any(torch.isnan(X)), "Input tensor contains NaN"
+    assert torch.any(torch.isinf(X)), "Input tensor contains Inf"
 
-def kway_ncut(eigvec: torch.Tensor, **kwargs):
+def kway_ncut(eigvec: torch.Tensor, device: str = 'auto', **kwargs):
     """
     Args:
         eigvec (torch.Tensor): eigenvectors from Ncut output, shape (n, k)
@@ -14,14 +18,16 @@ def kway_ncut(eigvec: torch.Tensor, **kwargs):
             eigvec.argmax(dim=1) is the cluster assignment.
             eigvec.argmax(dim=0) is the cluster centroids.
     """
-    R = axis_align(eigvec, **kwargs)
+    # __check_input_tensor(eigvec)
+    
+    R = axis_align(eigvec, device=device, **kwargs)
     eigvec = F.normalize(eigvec, dim=1)
     eigvec = eigvec @ R
     return eigvec
 
 
 @torch.no_grad()
-def axis_align(eigvec: torch.Tensor, max_iter=1000, n_sample=10240):
+def axis_align(eigvec: torch.Tensor, device: str = 'auto', max_iter=1000, n_sample=10240):
     """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
 
     Args:
@@ -34,15 +40,19 @@ def axis_align(eigvec: torch.Tensor, max_iter=1000, n_sample=10240):
 
     # subsample the eigenvectors, to speed up the computation
     n, k = eigvec.shape
-    n_sample = max(n_sample, k)
-    sample_idx = farthest_point_sampling(eigvec, n_sample)
+    sample_idx = farthest_point_sampling(eigvec, n_sample, device=device)
     eigvec = eigvec[sample_idx]
 
     eigvec = F.normalize(eigvec, dim=1)
 
     # Initialize R matrix with the first column from Farthest Point Sampling
-    _sample_idx = farthest_point_sampling(eigvec, k)
+    _sample_idx = farthest_point_sampling(eigvec, k, device=device)
     R = eigvec[_sample_idx].T
+    
+    original_device = eigvec.device
+    device = auto_divice(original_device, device)
+    eigvec = eigvec.to(device=device)
+    R = R.to(device=device)
     
     # Iterative optimization loop
     last_objective_value = 0
@@ -55,7 +65,7 @@ def axis_align(eigvec: torch.Tensor, max_iter=1000, n_sample=10240):
         # Discretize the projected eigenvectors
         _eigenvectors_continuous = eigvec @ R
         _eigenvectors_discrete = _onehot_discretize(_eigenvectors_continuous)
-        _eigenvectors_discrete = _eigenvectors_discrete.to(device=eigvec.device, dtype=eigvec.dtype)
+        _eigenvectors_discrete = _eigenvectors_discrete.to(device=device, dtype=eigvec.dtype)
 
         # SVD decomposition
         _out = _eigenvectors_discrete.T @ eigvec
@@ -73,7 +83,8 @@ def axis_align(eigvec: torch.Tensor, max_iter=1000, n_sample=10240):
         else:
             last_objective_value = ncut_value
             R = V @ U.T
-
+            
+    R = R.to(device=original_device)
     return R
 
 

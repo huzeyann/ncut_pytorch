@@ -1,9 +1,4 @@
 # %%
-
-from ncut_pytorch.utils.sample_utils import nystrom_propagate
-from ncut_pytorch.affinity_gamma import find_gamma_by_degree_after_fps
-
-# %%
 from einops import rearrange
 from PIL import Image
 import torch
@@ -47,7 +42,7 @@ def my_highreso_feature(upsampler, images):
     featup = torch.cat(featups, dim=0)
     return featup
     
-upsampler = torch.hub.load("huzeyann/FeatUp", 'dino', use_norm=False, force_reload=True)
+upsampler = torch.hub.load("huzeyann/FeatUp", 'dino', use_norm=False)
 features = my_highreso_feature(upsampler, images)
 print(features.shape)
 # torch.Size([3, 384, 1024, 1024])

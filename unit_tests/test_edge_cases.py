@@ -1,7 +1,8 @@
 import pytest
 import torch
 import numpy as np
-from ncut_pytorch import Ncut, ncut_fn, kway_ncut, bias_ncut_soft
+from ncut_pytorch import Ncut, ncut_fn, kway_ncut
+from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 
 
 class TestEdgeCases:
@@ -45,13 +46,13 @@ class TestEdgeCases:
         # Check that bias_ncut_soft raises an error with out-of-bounds foreground clicks
         with pytest.raises(Exception):
             fg_idx = torch.tensor([small_feature_matrix.shape[0] + 1])
-            eigvecs, eigvals = bias_ncut_soft(small_feature_matrix, fg_idx)
+            eigvecs, eigvals = ncut_click_prompt(small_feature_matrix, fg_idx)
         
         # Check that bias_ncut_soft raises an error with out-of-bounds background clicks
         with pytest.raises(Exception):
             fg_idx = torch.tensor([0])
             bg_idx = torch.tensor([small_feature_matrix.shape[0] + 1])
-            eigvecs, eigvals = bias_ncut_soft(small_feature_matrix, fg_idx, bg_idx=bg_idx)
+            eigvecs, eigvals = ncut_click_prompt(small_feature_matrix, fg_idx, bg_idx)
 
     def test_kway_ncut_invalid_eigvec(self):
         """Test kway_ncut with invalid eigenvectors."""
