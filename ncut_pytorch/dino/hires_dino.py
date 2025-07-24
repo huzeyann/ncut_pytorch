@@ -355,7 +355,7 @@ def hires_dino(dino_name: DINONameOptions = "dino_vitb8",
                dtype: torch.dtype | int = torch.float16, 
                track_grad: bool = False,
                chunk_size: int = 4,
-               feature_resolution: int = 1024
+               feature_resolution: int = 512
                ) -> HighResDINO:
     """
     Args:

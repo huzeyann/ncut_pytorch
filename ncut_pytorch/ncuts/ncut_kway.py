@@ -5,9 +5,6 @@ import torch.nn.functional as F
 from ncut_pytorch.utils.sample_utils import farthest_point_sampling
 from ncut_pytorch.utils.sample_utils import auto_divice
 
-def __check_input_tensor(X: torch.Tensor):
-    assert torch.any(torch.isnan(X)), "Input tensor contains NaN"
-    assert torch.any(torch.isinf(X)), "Input tensor contains Inf"
 
 def kway_ncut(eigvec: torch.Tensor, device: str = 'auto', **kwargs):
     """

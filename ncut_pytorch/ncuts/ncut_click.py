@@ -103,11 +103,11 @@ def ncut_click_prompt(
     return eigvec, eigval
 
 
-def get_mask_and_heatmap(eigvecs, fg_indices, num_cluster=2, device='auto'):
+def get_mask_and_heatmap(eigvecs, fg_indices, n_cluster=2, device='auto'):
     device = auto_divice(eigvecs.device, device)
-    eigvecs = eigvecs[:, :num_cluster]
+    eigvecs = eigvecs[:, :n_cluster]
 
-    eigvecs = kway_ncut(eigvecs[:, :num_cluster], device=device)
+    eigvecs = kway_ncut(eigvecs, device=device)
     # find which cluster is the foreground
     fg_eigvecs = eigvecs[fg_indices]
     fg_idx = fg_eigvecs.mean(0).argmax().item()

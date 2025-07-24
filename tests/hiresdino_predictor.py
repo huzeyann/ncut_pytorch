@@ -1,12 +1,11 @@
 # %%
 import torch
-from ncut_pytorch.predictor import NcutPredictor, NcutPredictorCached
+from ncut_pytorch.predictor import NcutPredictor
 from PIL import Image
 import numpy as np
 # %%
 
-predictor = NcutPredictor(backbone='dino_512', 
-                          pca_dim=100)
+predictor = NcutPredictor(backbone='dino_512')
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', '/images/guitar_ego.jpg']
 

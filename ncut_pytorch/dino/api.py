@@ -29,7 +29,7 @@ def hires_dino_512() -> Tuple[HighResDINO, transforms.Compose]:
 
 
 def hires_dino_1024() -> Tuple[HighResDINO, transforms.Compose]:
-    model = hires_dino(dino_name="dino_vitb16", 
+    model = hires_dino(dino_name="dino_vitb8", 
                     stride=6, 
                     shift_dists=[1, 2, 3],
                     flip_transforms=True,

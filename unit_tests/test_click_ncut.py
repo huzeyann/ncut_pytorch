@@ -65,7 +65,7 @@ class TestBiasedNcut:
         )
         
         # Run get_mask_and_heatmap
-        mask, heatmap = get_mask_and_heatmap(eigvecs, fg_idx, num_cluster=2)
+        mask, heatmap = get_mask_and_heatmap(eigvecs, fg_idx, n_cluster=2)
         
         # Check shapes
         assert mask.shape == (small_feature_matrix.shape[0],)
