@@ -14,25 +14,10 @@ MODEL_REGISTRY = {
     "dino_1024": hires_dino_1024,
 }
 
-import time
-def timeit_decorator(name: str = None):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            start_time = time.time()
-            result = func(*args, **kwargs)
-            end_time = time.time()
-            if name is None:
-                print(f"Time taken: {end_time - start_time} seconds")
-            else:
-                print(f"{name} Time taken: {end_time - start_time} seconds")
-            return result
-        return wrapper
-    return decorator
-
 
 class NcutPredictor(nn.Module):
-    def __init__(self, backbone: str = "dino_1024", 
-                 n_eig_hierarchy: List[int] = [6, 24, 96], 
+    def __init__(self, backbone: str = "dino_512", 
+                 n_eig_hierarchy: List[int] = [5, 10, 20, 40, 80], 
                  device: str = 'cuda'):
         super().__init__()
         self.model, self.transform = MODEL_REGISTRY[backbone]()
@@ -43,7 +28,6 @@ class NcutPredictor(nn.Module):
         self._features = None
         self.device = device
 
-    # @timeit_decorator(name="set_images")
     def set_images(self, images: List[Image.Image]):
         self._images = images
         transformed_images = [self.transform(image) for image in images]
@@ -52,9 +36,9 @@ class NcutPredictor(nn.Module):
         features = self.model(transformed_images)
         self._features = features  # (b, c, h, w)
         
-        self.hierarchical_eigvecs()
+        self._cache_hierarchical_eigvecs()
     
-    def hierarchical_eigvecs(self):
+    def _cache_hierarchical_eigvecs(self):
         b, c, h, w = self._features.shape
         _inp = self._features.permute(0, 2, 3, 1).reshape(-1, self._features.shape[1])
         eigvecs = Ncut(_inp, n_eig=max(self.n_eig_hierarchy), device=self.device)
@@ -72,7 +56,7 @@ class NcutPredictor(nn.Module):
         
         point_coords = np.array([point_coord])
         image_indices = np.array([image_indice])
-        point_index = self.point_to_tensor(point_coords, image_indices)[0]
+        point_index = self._point_to_tensor(point_coords, image_indices)[0]
         heatmaps = []
         masks = []
         for eigvec in self.hierarchy_eigvecs:
@@ -84,14 +68,13 @@ class NcutPredictor(nn.Module):
             heatmaps.append(heatmap)
         return heatmaps, masks
 
-    # @timeit_decorator(name="predict")
     def predict(self, 
                 point_coords: np.ndarray, 
                 point_labels: np.ndarray, 
                 image_indices: np.ndarray,
                 **kwargs):
-        fg_indices = self.point_to_tensor(point_coords[point_labels == 1], image_indices[point_labels == 1])
-        bg_indices = self.point_to_tensor(point_coords[point_labels == 0], image_indices[point_labels == 0])
+        fg_indices = self._point_to_tensor(point_coords[point_labels == 1], image_indices[point_labels == 1])
+        bg_indices = self._point_to_tensor(point_coords[point_labels == 0], image_indices[point_labels == 0])
         _inp = self._features.permute(0, 2, 3, 1).reshape(-1, self._features.shape[1])
         n_cluster = kwargs.pop('n_clusters', 2)
         eigvecs, eigval = ncut_click_prompt(
@@ -113,7 +96,7 @@ class NcutPredictor(nn.Module):
         self.device = device
         return self
     
-    def point_to_tensor(self, point_coords: np.ndarray, image_indices: np.ndarray):
+    def _point_to_tensor(self, point_coords: np.ndarray, image_indices: np.ndarray):
         if len(point_coords) == 0:
             return torch.tensor([], dtype=torch.long)
         image_wh = [image.size for image in self._images]

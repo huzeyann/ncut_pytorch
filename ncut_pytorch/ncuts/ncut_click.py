@@ -8,7 +8,7 @@ from ncut_pytorch.utils.sample_utils import farthest_point_sampling, auto_divice
 from .ncut_kway import kway_ncut
 from .ncut_nystrom import _nystrom_propagate
 from .ncut_nystrom import _plain_ncut
-from .ncut_nystrom import _NYSTROM_CONFIG
+from .ncut_nystrom import NystromConfig
 
 
 def ncut_click_prompt(
@@ -26,8 +26,8 @@ def ncut_click_prompt(
         **kwargs,
 ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
 
-    _config = _NYSTROM_CONFIG.copy()
-    _config.update(kwargs)
+    config = NystromConfig()
+    config.update(kwargs)
 
     # use GPU if available
     device = auto_divice(X.device, device)
@@ -40,7 +40,7 @@ def ncut_click_prompt(
         bg_indices = torch.tensor([], dtype=torch.long)
 
     # subsample for nystrom approximation
-    nystrom_indices = farthest_point_sampling(X, n_sample=_config['n_sample'], device=device)
+    nystrom_indices = farthest_point_sampling(X, n_sample=config.n_sample, device=device)
     nystrom_indices = torch.tensor(nystrom_indices, dtype=torch.long)
     # remove fg and bg from fps_idx
     nystrom_indices = nystrom_indices[~torch.isin(nystrom_indices, torch.cat([fg_indices, bg_indices]))]
@@ -89,12 +89,12 @@ def ncut_click_prompt(
         nystrom_eigvec,
         X,
         nystrom_X,
-        n_neighbors=_config['n_neighbors'],
-        n_sample=_config['n_sample2'],
+        n_neighbors=config.n_neighbors,
+        n_sample=config.n_sample2,
         gamma=gamma,
-        chunk_size=_config['matmul_chunk_size'],
+        chunk_size=config.matmul_chunk_size,
         device=device,
-        move_output_to_cpu=_config['move_output_to_cpu'],
+        move_output_to_cpu=config.move_output_to_cpu,
         track_grad=track_grad,
     )
     
@@ -138,8 +138,8 @@ def ncut_click_prompt_cached(
         **kwargs,
 ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
 
-    _config = _NYSTROM_CONFIG.copy()
-    _config.update(kwargs)
+    config = NystromConfig()
+    config.update(kwargs)
 
     # use GPU if available
     device = auto_divice(X.device, device)
@@ -209,15 +209,14 @@ def _build_nystrom_graph(
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
     """
 
-    _config = _NYSTROM_CONFIG.copy()
-    _config.update(kwargs)
+    config = NystromConfig()
+    config.update(kwargs)
 
     device = auto_divice(X.device, device)
     nystrom_X = nystrom_X.to(device)
 
-    all_outs = []
-    n_chunk = _config['matmul_chunk_size']
-    n_neighbors = _config['n_neighbors']
+    n_chunk = config.matmul_chunk_size
+    n_neighbors = config.n_neighbors
     cached_weights = torch.zeros((X.shape[0], nystrom_X.shape[0]), 
                                  device=device, dtype=X.dtype)
     for i in range(0, X.shape[0], n_chunk):

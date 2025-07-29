@@ -5,15 +5,23 @@ from ncut_pytorch.utils.math_utils import get_affinity, gram_schmidt, normalize_
     keep_topk_per_row
 from ncut_pytorch.utils.sample_utils import auto_divice, farthest_point_sampling
 
-# internal configuration for nystrom approximation, can be overridden by kwargs
-# values are optimized based on empirical experiments, no need to change the values
-_NYSTROM_CONFIG = {
-    'n_sample': 10240,  # number of samples for nystrom approximation, 10240 is large enough for most cases
-    'n_sample2': 1024,  # number of samples for eigenvector propagation, 1024 is large enough for most cases
-    'n_neighbors': 10,  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
-    'matmul_chunk_size': 16384,  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
-    'move_output_to_cpu': True,  # if True, will move output to cpu, which saves memory but loses gradients
-}
+class NystromConfig:
+    """
+    Internal configuration for nystrom approximation, can be overridden by kwargs
+    Values are optimized based on empirical experiments, no need to change the values
+    """
+    n_sample = 10240  # number of samples for nystrom approximation, 10240 is large enough for most cases
+    n_sample2 = 1024  # number of samples for eigenvector propagation, 1024 is large enough for most cases
+    n_neighbors = 8  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
+    matmul_chunk_size = 65536  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
+    move_output_to_cpu = True  # if True, will move output to cpu, saves memory but loses gradients
+    
+    def update(self, kwargs: dict):
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise ValueError(f"Invalid kwarg: {key}")
 
 def ncut_fn(
         X: torch.Tensor,
@@ -48,8 +56,8 @@ def ncut_fn(
         >>> eigvec, eigval = ncut_fn(features, n_eig=20)
         >>> print(eigvec.shape, eigval.shape)  # (10000, 20) (20,)
     """
-    _config = _NYSTROM_CONFIG.copy()
-    _config.update(kwargs)
+    config = NystromConfig()
+    config.update(kwargs)
 
     # use GPU if available
     device = auto_divice(X.device, device)
@@ -59,7 +67,7 @@ def ncut_fn(
     torch.set_grad_enabled(track_grad)
 
     # subsample for nystrom approximation
-    nystrom_indices = farthest_point_sampling(X, n_sample=_config['n_sample'], device=device)
+    nystrom_indices = farthest_point_sampling(X, n_sample=config.n_sample, device=device)
     nystrom_X = X[nystrom_indices].to(device)
 
     # find optimal gamma for affinity matrix
@@ -79,12 +87,12 @@ def ncut_fn(
         nystrom_eigvec,
         X,
         nystrom_X,
-        n_neighbors=_config['n_neighbors'],
-        n_sample=_config['n_sample2'],
+        n_neighbors=config.n_neighbors,
+        n_sample=config.n_sample2,
         gamma=gamma,
-        chunk_size=_config['matmul_chunk_size'],
+        matmul_chunk_size=config.matmul_chunk_size,
         device=device,
-        move_output_to_cpu=_config['move_output_to_cpu'],
+        move_output_to_cpu=config.move_output_to_cpu,
         track_grad=track_grad,
     )
 
@@ -142,33 +150,37 @@ def _nystrom_propagate(
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
     """
 
-    _config = _NYSTROM_CONFIG.copy()
-    _config.update(kwargs)
+    config = NystromConfig()
+    config.update(kwargs)
 
     # skip pytorch gradient computation if track_grad is False
     prev_grad_state = torch.is_grad_enabled()
     torch.set_grad_enabled(track_grad)
 
     device = auto_divice(nystrom_out.device, device)
-    indices = farthest_point_sampling(nystrom_out, _config['n_sample2'], device=device)
+    indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
     nystrom_out = nystrom_out[indices].to(device)
     nystrom_X = nystrom_X[indices].to(device)
+    
+    D = get_affinity(nystrom_X, gamma=gamma).mean(1)
 
     all_outs = []
-    n_chunk = _config['matmul_chunk_size']
-    n_neighbors = _config['n_neighbors']
+    n_chunk = config.matmul_chunk_size
+    n_neighbors = min(config.n_neighbors, len(indices))
     for i in range(0, X.shape[0], n_chunk):
         end = min(i + n_chunk, X.shape[0])
 
         _Ai = get_affinity(X[i:end].to(device), nystrom_X, gamma=gamma)
         _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
+        _D = D[_indices].sum(1)
+        _Ai = _Ai / _D[:, None]
 
         weights = _Ai[..., None]  # (n, n_neighbors, 1)
         neighbors = nystrom_out[_indices.flatten()].reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
         out = weights * neighbors  # (n, n_neighbors, d)
         out = out.sum(dim=1)  # (n, d)
 
-        if _config['move_output_to_cpu'] and not track_grad:
+        if config.move_output_to_cpu and not track_grad:
             out = out.cpu()
         all_outs.append(out)
 

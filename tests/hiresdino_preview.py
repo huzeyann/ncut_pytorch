@@ -6,7 +6,8 @@ import numpy as np
 # %%
 
 predictor = NcutPredictor(backbone='dino_512',
-                          n_eig_hierarchy=[5, 10, 20, 40, 80])
+                          n_eig_hierarchy=[5, 10, 20, 40, 80]
+                          )
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', '/images/guitar_ego.jpg']
 
@@ -36,7 +37,7 @@ def blend_mask(img, mask, alpha=0.8):
 
 def plot_masks(images, masks, fig, axes):
     color_values = np.array([0.2, 0.4, 0.6, 0.8, 1.0])
-    color_values = plt.get_cmap('Reds')(color_values)
+    color_values = plt.get_cmap('plasma_r')(color_values)
     color_values = (color_values * 255).astype(np.uint8)
 
     for idx, (ax, img, mask_set) in enumerate(zip(axes, images, masks)):

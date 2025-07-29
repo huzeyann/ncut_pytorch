@@ -318,7 +318,12 @@ class HighResDINO(nn.Module):
         features_batch = torch.cat(all_features, dim=0)
         upsampled_features = self.invert_transforms(features_batch, x)
         return upsampled_features
-
+    
+    def _forward_auto_chunk(self, *args, **kwargs) -> torch.Tensor:
+        try:
+            return self._forward_one_image(*args, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise RuntimeError("CUDA out of memory, please try to reduce the chunk size.\n    hires_dino_model.chunk_size = 1")
         
     def forward(
         self,
@@ -336,10 +341,10 @@ class HighResDINO(nn.Module):
         upsampled_features = []
         for i in range(x.shape[0]):
             if self.track_grad:
-                out = self._forward_one_image(x[i], attn_choice)
+                out = self._forward_auto_chunk(x[i], attn_choice)
             else:
                 with torch.no_grad():
-                    out = self._forward_one_image(x[i], attn_choice)
+                    out = self._forward_auto_chunk(x[i], attn_choice)
                     if move_to_cpu:
                         out = out.cpu()
             upsampled_features.append(out)

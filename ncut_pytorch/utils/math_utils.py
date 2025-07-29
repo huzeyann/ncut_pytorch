@@ -22,30 +22,10 @@ def get_affinity(
     """
     X2 = X1 if X2 is None else X2
 
-    distances = compute_l2_distance(X1, X2)
-    # A = torch.exp(-distances / (2 * gamma * X1.var(dim=0).sum() + 1e-8))
+    distances = torch.cdist(X1, X2, p=2) ** 2
     A = torch.exp(-distances / (2 * gamma * X1.shape[1] + 1e-8))
 
     return A
-
-
-def compute_l2_distance(X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
-    
-    # Compute squared norms
-    X1_norm = (X1 ** 2).sum(dim=1, keepdim=True)
-    X2_norm = (X2 ** 2).sum(dim=1, keepdim=True)
-    
-    # Compute cross terms using einsum
-    # 'ik,jk->ij' means: sum over k (features) for all pairs of i (X1 samples) and j (X2 samples)
-    cross_term = torch.einsum('ik,jk->ij', X1, X2)
-    
-    # Combine terms to get squared distances: ||x-y||² = ||x||² + ||y||² - 2<x,y>
-    distances = X1_norm + X2_norm.T - 2 * cross_term
-    
-    # Ensure no negative distances due to numerical errors
-    distances = distances.clamp(min=0)
-    
-    return distances
 
 
 def keep_topk_per_row(A: torch.Tensor, k: int = 10):
@@ -57,9 +37,6 @@ def keep_topk_per_row(A: torch.Tensor, k: int = 10):
         (torch.Tensor): topk values, shape (n_samples, k)
     """
     topk_A, topk_indices = A.topk(k=k, dim=-1, largest=True)
-    # normalize each row to sum to 1
-    _D = topk_A.sum(-1)
-    topk_A = topk_A / _D[:, None]
     return topk_A, topk_indices
 
 def svd_lowrank(mat, q):
@@ -69,15 +46,20 @@ def svd_lowrank(mat, q):
     q: int
     return: (n, q), (q,), (q, m)
     """
-
-    if mat.dtype == torch.float16 or mat.dtype == torch.bfloat16:
+    dtype = mat.dtype
+    if dtype == torch.float16 or dtype == torch.bfloat16:
         mat = mat.float()  # svd_lowrank does not support float16
 
     u, s, v = torch.svd_lowrank(mat, q=q+10)
+    
     # take 10 extra components to reduce the approximation error
     u = u[:, :q]
     s = s[:q]
     v = v[:, :q]
+    
+    u = u.to(dtype)
+    s = s.to(dtype)
+    v = v.to(dtype)
     return u, s, v
 
 
@@ -177,16 +159,15 @@ def gram_schmidt(matrix):
 def chunked_matmul(
     A,
     B,
-    chunk_size=8096,
-    device="cuda:0",
+    device,
+    chunk_size=65536,
     large_device="cpu",
     transform=lambda x: x,
 ):
     A = A.to(large_device)
     B = B.to(large_device)
-    C = torch.zeros(A.shape[0], B.shape[1], device=large_device)
-    iterator = range(0, A.shape[0], chunk_size)
-    for i in iterator:
+    C = torch.zeros(A.shape[0], B.shape[1], device=large_device, dtype=A.dtype)
+    for i in range(0, A.shape[0], chunk_size):
         end_i = min(i + chunk_size, A.shape[0])
         for j in range(0, B.shape[1], chunk_size):
             end_j = min(j + chunk_size, B.shape[1])

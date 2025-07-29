@@ -583,6 +583,8 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
     return model
 
 def mspace_viz_transform(X, return_model=False, **kwargs):
+    X = X.float().cpu()
+    
     model, trainer = train_mspace_model(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)

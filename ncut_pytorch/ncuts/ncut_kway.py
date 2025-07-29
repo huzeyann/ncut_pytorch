@@ -1,9 +1,9 @@
-from re import U
 import torch
 import torch.nn.functional as F
 
 from ncut_pytorch.utils.sample_utils import farthest_point_sampling
 from ncut_pytorch.utils.sample_utils import auto_divice
+from ncut_pytorch.utils.math_utils import chunked_matmul
 
 
 def kway_ncut(eigvec: torch.Tensor, device: str = 'auto', **kwargs):
@@ -15,11 +15,10 @@ def kway_ncut(eigvec: torch.Tensor, device: str = 'auto', **kwargs):
             eigvec.argmax(dim=1) is the cluster assignment.
             eigvec.argmax(dim=0) is the cluster centroids.
     """
-    # __check_input_tensor(eigvec)
-    
     R = axis_align(eigvec, device=device, **kwargs)
-    eigvec = F.normalize(eigvec, dim=1)
-    eigvec = eigvec @ R
+    device = auto_divice(eigvec.device, device)
+    # below is equivalent to: eigvec = eigvec @ R
+    eigvec = chunked_matmul(eigvec, R, device=device, large_device=eigvec.device)
     return eigvec
 
 
@@ -47,9 +46,10 @@ def axis_align(eigvec: torch.Tensor, device: str = 'auto', max_iter=1000, n_samp
     R = eigvec[_sample_idx].T
     
     original_device = eigvec.device
+    original_dtype = eigvec.dtype
     device = auto_divice(original_device, device)
-    eigvec = eigvec.to(device=device)
-    R = R.to(device=device)
+    eigvec = eigvec.to(device=device, dtype=torch.float32)
+    R = R.to(device=device, dtype=torch.float32)
     
     # Iterative optimization loop
     last_objective_value = 0
@@ -81,7 +81,7 @@ def axis_align(eigvec: torch.Tensor, device: str = 'auto', max_iter=1000, n_samp
             last_objective_value = ncut_value
             R = V @ U.T
             
-    R = R.to(device=original_device)
+    R = R.to(device=original_device, dtype=original_dtype)
     return R
 
 
