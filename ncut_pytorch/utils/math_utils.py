@@ -164,6 +164,10 @@ def chunked_matmul(
     large_device="cpu",
     transform=lambda x: x,
 ):
+    """
+    Chunked matrix multiplication, to avoid OOM
+    equivalent to: out = A @ B
+    """
     A = A.to(large_device)
     B = B.to(large_device)
     C = torch.zeros(A.shape[0], B.shape[1], device=large_device, dtype=A.dtype)

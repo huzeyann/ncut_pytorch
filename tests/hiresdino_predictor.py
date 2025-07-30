@@ -1,11 +1,11 @@
 # %%
 import torch
-from ncut_pytorch.predictor import NcutPredictor
+from ncut_pytorch.predictor import NcutDinoPredictor
 from PIL import Image
 import numpy as np
 # %%
 
-predictor = NcutPredictor(backbone='dino_512')
+predictor = NcutDinoPredictor(backbone='dino_512')
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', '/images/guitar_ego.jpg']
 
@@ -14,12 +14,12 @@ predictor.set_images(images)
 
 
 # %%
-eigvecs, mask, heatmap = predictor.predict(
-    np.array([[500, 500]]), np.array([1]), np.array([0]), n_clusters=2,
+mask, heatmap = predictor.predict(
+    np.array([[500, 500]]), np.array([1]), np.array([0]), 
+    n_clusters=2,
     click_weight=0.5,
     bg_weight=0.1,
     )
-eigvecs.shape
 mask.shape
 heatmap.shape
 
@@ -83,7 +83,7 @@ def onclick(event):
     image_indices = np.array(image_indices, dtype=int)
 
     # Run prediction
-    eigvecs, mask, heatmap = predictor.predict(
+    mask, heatmap = predictor.predict(
         point_coords, point_labels, image_indices, n_clusters=2,
         click_weight=0.5, bg_weight=0.1,
         # matmul_chunk_size=65536,

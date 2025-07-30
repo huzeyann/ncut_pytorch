@@ -1,13 +1,13 @@
 # %%
 import torch
-from ncut_pytorch.predictor import NcutPredictor
+from ncut_pytorch.predictor import NcutDinoPredictor
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import gradio as gr
 
-predictor = NcutPredictor(backbone='dino_512',
-                          n_eig_hierarchy=[5, 10, 20, 40, 80])
+predictor = NcutDinoPredictor(backbone='dino_512',
+                          n_segments=[5, 10, 20, 40, 80])
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', '/images/guitar_ego.jpg']
 

@@ -2,6 +2,7 @@ from typing import Tuple
 from torchvision import transforms
 from .hires_dino import hires_dino
 from .hires_dino import HighResDINO
+from .lowres_dino import LowResDINO
 from .transform import get_input_transform
 
 

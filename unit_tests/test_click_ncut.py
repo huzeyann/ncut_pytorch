@@ -91,18 +91,18 @@ class TestBiasedNcut:
             small_feature_matrix,
             fg_idx,
             n_eig=3,
-            bias_factor=0.5,
+            click_weight=0.5,
             d_gamma=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 3)
         assert eigvals.shape == (3,)
         
-        # Test with different bias_factor
+        # Test with different click_weight
         eigvecs, eigvals = ncut_click_prompt(
             small_feature_matrix,
             fg_idx,
             n_eig=5,
-            bias_factor=0.8,
+            click_weight=0.8,
             d_gamma=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)
@@ -112,7 +112,7 @@ class TestBiasedNcut:
             small_feature_matrix,
             fg_idx,
             n_eig=5,
-            bias_factor=0.5,
+            click_weight=0.5,
             d_gamma=0.2
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)

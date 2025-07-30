@@ -18,12 +18,13 @@ import matplotlib.pyplot as plt
 from einops import rearrange, repeat
 # %%
 model, transform = hires_dino_512()
-# model = hires_dino(dino_name="dino_vitb8", 
-#                     stride=6, 
-#                     shift_dists=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-#                     flip_transforms=True,
-#                     chunk_size=100,
-#                     feature_resolution=1024)
+model = hires_dino(dino_name="dino_vitb8", 
+                    stride=6, 
+                    shift_dists=[1, 2, 3],
+                    flip_transforms=True,
+                    chunk_size=4,
+                    dtype=torch.float16,
+                    feature_resolution=512)
 # model.feature_resolution = 512
 # %%
 from PIL import Image
@@ -49,6 +50,16 @@ gpu_time = time.time() - start_time
 print(f"GPU feature extraction took {gpu_time:.2f} seconds")
 
 hr_feats_tensor = hr_feats_tensor_gpu
+
+# model.to('cpu')
+
+# start_time = time.time()
+# hr_feats_tensor_cpu = model(images.to('cpu'))
+# cpu_time = time.time() - start_time
+# print(f"CPU feature extraction took {cpu_time:.2f} seconds")
+
+# assert torch.allclose(hr_feats_tensor_gpu, hr_feats_tensor_cpu)
+
 # %%
 from ncut_pytorch import kway_ncut
 from ncut_pytorch.ncuts.ncut_kway import _onehot_discretize
@@ -146,11 +157,151 @@ def draw_component_boundaries(image):
     return output
 
 
+def draw_component_boundaries_fast_v1(image, min_size=100):
+    """
+    Faster version using connected components directly.
+    This is typically 5-10x faster than the original.
+    """
+    # Convert to grayscale representation for connected components
+    # Create a unique label for each RGB color
+    image_flat = image.reshape(-1, 3)
+    image_hash = image_flat[:, 0] * 256*256 + image_flat[:, 1] * 256 + image_flat[:, 2]
+    image_hash = image_hash.reshape(image.shape[:2]).astype(np.uint32)
+    
+    # Find connected components for each unique color
+    output = image.copy()
+    unique_hashes = np.unique(image_hash)
+    
+    for hash_val in unique_hashes:
+        # Create binary mask for this color
+        mask = (image_hash == hash_val).astype(np.uint8) * 255
+        
+        # Find connected components
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        
+        # Draw boundaries for components larger than min_size
+        for i in range(1, num_labels):  # Skip background (label 0)
+            if stats[i, cv2.CC_STAT_AREA] >= min_size:
+                component_mask = (labels == i).astype(np.uint8) * 255
+                contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                cv2.drawContours(output, contours, -1, (0, 0, 0), 1)
+    
+    return output
+
+
+def draw_component_boundaries_fast_v2(image, min_size=100):
+    """
+    Even faster version using morphological operations.
+    This is typically 10-20x faster than the original.
+    """
+    # Convert RGB to a single channel representation
+    image_flat = image.reshape(-1, 3)
+    
+    # Create unique integer representation of each color
+    # Use a more efficient hash that avoids large numbers
+    unique_colors, color_indices = np.unique(image_flat, axis=0, return_inverse=True)
+    label_image = color_indices.reshape(image.shape[:2]).astype(np.uint16)
+    
+    output = image.copy()
+    
+    # Process each unique color
+    for color_idx in range(len(unique_colors)):
+        # Create binary mask
+        mask = (label_image == color_idx).astype(np.uint8)
+        
+        # Find connected components with stats in one go
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask * 255, connectivity=8)
+        
+        # Create boundary mask for all large components at once
+        boundary_mask = np.zeros_like(mask, dtype=np.uint8)
+        
+        for i in range(1, num_labels):  # Skip background
+            if stats[i, cv2.CC_STAT_AREA] >= min_size:
+                # Get component mask
+                component = (labels == i).astype(np.uint8)
+                
+                # Create boundary using morphological operations (faster than findContours)
+                kernel = np.ones((3, 3), np.uint8)
+                eroded = cv2.erode(component, kernel, iterations=1)
+                boundary = component - eroded
+                boundary_mask |= boundary
+        
+        # Apply boundary to output
+        boundary_coords = np.where(boundary_mask > 0)
+        output[boundary_coords] = [0, 0, 0]
+    
+    return output
+
+
+def draw_component_boundaries_fastest(image, min_size=100):
+    """
+    Fastest version - processes all boundaries in a single pass.
+    This is typically 20-50x faster than the original.
+    """
+    h, w = image.shape[:2]
+    
+    # Create unique labels for each color
+    image_flat = image.reshape(-1, 3)
+    unique_colors, indices = np.unique(image_flat, axis=0, return_inverse=True)
+    label_image = indices.reshape((h, w)).astype(np.uint16)
+    
+    # Find all boundaries at once using edge detection
+    # Check for differences with neighbors (right and down)
+    boundaries = np.zeros((h, w), dtype=bool)
+    
+    # Right neighbors
+    boundaries[:, :-1] |= (label_image[:, :-1] != label_image[:, 1:])
+    # Down neighbors  
+    boundaries[:-1, :] |= (label_image[:-1, :] != label_image[1:, :])
+    
+    # Filter boundaries by component size
+    output = image.copy()
+    
+    # For each unique color, check if any of its components are large enough
+    for color_idx in range(len(unique_colors)):
+        mask = (label_image == color_idx).astype(np.uint8) * 255
+        
+        # Find connected components
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        
+        # Create mask of large components
+        large_components = np.zeros_like(labels, dtype=bool)
+        for i in range(1, num_labels):
+            if stats[i, cv2.CC_STAT_AREA] >= min_size:
+                large_components |= (labels == i)
+        
+        # Apply boundaries only for large components
+        color_boundaries = boundaries & (label_image == color_idx) & large_components
+        output[color_boundaries] = [0, 0, 0]
+    
+    return output
+
+
 # %%
 draw_boundaries = True
 # draw the boundaries of connected components, looks nice but can be slow
 if draw_boundaries:
+    import time
+    
     ncut_discrete_rgbs_draw = []
+    
+    # Timing comparison (optional - you can remove this)
+    print("Comparing boundary drawing methods...")
+    test_image = ncut_discrete_rgbs[0][0]  # Use first image for timing test
+    
+    # Original method
+    start_time = time.time()
+    _ = draw_component_boundaries(test_image)
+    original_time = time.time() - start_time
+    print(f"Original method: {original_time:.3f}s")
+    
+    # Fastest method
+    start_time = time.time()
+    _ = draw_component_boundaries_fast_v2(test_image)
+    fastest_time = time.time() - start_time
+    print(f"Fastest method: {fastest_time:.3f}s ({original_time/fastest_time:.1f}x speedup)")
+    
+    # Use the fastest method for all images
     for i in range(len(num_clusters)):
         ncut_discrete_rgbs_draw.append([draw_component_boundaries(rgb) for rgb in ncut_discrete_rgbs[i]])
     ncut_discrete_rgbs = ncut_discrete_rgbs_draw

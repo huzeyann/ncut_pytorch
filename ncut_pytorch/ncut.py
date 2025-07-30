@@ -50,7 +50,7 @@ class Ncut:
         self._nystrom_x = None
         self._nystrom_eigvec = None
         self._eigval = None
-
+        
     @property
     def eigval(self):
         """

@@ -40,10 +40,10 @@ class HighResDINO(nn.Module):
         self.dinov2: nn.Module
         if "dinov2" in dino_name:
             hub_path = "facebookresearch/dinov2"
-            self.dinov2 = torch.hub.load(hub_path, dino_name)
+            self.dinov2 = torch.hub.load(hub_path, dino_name, verbose=False)
         elif "dino" in dino_name:
             hub_path = "facebookresearch/dino:main"
-            self.dinov2 = torch.hub.load(hub_path, dino_name)
+            self.dinov2 = torch.hub.load(hub_path, dino_name, verbose=False)
         else:
             raise ValueError(f"Invalid model name: {dino_name}")
 
@@ -350,6 +350,7 @@ class HighResDINO(nn.Module):
             upsampled_features.append(out)
         upsampled_features = torch.stack(upsampled_features, dim=0)
         return upsampled_features
+
     
 
 def hires_dino(dino_name: DINONameOptions = "dino_vitb8", 

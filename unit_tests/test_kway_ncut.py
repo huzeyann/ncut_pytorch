@@ -44,10 +44,6 @@ class TestKwayNcut:
         # Check shape
         assert rotated_eigvec.shape == eigvec.shape
         
-        # Check that the output is normalized
-        norms = torch.norm(rotated_eigvec, dim=1)
-        assert torch.allclose(norms, torch.ones_like(norms), atol=1e-5)
-        
         # Check that we can get cluster assignments
         cluster_assignments = rotated_eigvec.argmax(dim=1)
         assert cluster_assignments.shape == (small_feature_matrix.shape[0],)

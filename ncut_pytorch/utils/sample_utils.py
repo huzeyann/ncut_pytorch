@@ -79,7 +79,7 @@ def _farthest_point_sampling(
     device: str = None,
 ):
     num_data = X.shape[0]
-    if n_sample > num_data:
+    if n_sample >= num_data:
         return np.arange(num_data)
 
     if isinstance(X, np.ndarray):

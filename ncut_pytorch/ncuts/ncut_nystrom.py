@@ -132,6 +132,7 @@ def _nystrom_propagate(
         gamma: float = 1.0,
         track_grad: bool = False,
         device: str = 'auto',
+        return_indices: bool = False,
         **kwargs,
 ):
     """propagate output from nystrom sampled nodes to all nodes,
@@ -188,6 +189,9 @@ def _nystrom_propagate(
 
     torch.set_grad_enabled(prev_grad_state)
 
+    if return_indices:
+        return all_outs, indices
+    
     return all_outs
 
 

@@ -61,6 +61,7 @@ class TestVisualizeUtils:
         assert not torch.isnan(rgb).any()
         assert not torch.isinf(rgb).any()
 
+    @pytest.mark.slow
     def test_umap_color(self, small_feature_matrix):
         """Test the umap_color function."""
         # Use a small number of samples for faster testing
@@ -86,6 +87,7 @@ class TestVisualizeUtils:
         assert not torch.isnan(rgb).any()
         assert not torch.isinf(rgb).any()
 
+    @pytest.mark.slow
     def test_umap_sphere_color(self, small_feature_matrix):
         """Test the umap_sphere_color function."""
         # Use a small number of samples for faster testing

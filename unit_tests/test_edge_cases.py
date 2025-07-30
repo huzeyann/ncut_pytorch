@@ -21,7 +21,7 @@ class TestEdgeCases:
         
         # Check that ncut_fn raises an error with zero gamma
         with pytest.raises(Exception):
-            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, gamma=0.0)
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, d_gamma=0.0)
 
     def test_invalid_device(self, small_feature_matrix):
         """Test with invalid device."""

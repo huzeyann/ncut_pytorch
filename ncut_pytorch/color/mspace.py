@@ -540,8 +540,8 @@ class BestModelsAvgCallback(pl.Callback):
 def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, decoder_training_steps=1000,
                     batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
                     logger=False, use_wandb=False, model_avg_window=3, **model_kwargs):
-    compress_feats = torch.tensor(compress_feats).float().cpu()
-    uncompress_feats = torch.tensor(uncompress_feats).float().cpu()
+    compress_feats = compress_feats.float().cpu()
+    uncompress_feats = uncompress_feats.float().cpu()
     l, c_in = compress_feats.shape
     c_out = uncompress_feats.shape[1]
 
