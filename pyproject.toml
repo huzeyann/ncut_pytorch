@@ -44,7 +44,7 @@ Github = "https://github.com/huzeyann/ncut_pytorch/"
 PyPI = "https://pypi.org/project/ncut_pytorch/"
 
 [tool.setuptools]
-find-namespace-packages = ["ncut_pytorch"]
+packages = {find = {include = ["ncut_pytorch*"]}}
 
 [tool.setuptools.package-data]
 "ncut_pytorch" = ["*.txt", "*.md"]

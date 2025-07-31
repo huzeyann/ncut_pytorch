@@ -1,13 +1,13 @@
 # %%
 import torch
-from ncut_pytorch.predictor.dino_predictor import NcutDinoPredictor
+from ncut_pytorch.predictor import NcutDinoPredictor
 from PIL import Image
 import numpy as np
 # %%
 
-predictor = NcutDinoPredictor(dtype=torch.float32)
-predictor = predictor.to('mps')
-predictor.run_faster()
+predictor = NcutDinoPredictor(dtype=torch.float16)
+predictor = predictor.to('cuda')
+# predictor.run_faster()
 
 default_images = ['./image_0.jpg']
 inference_images = ['./image_1.jpg'] * 1

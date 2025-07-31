@@ -5,9 +5,8 @@ from PIL import Image
 import numpy as np
 # %%
 
-predictor = NcutDinoPredictor(backbone='dino_512',
-                          n_segments=[5, 10, 20, 40, 80]
-                          )
+predictor = NcutDinoPredictor(dtype=torch.float16)
+predictor = predictor.to('cuda')
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', '/images/guitar_ego.jpg']
 
@@ -15,10 +14,8 @@ images = [Image.open(image_path) for image_path in default_images]
 predictor.set_images(images)
 
 # %%
-segments = predictor.generate(n_cluster=25)
-color = predictor.make_color(segments)
-# %%
-color = predictor.draw_segments_boundaries(color)
+segments = predictor.generate(n_cluster=50)
+color = predictor.color_discrete(segments)
 # %%
 import matplotlib.pyplot as plt
 fig, axes = plt.subplots(2, 3, figsize=(15, 10))
