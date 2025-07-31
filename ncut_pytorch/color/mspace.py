@@ -554,6 +554,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
 
     trainer_args = {
         'accelerator': auto_device(),
+        'devices': 1,
         'enable_checkpointing': False,
         'enable_progress_bar': False,
         'enable_model_summary': False,
