@@ -1,19 +1,18 @@
 # Credits: https://github.com/tldr-group/HR-Dv2
 
+from functools import partial
+from types import MethodType
+from typing import List, Tuple, Literal, Union
+
 # ==================== IMPORTS ====================
 import torch
 import torch.nn as nn
-from torch.nn.modules.utils import _pair
 import torch.nn.functional as F
+from torch.nn.modules.utils import _pair
 
 from .patch import Patch
-
-from types import MethodType
+from .transform import combine_transforms_pairwise
 from .transform import iden_partial, get_shift_transforms, get_flip_transforms
-from .transform import combine_transforms_pairwise, combine_transforms
-
-from functools import partial
-from typing import List, Tuple, Callable, Literal, Union
 
 Interpolation = Literal[
     "nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "nearest-exact"

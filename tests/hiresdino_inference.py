@@ -5,8 +5,8 @@ from PIL import Image
 import numpy as np
 # %%
 
-predictor = NcutDinoPredictor(dtype=torch.float16)
-predictor = predictor.to('cuda')
+predictor = NcutDinoPredictor(dtype=torch.float32, super_resolution=False)
+predictor = predictor.to('cpu')
 # predictor.run_faster()
 
 default_images = ['./image_0.jpg']

@@ -1,9 +1,11 @@
+__all__ = ['kway_ncut', 'axis_align']
+
 import torch
 import torch.nn.functional as F
 
-from ncut_pytorch.utils.sample_utils import farthest_point_sampling
+from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
-from ncut_pytorch.utils.math_utils import chunked_matmul
+from ncut_pytorch.utils.math import chunked_matmul
 
 
 def kway_ncut(eigvec: torch.Tensor, device: str = 'auto', **kwargs):

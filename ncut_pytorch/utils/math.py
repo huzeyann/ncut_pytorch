@@ -193,16 +193,14 @@ def chunked_matmul(
     return C
 
 
-def correct_rotation(eigen_vector):
+def correct_rotation(eigvec):
     # correct the random rotation (flipping sign) of eigenvectors
     with torch.no_grad():
-        rand_w = torch.ones(
-            eigen_vector.shape[0], device=eigen_vector.device, dtype=eigen_vector.dtype
-        )
-        s = rand_w[None, :] @ eigen_vector
+        rand_w = torch.ones(eigvec.shape[0], device=eigvec.device, dtype=eigvec.dtype)
+        s = rand_w[None, :] @ eigvec
         s = s.sign()
-    eigen_vector = eigen_vector * s
-    return eigen_vector
+    eigvec = eigvec * s
+    return eigvec
 
 
 def normalize_affinity(A, eps=1e-8):

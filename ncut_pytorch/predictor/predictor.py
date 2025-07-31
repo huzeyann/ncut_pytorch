@@ -1,5 +1,6 @@
 from typing import List, Tuple, Union
 
+import numpy as np
 import torch
 
 from ncut_pytorch import kway_ncut, ncut_fn
@@ -7,7 +8,7 @@ from ncut_pytorch import mspace_color
 from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 from ncut_pytorch.ncuts.ncut_kway import axis_align
 from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
-from ncut_pytorch.utils.math_utils import chunked_matmul
+from ncut_pytorch.utils.math import chunked_matmul
 
 
 class NotInitializedError(Exception):
@@ -33,7 +34,10 @@ class NcutPredictor:
         self._fg_idx: int
         self._bg_idx: int
 
-    def initialize(self, features: torch.Tensor, n_segments: Union[List[int], int] = (5, 10, 20, 40, 80)) -> None:
+    def initialize(self,
+                   features: torch.Tensor,
+                   n_segments: Union[List[int], int] = (5, 10, 20, 40, 80)
+                   ) -> None:
         self._features = features
         if isinstance(n_segments, int):
             n_segments = [n_segments]
@@ -60,7 +64,7 @@ class NcutPredictor:
             hierarchy_assign.append(cluster_assignment)
         self._hierarchy_assign = hierarchy_assign
 
-    def get_n_segments(self, n_cluster: int):
+    def get_n_segments(self, n_cluster: int) -> torch.Tensor:
         self.__check_initialized()
         eigvecs = self.get_n_eigvecs(n_cluster)
         kway_eigvec = kway_ncut(eigvecs, device=self.device)
@@ -77,10 +81,11 @@ class NcutPredictor:
         return masks
 
     def predict_clicks(self,
-                       fg_indices: torch.Tensor,
-                       bg_indices: torch.Tensor,
+                       fg_indices: np.ndarray,
+                       bg_indices: np.ndarray,
                        click_weight: float,
-                       **kwargs):
+                       **kwargs
+                       ) -> Tuple[torch.Tensor, torch.Tensor]:
         self.__check_initialized()
         eigvecs, eigval, nystrom_indices, gamma = ncut_click_prompt(
             self._features,
@@ -138,12 +143,12 @@ class NcutPredictor:
         self.__check_initialized()
         self._color_palette = mspace_color(self._eigvecs[:, :n_eig])
 
-    def __check_initialized(self):
+    def __check_initialized(self) -> None:
         if not self._initialized or not hasattr(self, '_features') or not hasattr(self,
                                                                                   '_hierarchy_assign') or not hasattr(
             self, '_eigvecs'):
             raise NotInitializedError("Not initialized, please call initialize() first")
 
-    def to(self, device: str):
+    def to(self, device: Union[str, torch.device]):
         self.device = device
         return self

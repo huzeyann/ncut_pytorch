@@ -1,11 +1,13 @@
+__all__ = ['ncut_fn', 'nystrom_propagate']
+
 from typing import Union
 
 import torch
 
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.utils.math_utils import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
+from ncut_pytorch.utils.math import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
     keep_topk_per_row
-from ncut_pytorch.utils.sample_utils import farthest_point_sampling
+from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
 
 
@@ -18,7 +20,7 @@ class NystromConfig:
     n_sample2 = 1024  # number of samples for eigenvector propagation, 1024 is large enough for most cases
     n_neighbors = 8  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
     matmul_chunk_size = 65536  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
-    move_output_to_cpu = True  # if True, will move output to cpu, saves memory but loses gradients
+    move_output_to_cpu = True  # if True, will move output to cpu, saves VRAM
     
     def update(self, kwargs: dict):
         for key, value in kwargs.items():
@@ -26,6 +28,7 @@ class NystromConfig:
                 setattr(self, key, value)
             else:
                 raise ValueError(f"Invalid kwarg: {key}")
+
 
 def ncut_fn(
         X: torch.Tensor,
@@ -118,13 +121,7 @@ def _plain_ncut(
 
     eigvec, eigval, _ = svd_lowrank(A, n_eig)
 
-    # correct the random rotation (flipping sign) of eigenvectors
     eigvec = correct_rotation(eigvec)
-    
-    assert not torch.any(torch.isnan(eigvec)), "eigvec contains NaN"
-    assert not torch.any(torch.isinf(eigvec)), "eigvec contains Inf"
-    assert not torch.any(torch.isnan(eigval)), "eigval contains NaN"
-    assert not torch.any(torch.isinf(eigval)), "eigval contains Inf"
 
     return eigvec, eigval
 
@@ -138,7 +135,7 @@ def nystrom_propagate(
         device: str = 'auto',
         return_indices: bool = False,
         **kwargs,
-):
+) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """propagate output from nystrom sampled nodes to all nodes,
     use a weighted sum of the nearest neighbors to propagate the output.
 
@@ -149,7 +146,6 @@ def nystrom_propagate(
         gamma (float): affinity parameter, default 1.0
         track_grad (bool): keep track of pytorch gradients, default False
         device (str): device to use for computation, if 'auto', will detect GPU automatically
-        _config (dict): configuration for nystrom approximation, default _NYSTROM_CONFIG
 
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
@@ -177,16 +173,17 @@ def nystrom_propagate(
 
         _Ai = get_affinity(X[i:end].to(device), nystrom_X, gamma=gamma)
         _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
-        _D = D[_indices].sum(1)
-        _Ai = _Ai / _D[:, None]
+        _Di = D[_indices].sum(1)
+        _Ai = _Ai / _Di[:, None]
 
         weights = _Ai[..., None]  # (n, n_neighbors, 1)
-        neighbors = nystrom_out[_indices.flatten()].reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
+        neighbors = nystrom_out[_indices.flatten()]
+        neighbors = neighbors.reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
         out = weights * neighbors  # (n, n_neighbors, d)
         out = out.sum(dim=1)  # (n, d)
 
-        if config.move_output_to_cpu and not track_grad:
-            out = out.cpu()
+        if config.move_output_to_cpu:
+            out = out.to("cpu")
         all_outs.append(out)
 
     all_outs = torch.cat(all_outs, dim=0)

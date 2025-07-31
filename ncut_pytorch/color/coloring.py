@@ -1,13 +1,15 @@
+__all__ = ["mspace_color", "tsne_color", "umap_color", "umap_sphere_color", "rotate_rgb_cube", "convert_to_lab_color"]
+
 import warnings
 from typing import Any, Callable, Dict, Literal, Tuple, Optional
 
 import numpy as np
 import torch
 
-from ncut_pytorch.color.mspace import mspace_viz_transform
+from .mspace import mspace_viz_transform
 from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
-from ncut_pytorch.utils.math_utils import quantile_normalize
-from ncut_pytorch.utils.sample_utils import farthest_point_sampling
+from ncut_pytorch.utils.math import quantile_normalize
+from ncut_pytorch.utils.sample import farthest_point_sampling
 
 
 def _identity(X: torch.Tensor) -> torch.Tensor:
@@ -83,7 +85,7 @@ def tsne_color(
         )
         perplexity = num_sample // 2
 
-    low_dim_embedding, rgb = _rgb_with_dimensionality_reduction(
+    low_dim_embedding, rgb = _nystrom_dimension_reduction(
         X=X,
         num_sample=num_sample,
         metric=metric,
@@ -121,7 +123,7 @@ def umap_color(
     except ImportError:
         raise ImportError("umap import failed, please install `pip install umap-learn`")
 
-    low_dim_embedding, rgb = _rgb_with_dimensionality_reduction(
+    low_dim_embedding, rgb = _nystrom_dimension_reduction(
         X=X,
         num_sample=num_sample,
         metric=metric,
@@ -166,7 +168,7 @@ def umap_sphere_color(
             torch.cos(X[:, 0]),
         ), dim=1)
 
-    low_dim_embedding, rgb = _rgb_with_dimensionality_reduction(
+    low_dim_embedding, rgb = _nystrom_dimension_reduction(
         X=X,
         num_sample=num_sample,
         metric=metric,
@@ -184,7 +186,7 @@ def umap_sphere_color(
     return rgb
 
 
-def _rgb_with_dimensionality_reduction(
+def _nystrom_dimension_reduction(
         X: torch.Tensor,
         num_sample: int,
         metric: Literal["cosine", "euclidean"],

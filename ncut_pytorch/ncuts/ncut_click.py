@@ -1,13 +1,14 @@
-# %%
+__all__ = ['ncut_click_prompt']
+
 from typing import Union
 
 import numpy as np
 import torch
 
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.utils.math_utils import get_affinity, normalize_affinity
-from ncut_pytorch.utils.sample_utils import farthest_point_sampling
-from ..utils.device import auto_device
+from ncut_pytorch.utils.math import get_affinity, normalize_affinity
+from ncut_pytorch.utils.sample import farthest_point_sampling
+from ncut_pytorch.utils.device import auto_device
 from .ncut_nystrom import NystromConfig
 from .ncut_nystrom import nystrom_propagate
 from .ncut_nystrom import _plain_ncut

@@ -8,7 +8,7 @@ version = "2.0.0"
 authors = [
     { name = "Huzheng Yang", email = "huze.yann@gmail.com" },
 ]
-description = "Normalized Cut and Nyström Approximation"
+description = "Normalized Cut and Spectral Embedding"
 readme = "README.md"
 requires-python = ">=3"
 license = "MIT"
@@ -24,18 +24,18 @@ dependencies = [
     "torch~=2.0",
     "fpsample>=0.2.0",
     "pytorch-lightning~=2.0",
-    "pillow",
     "numpy",
     "tqdm",
-]
-
-[project.optional-dependencies]
-vision = [
+    "pillow",
     "torchvision>=0.15.0",
     "opencv-python",
     "matplotlib",
     "scikit-image",
     "pycolormap_2d",
+]
+
+[project.optional-dependencies]
+vision = [
 ]
 
 [project.urls]

@@ -1,7 +1,7 @@
 import torch
 
-from .math_utils import get_affinity
-from .sample_utils import farthest_point_sampling
+from .math import get_affinity
+from .sample import farthest_point_sampling
 
 
 @torch.no_grad()

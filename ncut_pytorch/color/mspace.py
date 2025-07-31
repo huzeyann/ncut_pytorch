@@ -1,3 +1,5 @@
+__all__ = ["train_mspace_model", "mspace_viz_transform"]
+
 import logging
 from collections import defaultdict
 from functools import partial
@@ -22,11 +24,11 @@ logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFil
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
 
-from ncut_pytorch.utils.math_utils import get_affinity
+from ncut_pytorch.utils.math import get_affinity
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut
 from ncut_pytorch.ncuts.ncut_kway import kway_ncut
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.utils.math_utils import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
+from ncut_pytorch.utils.math import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
 
 
 def _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight):

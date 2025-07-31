@@ -1,6 +1,8 @@
 # Mod from torch/_lowrank.py
 # because QR and SVD is not implemented for MPS (apple silicon)
 
+# TODO: remove this file after torch have updated MPS support
+
 """Implement various linear algebra algorithms for low rank matrices."""
 from typing import Optional
 

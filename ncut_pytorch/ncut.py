@@ -1,3 +1,5 @@
+from typing import Union
+
 import torch
 
 from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
@@ -20,14 +22,14 @@ class Ncut:
             n_eig (int): number of eigenvectors
             track_grad (bool): keep track of pytorch gradients
             d_gamma (float): affinity gamma parameter, lower d_gamma results in a sharper eigenvectors
-            device (str): device, default 'auto' (auto-detect GPU)
+            device (str): device, default 'auto'
 
         Examples:
             >>> from ncut_pytorch import Ncut
             >>> import torch
             >>> X = torch.rand(10000, 100)
             >>> 
-            >>> # Method 1: Direct function-like call
+            >>> # Method 1: Function-like call
             >>> eigvec = Ncut(X, n_eig=20)
             >>> print(eigvec.shape)  # (10000, 20)
             >>> 
@@ -53,11 +55,7 @@ class Ncut:
         self._eigval = None
 
     @property
-    def eigval(self):
-        """
-        Returns:
-            (torch.Tensor): eigenvalues, shape (n_eig,)
-        """
+    def eigval(self) -> torch.Tensor:
         return self._eigval
 
     def fit(self, X: torch.Tensor) -> "Ncut":
@@ -111,12 +109,13 @@ class Ncut:
         return self.fit(X).transform(X)
 
     def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = 0.1,
-                device: str = 'auto', **kwargs):
+                device: str = 'auto', **kwargs) -> Union["Ncut", torch.Tensor]:
         if X is not None:
-            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_gamma=d_gamma, device=device,
-                                     **kwargs)  # function-like behavior
+            # function-like behavior
+            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_gamma=d_gamma, device=device, **kwargs)
             return eigvec
-        return super().__new__(cls)  # normal class instantiation
+        # normal class instantiation
+        return super().__new__(cls)
 
     def __call__(self, X: torch.Tensor) -> torch.Tensor:
         return self.fit_transform(X)
