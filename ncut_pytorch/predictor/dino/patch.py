@@ -4,12 +4,12 @@
 new features like overlapping patches and attention visualisation"""
 
 import math
-from typing import Tuple, Callable, TypeAlias, Literal
+from typing import Tuple, Callable, Literal
 
 import torch
 import torch.nn.functional as F
 
-AttentionOptions: TypeAlias = Literal["q", "k", "v", "o", "none"]
+AttentionOptions = Literal["q", "k", "v", "o", "none"]
 
 
 def get_qkvo_per_head(
@@ -47,20 +47,19 @@ def get_qkvo_per_head(
     :rtype: torch.Tensor
     """
     prims, mapping = [q, k, v], "qkv"
-    match which:
-        case "q" | "k" | "v":
-            prim = prims[mapping.index(which)]
-            per_head = prim.sum(dim=-1)
-        case "o":
-            B, T, nH, _ = q.shape
-            # we only care about (and compute) attn of [CLS] token
-            x_a_cls = x_a[:, 0, :, :]
-            x_a_cls = x_a_cls[:, None, :, :]
-            cls_attn = x_a_cls.permute(0, 2, 1, 3) @ v.permute(0, 2, 3, 1)
-            cls_attn = cls_attn.squeeze(2).permute(0, 2, 1)
-            per_head = cls_attn.reshape([B, T, nH])
-        case _:
-            raise Exception("not valid attention option")
+    if which == "q" or which == "k" or which == "v":
+        prim = prims[mapping.index(which)]
+        per_head = prim.sum(dim=-1)
+    elif which == "o":
+        B, T, nH, _ = q.shape
+        # we only care about (and compute) attn of [CLS] token
+        x_a_cls = x_a[:, 0, :, :]
+        x_a_cls = x_a_cls[:, None, :, :]
+        cls_attn = x_a_cls.permute(0, 2, 1, 3) @ v.permute(0, 2, 3, 1)
+        cls_attn = cls_attn.squeeze(2).permute(0, 2, 1)
+        per_head = cls_attn.reshape([B, T, nH])
+    else:
+        raise Exception("not valid attention option")
     return per_head
 
 

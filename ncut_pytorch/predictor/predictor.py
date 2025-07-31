@@ -4,7 +4,6 @@ import torch
 
 from ncut_pytorch import kway_ncut, ncut_fn
 from ncut_pytorch import mspace_color
-from ncut_pytorch.dino import hires_dino_256, hires_dino_512, hires_dino_1024
 from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 from ncut_pytorch.ncuts.ncut_kway import axis_align
 from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
@@ -16,23 +15,23 @@ class NotInitializedError(Exception):
     pass
 
 
-MODEL_REGISTRY = {
-    "dino_256": hires_dino_256,
-    "dino_512": hires_dino_512,
-    "dino_1024": hires_dino_1024,
-}
-
-
 class NcutPredictor:
     _initialized: bool = False
+    device: str = 'cpu'
 
-    def __init__(self, device: str = 'cuda'):
-        self.device = device
-
+    def __init__(self):
         self._features: torch.Tensor
         self._hierarchy_assign: List[torch.Tensor]
         self._eigvecs: torch.Tensor
         self._color_palette: torch.Tensor
+
+        # inference states
+        self._nystrom_indices: torch.Tensor
+        self._gamma: float
+        self._click_eigvecs: torch.Tensor
+        self._R: torch.Tensor
+        self._fg_idx: int
+        self._bg_idx: int
 
     def initialize(self, features: torch.Tensor, n_segments: Union[List[int], int] = (5, 10, 20, 40, 80)) -> None:
         self._features = features
@@ -106,27 +105,27 @@ class NcutPredictor:
         heatmap = kway_eigvecs[:, fg_idx] - kway_eigvecs[:, bg_idx]
 
         # save for inference use
-        self.__nystrom_indices = nystrom_indices
-        self.__gamma = gamma
-        self.__click_eigvecs = eigvecs
-        self.__R = R
-        self.__fg_idx = fg_idx
-        self.__bg_idx = bg_idx
+        self._nystrom_indices = nystrom_indices
+        self._gamma = gamma
+        self._click_eigvecs = eigvecs
+        self._R = R
+        self._fg_idx = fg_idx
+        self._bg_idx = bg_idx
 
         return mask, heatmap
 
     def inference_new_features(self, new_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         self.__check_initialized()
-        if not hasattr(self, "__nystrom_indices"):
-            raise ValueError("please call predict_clicks() before inference_new_features()")
+        if not hasattr(self, "_nystrom_indices") or len(self._nystrom_indices) == 0:
+            raise NotInitializedError("please call predict_clicks() before inference_new_features()")
 
-        nystrom_X = self._features[self.__nystrom_indices]
-        nystrom_out = self.__click_eigvecs[self.__nystrom_indices]
+        nystrom_X = self._features[self._nystrom_indices]
+        nystrom_out = self._click_eigvecs[self._nystrom_indices]
         eigvecs = nystrom_propagate(nystrom_out, new_features, nystrom_X,
-                                    gamma=self.__gamma, device=self.device)
-        eigvecs = chunked_matmul(eigvecs, self.__R, device=self.device, large_device=eigvecs.device)
-        mask = eigvecs.argmax(dim=-1) == self.__fg_idx
-        heatmap = eigvecs[:, self.__fg_idx] - eigvecs[:, self.__bg_idx]
+                                    gamma=self._gamma, device=self.device)
+        eigvecs = chunked_matmul(eigvecs, self._R, device=self.device, large_device=eigvecs.device)
+        mask = eigvecs.argmax(dim=-1) == self._fg_idx
+        heatmap = eigvecs[:, self._fg_idx] - eigvecs[:, self._bg_idx]
         return mask, heatmap
 
     def get_color_palette(self, n_eig: int = 50) -> torch.Tensor:
@@ -147,3 +146,4 @@ class NcutPredictor:
 
     def to(self, device: str):
         self.device = device
+        return self

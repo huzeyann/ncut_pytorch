@@ -1,6 +1,7 @@
 # %%
 from typing import Union
 
+import numpy as np
 import torch
 
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
@@ -15,8 +16,8 @@ from .ncut_nystrom import _plain_ncut
 #TODO: automatically optimize click_weight based on the iou of fg and bg
 def ncut_click_prompt(
         X: torch.Tensor,
-        fg_indices: torch.Tensor,
-        bg_indices: torch.Tensor = None,
+        fg_indices: np.ndarray,
+        bg_indices: np.ndarray = None,
         click_weight: float = 0.5,
         bg_weight: float = 0.1,
         n_eig: int = 2,
@@ -40,17 +41,17 @@ def ncut_click_prompt(
     torch.set_grad_enabled(track_grad)
     
     if bg_indices is None:
-        bg_indices = torch.tensor([], dtype=torch.long)
+        bg_indices = np.array([], dtype=np.int64)
 
     # subsample for nystrom approximation
     nystrom_indices = farthest_point_sampling(X, n_sample=config.n_sample, device=device)
     nystrom_indices = torch.tensor(nystrom_indices, dtype=torch.long)
     # remove fg and bg from fps_idx
-    nystrom_indices = nystrom_indices[~torch.isin(nystrom_indices, torch.cat([fg_indices, bg_indices]))]
+    nystrom_indices = nystrom_indices[~np.isin(nystrom_indices, np.concatenate([fg_indices, bg_indices]))]
     # add fg and bg to fps_idx
-    nystrom_indices = torch.cat([fg_indices, bg_indices, nystrom_indices])
-    fg_indices = torch.arange(len(fg_indices))
-    bg_indices = torch.arange(len(bg_indices)) + len(fg_indices)
+    nystrom_indices = np.concatenate([fg_indices, bg_indices, nystrom_indices])
+    fg_indices = np.arange(len(fg_indices))
+    bg_indices = np.arange(len(bg_indices)) + len(fg_indices)
     n_fgbg = len(fg_indices) + len(bg_indices)
     
     nystrom_X = X[nystrom_indices].to(device)

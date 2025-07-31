@@ -10,35 +10,25 @@ from torch.overrides import handle_torch_function, has_torch_function
 
 
 def qr_fallback_cpu(X: torch.Tensor):
-    try:
-        return torch.linalg.qr(X).Q
-    except NotImplementedError as e:
-        device = X.device
-        # QR decomposition is not implemented for MPS yet, fallback to cpu
+    device = X.device
+    if device.type == 'mps':
         X = X.cpu()
-        try:
-            Q = torch.linalg.qr(X).Q
-            Q = Q.to(device)
-            return Q
-        except:
-            raise e
+        Q = torch.linalg.qr(X).Q
+        Q = Q.to(device)
+        return Q
+    return torch.linalg.qr(X).Q
 
 
 def svd_fallback_cpu(X: torch.Tensor):
-    try:
-        return torch.linalg.svd(X, full_matrices=False)
-    except NotImplementedError as e:
-        device = X.device
-        # SVD decomposition is not implemented for MPS yet, fallback to cpu
+    device = X.device
+    if device.type == 'mps':
         X = X.cpu()
-        try:
-            U, S, V = torch.linalg.svd(X, full_matrices=False)
-            U = U.to(device)
-            S = S.to(device)
-            V = V.to(device)
-            return U, S, V
-        except:
-            raise e
+        U, S, V = torch.linalg.svd(X, full_matrices=False)
+        U = U.to(device)
+        S = S.to(device)
+        V = V.to(device)
+        return U, S, V
+    return torch.linalg.svd(X, full_matrices=False)
 
 
 def get_approximate_basis(

@@ -4,13 +4,14 @@
 import torch
 import torch.nn as nn
 import numpy as np
+
 from .patch import Patch
 
 from types import MethodType
-from typing import TypeAlias, Literal
+from typing import Literal, Union
 
-AttentionOptions: TypeAlias = Literal["q", "k", "v", "o", "none"]
-DINONameOptions: TypeAlias = Literal["dino_vitb8", "dino_vits8", "dino_vitb16", "dinov2_vitb14", "dinov2_vitb14_reg"]
+AttentionOptions = Literal["q", "k", "v", "o", "none"]
+DINONameOptions = Literal["dino_vitb8", "dino_vits8", "dino_vitb16", "dinov2_vitb14", "dinov2_vitb14_reg"]
 
 # ==================== MODULE ====================
 
@@ -18,8 +19,8 @@ DINONameOptions: TypeAlias = Literal["dino_vitb8", "dino_vits8", "dino_vitb16", 
 class LowResDINO(nn.Module):
     def __init__(
         self,
-        dino_name: DINONameOptions,
-        dtype: torch.dtype | int = torch.float16,
+        dino_name: DINONameOptions = "dino_vitb8",
+        dtype: Union[torch.dtype, int] = torch.float16,
         track_grad: bool = False,
         attention_mask_ratio: float = 0.1,
     ) -> None:

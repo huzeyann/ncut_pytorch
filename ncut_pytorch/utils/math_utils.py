@@ -3,7 +3,7 @@ import math
 import numpy as np
 import torch
 
-from .torch_fn import svd_lowrank as my_svd_lowrank
+from .torch_mod import svd_lowrank as my_svd_lowrank
 
 
 def get_affinity(

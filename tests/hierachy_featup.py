@@ -1,17 +1,12 @@
 # %%
-import torch
-from ncut_pytorch import Ncut, tsne_color, convert_to_lab_color, mspace_color, umap_color
-from ncut_pytorch.dino import hires_dino_256, hires_dino_512, hires_dino_1024, hires_dinov2
+from ncut_pytorch import Ncut, mspace_color
+from ncut_pytorch.predictor.dino import hires_dino_1024
 
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import torch
-import numpy as np
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
 # %%

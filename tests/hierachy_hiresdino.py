@@ -1,19 +1,14 @@
 # %%
-import torch
-from ncut_pytorch import Ncut, tsne_color, convert_to_lab_color, mspace_color, umap_color
-from ncut_pytorch.dino import hires_dino_256, hires_dino_512, hires_dino_1024, hires_dinov2
+from ncut_pytorch import Ncut, mspace_color
+from ncut_pytorch.predictor.dino import hires_dino_512
 
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
 import os
 
-from ncut_pytorch.dino.hires_dino import hires_dino
+from ncut_pytorch.predictor.dino import hires_dino
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import torch
-import numpy as np
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
 # %%
@@ -64,7 +59,6 @@ hr_feats_tensor = hr_feats_tensor_gpu
 from ncut_pytorch import kway_ncut
 from ncut_pytorch.ncuts.ncut_kway import _onehot_discretize
 
-import time
 
 @torch.no_grad()
 def rgb_from_ncut_discrete_hirarchical(feats, color_num_eig=50, num_clusters=[10, 50, 250],

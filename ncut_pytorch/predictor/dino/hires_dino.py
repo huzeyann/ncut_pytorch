@@ -13,13 +13,13 @@ from .transform import iden_partial, get_shift_transforms, get_flip_transforms
 from .transform import combine_transforms_pairwise, combine_transforms
 
 from functools import partial
-from typing import List, Tuple, Callable, TypeAlias, Literal
+from typing import List, Tuple, Callable, Literal, Union
 
-Interpolation: TypeAlias = Literal[
+Interpolation = Literal[
     "nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "nearest-exact"
 ]
-AttentionOptions: TypeAlias = Literal["q", "k", "v", "o", "none"]
-DINONameOptions: TypeAlias = Literal["dino_vitb8", "dino_vits8", "dino_vitb16", "dinov2_vitb14", "dinov2_vitb14_reg"]
+AttentionOptions = Literal["q", "k", "v", "o", "none"]
+DINONameOptions = Literal["dino_vitb8", "dino_vits8", "dino_vitb16", "dinov2_vitb14", "dinov2_vitb14_reg"]
 
 # ==================== MODULE ====================
 
@@ -29,7 +29,7 @@ class HighResDINO(nn.Module):
         self,
         dino_name: DINONameOptions,
         stride: int = 5,
-        dtype: torch.dtype | int = torch.float16,
+        dtype: Union[torch.dtype, int] = torch.float16,
         track_grad: bool = False,
         attention_mask_ratio: float = 0.1,
         chunk_size: int = 4,
@@ -353,12 +353,12 @@ class HighResDINO(nn.Module):
 
     
 
-def hires_dino(dino_name: DINONameOptions = "dino_vitb8", 
-               stride: int = 6, 
+def hires_dino(dino_name: DINONameOptions = "dino_vitb8",
+               stride: int = 6,
                shift_dists: List[int] = [1, 2, 3],
                flip_transforms: bool = True,
                attention_mask_ratio: float = 0.1,
-               dtype: torch.dtype | int = torch.float16, 
+               dtype: Union[torch.dtype, int] = torch.float16,
                track_grad: bool = False,
                chunk_size: int = 4,
                feature_resolution: int = 512

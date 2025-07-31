@@ -16,20 +16,17 @@ class NcutVisionPredictor:
     def __init__(self,
                  model: nn.Module,
                  transform: transforms.Compose,
-                 device: str = 'cuda',
-                 batch_size: int = 32):
+                 batch_size: int):
         self.model = model
         self.transform = transform
-        self.model = self.model.to(device)
 
-        self.device = device
         self.batch_size = batch_size
 
         self._images: List[Image.Image]
         self._image_whs: List[Tuple[int, int]]
         self._feat_hws: Tuple[int, int]
 
-        self.predictor = NcutPredictor(device=device)
+        self.predictor = NcutPredictor()
 
     def set_images(self,
                    images: List[Image.Image],
@@ -44,7 +41,7 @@ class NcutVisionPredictor:
         """
         features = self.forward_model(images)
         self._images = images
-        self._image_whs = [image.size for image in images]
+        self._image_whs = np.array([image.size for image in images])
         self._feat_hws = (features.shape[2], features.shape[3])
 
         flat_features = features.permute(0, 2, 3, 1).reshape(-1, features.shape[1])
@@ -53,11 +50,13 @@ class NcutVisionPredictor:
 
     @torch.no_grad()
     def forward_model(self, images: List[Image.Image]) -> torch.Tensor:
+        device = next(self.model.parameters()).device
+
         all_features = []
         for i in range(0, len(images), self.batch_size):
             batch_images = images[i:i + self.batch_size]
             transformed_images = torch.stack([self.transform(image) for image in batch_images])
-            transformed_images = transformed_images.to(self.device)
+            transformed_images = transformed_images.to(device)
             features = self.model(transformed_images)
             features = features.to('cpu')
             all_features.append(features)
@@ -204,21 +203,16 @@ class NcutVisionPredictor:
         if not self._initialized:
             raise NotInitializedError("Not initialized, please call set_images() first")
 
-        try:
-            self.predictor.__check_initialized()
-        except NotInitializedError:
-            raise NotInitializedError("Not initialized, please call set_images() first")
-
-    def to(self, device: str):
+    def to(self, device: Union[str, torch.device] = "cpu"):
         self.model = self.model.to(device)
-        self.predictor.to(device)
-        self.device = device
+        self.predictor = self.predictor.to(device)
+        return self
 
 
-def image_xy_to_tensor_index(image_whs: Union[List[Tuple[int, int]], np.array],
-                             feat_hws: Union[Tuple[int, int], np.array],
+def image_xy_to_tensor_index(image_whs: np.array,
+                             feat_hws: np.array,
                              point_coords: np.ndarray,
-                             image_indices: np.ndarray):
+                             image_indices: np.ndarray) -> np.ndarray:
     """
     Convert image xy coordinates to tensor index.
     Args:
@@ -232,13 +226,11 @@ def image_xy_to_tensor_index(image_whs: Union[List[Tuple[int, int]], np.array],
     if len(point_coords) == 0:
         return np.array([], dtype=np.int64)
 
-    image_whs = np.array(image_whs)
     wh = image_whs[image_indices]
     point_coords = point_coords / wh
 
     point_coords = np.flip(point_coords, axis=1)  # (x, y) -> (y, x)
 
-    feat_hws = np.array(feat_hws)
     point_coords = point_coords * feat_hws
     point_coords = point_coords.astype(np.int64)
 
@@ -286,3 +278,4 @@ def draw_segments_boundaries_one_image(image: np.ndarray, min_area: int = 100):
                 cv2.drawContours(output, [contour], -1, (0, 0, 0), 1)
 
     return output
+

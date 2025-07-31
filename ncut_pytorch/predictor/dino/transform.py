@@ -2,15 +2,15 @@
 
 from functools import partial
 from itertools import product
-from typing import List, Literal, TypeAlias, Tuple
+from typing import List, Literal, Tuple, Union, Optional
 
 import numpy as np
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
 
-PartialTrs: TypeAlias = List[partial]
-ShiftPattern: TypeAlias = Literal["Neumann", "Moore", "Cross"]
+PartialTrs = List[partial]
+ShiftPattern = Literal["Neumann", "Moore", "Cross"]
 
 # ==================== MODEL TRANSFORMS ====================
 def compute_shift_directions(
@@ -41,7 +41,7 @@ def compute_shift_directions(
 
 def get_shift_transforms(
     dists: List[int], 
-    patterns: List[ShiftPattern] | ShiftPattern | None = None
+    patterns: Union[List[ShiftPattern], ShiftPattern, None] = None
 ) -> Tuple[PartialTrs, PartialTrs]:
     transforms: PartialTrs = [true_iden_partial]
     inv_transforms: PartialTrs = [true_iden_partial]
@@ -173,7 +173,7 @@ def combine_transforms_pairwise(
 
 
 # ==================== PYTORCH INPUT TRANSFORMS ====================
-def get_input_transform(resize: int = 512, crop: int | None = None) -> transforms.Compose:
+def get_input_transform(resize: int = 512, crop: Optional[int] = None) -> transforms.Compose:
     if crop is None:
         crop = resize
 
@@ -270,7 +270,7 @@ def to_numpy(x: torch.Tensor, batched: bool = True) -> np.ndarray:
 
 
 def flatten(
-    x: torch.Tensor | np.ndarray, h: int, w: int, c: int, convert: bool = False
+    x: np.ndarray, h: int, w: int, c: int, convert: bool = False
 ) -> np.ndarray:
     if type(x) == torch.Tensor:
         x = to_numpy(x)

@@ -1,6 +1,6 @@
 import torch
 import time
-from ncut_pytorch.utils.torch_fn import svd_lowrank as my_svd_lowrank
+from ncut_pytorch.utils.torch_mod import svd_lowrank as my_svd_lowrank
 
 
 def svd_lowrank(mat: torch.Tensor, q: int):
