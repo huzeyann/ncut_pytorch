@@ -3,11 +3,13 @@ import math
 import numpy as np
 import torch
 
+from .torch_fn import svd_lowrank as my_svd_lowrank
+
 
 def get_affinity(
-    X1: torch.Tensor,
-    X2: torch.Tensor = None,
-    gamma: float = 1.0,
+        X1: torch.Tensor,
+        X2: torch.Tensor = None,
+        gamma: float = 1.0,
 ):
     """Compute affinity matrix from input features.
 
@@ -39,7 +41,8 @@ def keep_topk_per_row(A: torch.Tensor, k: int = 10):
     topk_A, topk_indices = A.topk(k=k, dim=-1, largest=True)
     return topk_A, topk_indices
 
-def svd_lowrank(mat, q):
+
+def svd_lowrank(mat: torch.Tensor, q: int):
     """
     SVD lowrank
     mat: (n, m), n data, m features
@@ -50,13 +53,12 @@ def svd_lowrank(mat, q):
     if dtype == torch.float16 or dtype == torch.bfloat16:
         mat = mat.float()  # svd_lowrank does not support float16
 
-    u, s, v = torch.svd_lowrank(mat, q=q+10)
-    
-    # take 10 extra components to reduce the approximation error
+    u, s, v = my_svd_lowrank(mat, q=q + 10)
+
     u = u[:, :q]
     s = s[:q]
     v = v[:, :q]
-    
+
     u = u.to(dtype)
     s = s.to(dtype)
     v = v.to(dtype)
@@ -73,7 +75,7 @@ def pca_lowrank(mat, q):
     u, s, v = svd_lowrank(mat, q)
     _n = mat.shape[0]
     s /= math.sqrt(_n)
-    return u @ torch.diag(s) 
+    return u @ torch.diag(s)
 
 
 def check_if_normalized(x, n_sample=1000):
@@ -157,12 +159,12 @@ def gram_schmidt(matrix):
 
 
 def chunked_matmul(
-    A,
-    B,
-    device,
-    chunk_size=65536,
-    large_device="cpu",
-    transform=lambda x: x,
+        A,
+        B,
+        device,
+        chunk_size=65536,
+        large_device="cpu",
+        transform=lambda x: x,
 ):
     """
     Chunked matrix multiplication, to avoid OOM
@@ -219,7 +221,7 @@ def compute_delaunay(points):
     if points.shape[1] > 3:
         points = pca_lowrank(points, 3)
     return Delaunay(points.cpu().numpy()).simplices
-  
+
 
 def compute_riemann_curvature_loss(points, simplices=None, domain_min=0, domain_max=1):
     """
@@ -230,27 +232,27 @@ def compute_riemann_curvature_loss(points, simplices=None, domain_min=0, domain_
     """
     if simplices is None:
         simplices = compute_delaunay(points)
-        
+
     ideal_det = torch.tensor(1.0, device=points.device, dtype=torch.float64)
-    
+
     # Process each simplex in parallel 
     simplices_tensor = torch.tensor(simplices, device=points.device)
-    
+
     # Extract points that form each simplex
     simplex_points = points[simplices_tensor]
-    
+
     # Calculate edge vectors from the first point of each simplex
     edges = simplex_points[:, 1:] - simplex_points[:, 0].unsqueeze(1)
-    
+
     # Compute metric tensors (Gram matrices) for each simplex
     metric_tensors = torch.matmul(edges, edges.transpose(1, 2))
-    
+
     # Calculate determinants (related to volume distortion)
     dets = torch.linalg.det(metric_tensors)
-    
+
     # Penalize deviations from constant determinant
     valid_dets = dets[dets > 0]
-    total_curvature = torch.mean((valid_dets - ideal_det)**2)
+    total_curvature = torch.mean((valid_dets - ideal_det) ** 2)
     return total_curvature
 
 
@@ -259,16 +261,17 @@ def compute_axis_align_loss(points):
     n, d = points.shape
     centered_data = points - points.mean(dim=0)  # Center the data
     cov_matrix = (centered_data.T @ centered_data) / n  # Compute covariance matrix
-    
+
     eye = torch.eye(d, device=points.device)
     return torch.mean((cov_matrix - eye) ** 2)
+
 
 def compute_repulsion_loss(points):
     dist_matrix = torch.cdist(points, points)
     # Set diagonal to large value to avoid self-repulsion 
     mask = torch.eye(points.shape[0], device=points.device).bool()
     dist_matrix = dist_matrix + mask * 1e10
-    
+
     # For each point, only consider repulsion from nearest neighbor
     nearest_dists, _ = torch.min(dist_matrix, dim=1)
     repulsion = 1.0 / (nearest_dists + 0.01)  # the shift is to avoid big gradient
@@ -282,35 +285,32 @@ def compute_attraction_loss(points):
 
 
 def compute_boundary_loss(points, domain_min=-1, domain_max=1):
-    return torch.mean((torch.relu(domain_min - points))**2) + \
-            torch.mean((torch.relu(points - domain_max))**2)
-
-
-
+    return torch.mean((torch.relu(domain_min - points)) ** 2) + \
+        torch.mean((torch.relu(points - domain_max)) ** 2)
 
 
 def find_elbow(eigvals, n_elbows=5):
     # Convert to numpy array if tensor
     if torch.is_tensor(eigvals):
         eigvals = eigvals.cpu().detach().numpy()
-    
+
     # Calculate coordinates
     coords = np.vstack((np.arange(len(eigvals)), eigvals)).T
-    
+
     # Get vector from first to last point
     line_vec = coords[-1] - coords[0]
-    line_vec_norm = line_vec / np.sqrt(np.sum(line_vec**2))
-    
+    line_vec_norm = line_vec / np.sqrt(np.sum(line_vec ** 2))
+
     # Vector from point to first point
     vec_from_first = coords - coords[0]
-    
+
     # Distance from points to line
     dist_from_line = np.cross(line_vec_norm, vec_from_first)
-    
+
     # Find elbow points (maximum distances)
     elbow_indices = []
     remaining_distances = np.abs(dist_from_line)
-    
+
     for _ in range(n_elbows):
         if len(remaining_distances) == 0:
             break
@@ -321,6 +321,5 @@ def find_elbow(eigvals, n_elbows=5):
         start_idx = max(0, elbow_idx - window)
         end_idx = min(len(remaining_distances), elbow_idx + window)
         remaining_distances[start_idx:end_idx] = 0
-    
-    return sorted(elbow_indices)
 
+    return sorted(elbow_indices)

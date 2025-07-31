@@ -1,14 +1,15 @@
 # %%
-from sympy import Q
+from typing import Union
+
 import torch
 
-from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps, find_gamma_by_degree
-from ncut_pytorch.utils.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
-from ncut_pytorch.utils.sample_utils import farthest_point_sampling, auto_divice
-from .ncut_kway import kway_ncut
-from .ncut_nystrom import _nystrom_propagate
-from .ncut_nystrom import _plain_ncut
+from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
+from ncut_pytorch.utils.math_utils import get_affinity, normalize_affinity
+from ncut_pytorch.utils.sample_utils import farthest_point_sampling
+from ..utils.device import auto_device
 from .ncut_nystrom import NystromConfig
+from .ncut_nystrom import nystrom_propagate
+from .ncut_nystrom import _plain_ncut
 
 
 #TODO: automatically optimize click_weight based on the iou of fg and bg
@@ -26,13 +27,13 @@ def ncut_click_prompt(
         no_propagation: bool = False,
         return_indices_and_gamma: bool = False,
         **kwargs,
-) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
+) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
 
     config = NystromConfig()
     config.update(kwargs)
 
     # use GPU if available
-    device = auto_divice(X.device, device)
+    device = auto_device(X.device, device)
 
     # skip pytorch gradient computation if track_grad is False
     prev_grad_state = torch.is_grad_enabled()
@@ -68,17 +69,11 @@ def ncut_click_prompt(
         X_click = X_click - bg_weight * A[bg_indices].mean(0)
     
     X_click = X_click * A.shape[0]
-    
-    # gamma2 = find_gamma_by_degree(X_click.unsqueeze(1), d_gamma)
-    # A_click = get_affinity(X_click.unsqueeze(1), gamma=gamma2)
+
     A_click = get_affinity(X_click.unsqueeze(1), gamma=0.5)
-    # A_click = - torch.cdist(X_click.unsqueeze(1), X_click.unsqueeze(1))
     A_click = normalize_affinity(A_click)
     
     _A = click_weight * A_click + (1 - click_weight) * A
-    # _A = _A[n_fgbg:, n_fgbg:]
-    # nystrom_indices = nystrom_indices[n_fgbg:]
-    # nystrom_X = nystrom_X[n_fgbg:]
         
     nystrom_eigvec, eigval = _plain_ncut(_A, n_eig)
     
@@ -87,7 +82,7 @@ def ncut_click_prompt(
         return nystrom_eigvec, eigval, nystrom_indices, gamma
 
     # propagate eigenvectors from subgraph to full graph
-    eigvec, nystrom_indices2 = _nystrom_propagate(
+    eigvec, nystrom_indices2 = nystrom_propagate(
         nystrom_eigvec,
         X,
         nystrom_X,
@@ -108,22 +103,3 @@ def ncut_click_prompt(
         return eigvec, eigval, indices, gamma
 
     return eigvec, eigval
-
-
-def get_mask_and_heatmap(eigvecs, fg_indices, n_cluster=2, device='auto'):
-    device = auto_divice(eigvecs.device, device)
-    eigvecs = eigvecs[:, :n_cluster]
-
-    eigvecs = kway_ncut(eigvecs, device=device)
-    # find which cluster is the foreground
-    fg_eigvecs = eigvecs[fg_indices]
-    fg_idx = fg_eigvecs.mean(0).argmax().item()
-    bg_idx = 1 if fg_idx == 0 else 0
-    
-    # discretize the eigvecs
-    mask = eigvecs.argmax(dim=-1) == fg_idx
-
-    heatmap = eigvecs[:, fg_idx] - eigvecs[:, bg_idx]
-    
-    return mask, heatmap
-

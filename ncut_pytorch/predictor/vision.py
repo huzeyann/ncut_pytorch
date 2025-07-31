@@ -1,25 +1,19 @@
-import torch
-from PIL import Image
-from typing import List, Tuple, Callable
-import torch.nn as nn
+from typing import List, Tuple, Optional, Union
+
+import cv2
 import numpy as np
+import torch
+import torch.nn as nn
+from PIL import Image
 from torchvision import transforms
-from ncut_pytorch import Ncut, kway_ncut
-from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
-from ncut_pytorch.utils.math_utils import chunked_matmul
-from ncut_pytorch.ncuts.ncut_kway import axis_align
-from ncut_pytorch.ncuts.ncut_nystrom import _nystrom_propagate
-from ncut_pytorch.dino import hires_dino_256, hires_dino_512, hires_dino_1024
-from ncut_pytorch.dino import LowResDINO, HighResDINO
-from ncut_pytorch import mspace_color
-from ncut_pytorch.predictor.utils import draw_segments_boundaries, image_xy_to_tensor_index
 
 from .predictor import NcutPredictor, NotInitializedError
 
+
 class NcutVisionPredictor:
-    _initialized : bool = False
-    
-    def __init__(self, 
+    _initialized: bool = False
+
+    def __init__(self,
                  model: nn.Module,
                  transform: transforms.Compose,
                  device: str = 'cuda',
@@ -27,20 +21,19 @@ class NcutVisionPredictor:
         self.model = model
         self.transform = transform
         self.model = self.model.to(device)
-        
+
         self.device = device
         self.batch_size = batch_size
-        
-        self._images : List[Image.Image]
-        self._image_whs : List[Tuple[int, int]]
-        self._feat_hws : Tuple[int, int]
-        
-        self.predictor = NcutPredictor(device=device)
-        
 
-    def set_images(self, 
+        self._images: List[Image.Image]
+        self._image_whs: List[Tuple[int, int]]
+        self._feat_hws: Tuple[int, int]
+
+        self.predictor = NcutPredictor(device=device)
+
+    def set_images(self,
                    images: List[Image.Image],
-                   n_segments: List[int] = [5, 10, 20, 40, 80]):
+                   n_segments: List[int] = (5, 10, 20, 40, 80)):
         """
         set the images and save its features in the cache.
         
@@ -53,7 +46,7 @@ class NcutVisionPredictor:
         self._images = images
         self._image_whs = [image.size for image in images]
         self._feat_hws = (features.shape[2], features.shape[3])
-        
+
         flat_features = features.permute(0, 2, 3, 1).reshape(-1, features.shape[1])
         self.predictor.initialize(flat_features, n_segments)
         self._initialized = True
@@ -85,32 +78,32 @@ class NcutVisionPredictor:
         b, h, w = len(self._images), self._feat_hws[0], self._feat_hws[1]
         cluster_assignment = cluster_assignment.reshape(b, h, w)
         return cluster_assignment
-    
+
     def preview(self,
                 point_coord: Tuple[int, int],
-                image_indice: int) -> List[torch.Tensor]:
+                image_indices: int) -> List[torch.Tensor]:
         """
         preview the hierarchy cluster assignment for the images.
         
         Args:
             point_coord (Tuple[int, int]): The coordinate of the point to preview.
-            image_indice (int): The index of the image to preview.
+            image_indices (int): The index of the image to preview.
             
         Returns:
             List[torch.Tensor]: List of masks for each hierarchy level. each mask is (b, h, w)
         """
         self.__check_initialized()
         b, h, w = len(self._images), self._feat_hws[0], self._feat_hws[1]
-        
-        point_index = image_xy_to_tensor_index(self._image_whs, self._feat_hws, 
-                                               [point_coord], [image_indice])[0]
+
+        point_index = image_xy_to_tensor_index(self._image_whs, self._feat_hws,
+                                               [point_coord], [image_indices])[0]
         masks = self._get_mask_preview(point_index)
         masks = [mask.reshape(b, h, w) for mask in masks]
         return masks
 
-    def predict(self, 
-                point_coords: np.ndarray, 
-                point_labels: np.ndarray, 
+    def predict(self,
+                point_coords: np.ndarray,
+                point_labels: np.ndarray,
                 image_indices: np.ndarray,
                 click_weight: float = 0.5,
                 **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -127,22 +120,21 @@ class NcutVisionPredictor:
             Tuple[torch.Tensor, torch.Tensor]: Mask and heatmap for the images. (b, h, w)
         """
         self.__check_initialized()
-        fg_indices = image_xy_to_tensor_index(self._image_whs, self._feat_hws, 
-                                              point_coords[point_labels == 1], 
+        fg_indices = image_xy_to_tensor_index(self._image_whs, self._feat_hws,
+                                              point_coords[point_labels == 1],
                                               image_indices[point_labels == 1])
-        bg_indices = image_xy_to_tensor_index(self._image_whs, self._feat_hws, 
-                                              point_coords[point_labels == 0], 
+        bg_indices = image_xy_to_tensor_index(self._image_whs, self._feat_hws,
+                                              point_coords[point_labels == 0],
                                               image_indices[point_labels == 0])
         b, h, w = len(self._images), self._feat_hws[0], self._feat_hws[1]
-        
+
         mask, heatmap = self.predictor.predict_clicks(fg_indices, bg_indices, click_weight, **kwargs)
-    
+
         mask = mask.reshape(b, h, w)
         heatmap = heatmap.reshape(b, h, w)
-        
+
         return mask, heatmap
-    
-  
+
     def inference(self, images: List[Image.Image]) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         inference the mask and heatmap for new images, based on the saved states in the predict function.
@@ -157,13 +149,13 @@ class NcutVisionPredictor:
         new_features = self.forward_model(images)
         b, c, h, w = new_features.shape
         new_features = new_features.permute(0, 2, 3, 1).reshape(-1, c)
-                
+
         mask, heatmap = self.predictor.inference_new_features(new_features)
-        
+
         mask = mask.reshape(b, h, w)
         heatmap = heatmap.reshape(b, h, w)
         return mask, heatmap
-    
+
     def color_continues(self) -> np.ndarray:
         """
         color the features by continues mspace color palette.
@@ -177,7 +169,7 @@ class NcutVisionPredictor:
         rgb = color_palette.reshape(b, h, w, 3)
         rgb = (rgb * 255).to(torch.uint8).cpu().numpy()
         return rgb
-        
+
     def color_discrete(self, cluster_assignment: torch.Tensor, draw_boundaries: bool = True) -> np.ndarray:
         """
         color the features by discrete mspace color palette.
@@ -194,7 +186,7 @@ class NcutVisionPredictor:
         color_palette = self.predictor.get_color_palette()
         n_cluster = cluster_assignment.max() + 1
         cluster_assignment = cluster_assignment.flatten()
-        discrete_rgb = np.zeros((b*h*w, 3), dtype=np.uint8)
+        discrete_rgb = np.zeros((b * h * w, 3), dtype=np.uint8)
         for i in range(n_cluster):
             mask = cluster_assignment == i
             color = color_palette[mask].mean(0)
@@ -202,16 +194,16 @@ class NcutVisionPredictor:
             color = np.clip(color, 0, 255).astype(np.uint8)
             discrete_rgb[mask] = color
         discrete_rgb = discrete_rgb.reshape(b, h, w, 3)
-        
+
         if draw_boundaries:
             discrete_rgb = draw_segments_boundaries(discrete_rgb)
-            
+
         return discrete_rgb
-    
+
     def __check_initialized(self):
         if not self._initialized:
             raise NotInitializedError("Not initialized, please call set_images() first")
-        
+
         try:
             self.predictor.__check_initialized()
         except NotInitializedError:
@@ -221,3 +213,76 @@ class NcutVisionPredictor:
         self.model = self.model.to(device)
         self.predictor.to(device)
         self.device = device
+
+
+def image_xy_to_tensor_index(image_whs: Union[List[Tuple[int, int]], np.array],
+                             feat_hws: Union[Tuple[int, int], np.array],
+                             point_coords: np.ndarray,
+                             image_indices: np.ndarray):
+    """
+    Convert image xy coordinates to tensor index.
+    Args:
+        image_whs: List of image width and height, (n_images, 2)
+        feat_hws: Feature width and height, (2, )
+        point_coords: Point coordinates, (n_points, 2)
+        image_indices: Image indices for each point, (n_points, )
+    Returns:
+        Point indices
+    """
+    if len(point_coords) == 0:
+        return np.array([], dtype=np.int64)
+
+    image_whs = np.array(image_whs)
+    wh = image_whs[image_indices]
+    point_coords = point_coords / wh
+
+    point_coords = np.flip(point_coords, axis=1)  # (x, y) -> (y, x)
+
+    feat_hws = np.array(feat_hws)
+    point_coords = point_coords * feat_hws
+    point_coords = point_coords.astype(np.int64)
+
+    point_indices = point_coords[:, 0] * feat_hws[0] + point_coords[:, 1]
+
+    offset_perimg = np.prod(feat_hws)
+    offsets = image_indices * offset_perimg
+    point_indices = point_indices + offsets
+    point_indices = point_indices.astype(np.int64)
+    return point_indices
+
+
+def draw_segments_boundaries(images: List[np.ndarray], min_area: int = 100):
+    # images: (n_images, h, w, 3)
+    assert images.ndim == 4
+    n_images = images.shape[0]
+    output = []
+    for i in range(n_images):
+        output.append(draw_segments_boundaries_one_image(images[i], min_area))
+    output = np.stack(output)
+    return output
+
+
+def draw_segments_boundaries_one_image(image: np.ndarray, min_area: int = 100):
+    # image: (h, w, 3)
+    assert image.ndim == 3
+    # Get unique colors (excluding black as background if necessary)
+    unique_colors = np.unique(image.reshape(-1, 3), axis=0)
+
+    # Create a copy of the original image to draw boundaries
+    output = image.copy()
+
+    # Iterate through each unique color
+    for color in unique_colors:
+        # Create a mask for the current color
+        mask = np.all(image == color, axis=-1).astype(np.uint8) * 255
+
+        # Find contours of the component
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Draw black boundary only if the component is large enough
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area >= min_area:
+                cv2.drawContours(output, [contour], -1, (0, 0, 0), 1)
+
+    return output

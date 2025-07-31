@@ -1,6 +1,6 @@
 import torch
 from ncut_pytorch import ncut_fn
-from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, _nystrom_propagate
+from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, nystrom_propagate
 
 
 class TestNystromNcut:
@@ -74,7 +74,7 @@ class TestNystromNcut:
         nystrom_X = small_feature_matrix[indices]
         
         # Now propagate the eigenvectors
-        eigvec = _nystrom_propagate(
+        eigvec = nystrom_propagate(
             nystrom_eigvec,
             small_feature_matrix,
             nystrom_X,

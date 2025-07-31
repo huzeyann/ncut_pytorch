@@ -1,12 +1,12 @@
 import warnings
-from typing import Any, Callable, Dict, Literal, Tuple
+from typing import Any, Callable, Dict, Literal, Tuple, Optional
 
 import numpy as np
 import torch
 
-from ncut_pytorch.utils.math_utils import quantile_normalize
 from ncut_pytorch.color.mspace import mspace_viz_transform
-from ncut_pytorch.ncuts.ncut_nystrom import _nystrom_propagate
+from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
+from ncut_pytorch.utils.math_utils import quantile_normalize
 from ncut_pytorch.utils.sample_utils import farthest_point_sampling
 
 
@@ -17,7 +17,7 @@ def _identity(X: torch.Tensor) -> torch.Tensor:
 def mspace_color(
         X: torch.Tensor,
         q: float = 0.95,
-        n_eig: int | None = 32,
+        n_eig: Optional[int] = 32,
         n_dim: int = 3,
         training_steps: int = 100,
         progress_bar: bool = False,
@@ -209,7 +209,7 @@ def _rgb_with_dimensionality_reduction(
     ).fit_transform(_inp)
 
     _subgraph_embed = torch.tensor(_subgraph_embed, dtype=torch.float32)
-    X_nd = transform_func(_nystrom_propagate(
+    X_nd = transform_func(nystrom_propagate(
         _subgraph_embed,
         X,
         X[subgraph_indices],

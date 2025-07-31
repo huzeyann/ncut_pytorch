@@ -1,7 +1,7 @@
 from tkinter import N
 import pytest
 import torch
-from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt, get_mask_and_heatmap
+from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 
 
 class TestBiasedNcut:
@@ -54,32 +54,6 @@ class TestBiasedNcut:
         # Check that eigenvectors have reasonable values
         assert not torch.isnan(eigvecs).any()
         assert not torch.isinf(eigvecs).any()
-
-    def test_get_mask_and_heatmap(self, small_feature_matrix):
-        """Test get_mask_and_heatmap."""
-        # First get eigenvectors using bias_ncut_soft
-        fg_idx = torch.tensor([0, 10, 20])
-        eigvecs, _ = ncut_click_prompt(
-            small_feature_matrix,
-            fg_idx,
-        )
-        
-        # Run get_mask_and_heatmap
-        mask, heatmap = get_mask_and_heatmap(eigvecs, fg_idx, n_cluster=2)
-        
-        # Check shapes
-        assert mask.shape == (small_feature_matrix.shape[0],)
-        assert heatmap.shape == (small_feature_matrix.shape[0],)
-        
-        # Check that mask is binary
-        assert set(mask.unique().tolist()).issubset({True, False})
-        
-        # Check that heatmap has reasonable values
-        assert not torch.isnan(heatmap).any()
-        assert not torch.isinf(heatmap).any()
-        
-        # # Check that foreground clicks are in the foreground mask
-        # assert mask[fg_idx].all()
 
     def test_bias_ncut_soft_with_different_parameters(self, small_feature_matrix):
         """Test bias_ncut_soft with different parameters."""

@@ -1,7 +1,11 @@
 torch~=2.0
-#torchvision>=0.15.0
+torchvision>=0.15.0
 fpsample>=0.2.0
 pytorch-lightning~=2.0
 pillow
 numpy
 tqdm
+pycolormap_2d
+scikit-learn
+scikit-image
+matplotlib

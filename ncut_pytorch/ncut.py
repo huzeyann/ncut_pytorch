@@ -1,6 +1,7 @@
 import torch
 
-from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, _nystrom_propagate
+from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
+
 
 class Ncut:
 
@@ -18,8 +19,8 @@ class Ncut:
         Args:       
             n_eig (int): number of eigenvectors
             track_grad (bool): keep track of pytorch gradients
-            d_gamma (float): affinity gamma parameter, lower d_gamma results in sharper eigenvectors
-            device (str): device, default 'auto' (auto detect GPU)
+            d_gamma (float): affinity gamma parameter, lower d_gamma results in a sharper eigenvectors
+            device (str): device, default 'auto' (auto-detect GPU)
 
         Examples:
             >>> from ncut_pytorch import Ncut
@@ -50,7 +51,7 @@ class Ncut:
         self._nystrom_x = None
         self._nystrom_eigvec = None
         self._eigval = None
-        
+
     @property
     def eigval(self):
         """
@@ -95,7 +96,7 @@ class Ncut:
             raise ValueError("Ncut has not been fitted yet. Call fit() first.")
 
         # propagate eigenvectors from subgraph to full graph
-        eigvec = _nystrom_propagate(
+        eigvec = nystrom_propagate(
             self._nystrom_eigvec,
             X,
             self._nystrom_x,
@@ -109,9 +110,11 @@ class Ncut:
     def fit_transform(self, X: torch.Tensor) -> torch.Tensor:
         return self.fit(X).transform(X)
 
-    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = 0.1, device: str = 'auto', **kwargs):
+    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = 0.1,
+                device: str = 'auto', **kwargs):
         if X is not None:
-            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_gamma=d_gamma, device=device, **kwargs)  # function-like behavior
+            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_gamma=d_gamma, device=device,
+                                     **kwargs)  # function-like behavior
             return eigvec
         return super().__new__(cls)  # normal class instantiation
 

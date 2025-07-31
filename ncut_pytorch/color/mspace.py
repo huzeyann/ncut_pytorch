@@ -9,6 +9,8 @@ import torch.nn.functional as F
 from torch.utils.data import TensorDataset
 from tqdm import tqdm
 
+from ncut_pytorch.utils.device import auto_device
+
 # disable lightning logs
 logging.getLogger('lightning').setLevel(0)
 logging.getLogger("pytorch_lightning").setLevel(0)
@@ -538,7 +540,7 @@ class BestModelsAvgCallback(pl.Callback):
             
 
 def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, decoder_training_steps=1000,
-                    batch_size=1000, devices=[0], return_trainer=False, progress_bar=True,
+                    batch_size=1000, return_trainer=False, progress_bar=True,
                     logger=False, use_wandb=False, model_avg_window=3, **model_kwargs):
     compress_feats = compress_feats.float().cpu()
     uncompress_feats = uncompress_feats.float().cpu()
@@ -550,11 +552,8 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
     dataset = TensorDataset(compress_feats, uncompress_feats)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    is_cuda = torch.cuda.is_available()
-
     trainer_args = {
-        'accelerator': "gpu" if is_cuda else "cpu", 
-        'devices': devices if is_cuda else None,
+        'accelerator': auto_device(),
         'enable_checkpointing': False,
         'enable_progress_bar': False,
         'enable_model_summary': False,

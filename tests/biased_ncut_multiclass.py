@@ -1,6 +1,7 @@
 # %%
 
-from ncut_pytorch.utils.sample_utils import farthest_point_sampling, nystrom_propagate, auto_divice
+from ncut_pytorch.utils.sample_utils import farthest_point_sampling, nystrom_propagate
+from ncut_pytorch.utils.device import auto_device
 from ncut_pytorch.affinity_gamma import find_gamma_by_degree_after_fps
 from ncut_pytorch.utils.math_utils import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from ncut_pytorch.ncuts.ncut_kway import kway_ncut
@@ -38,7 +39,7 @@ def bias_ncut_multiclass(features, click_list,
         new_click_list.append(torch.arange(len(click_idx)) + count)
         count += len(click_idx)
     
-    device = auto_divice(features.device, device)
+    device = auto_device(features.device, device)
     _input = features[fps_idx].to(device)
 
     gamma = find_gamma_by_degree_after_fps(_input, degree=degree, distance=distance)

@@ -5,24 +5,9 @@ import fpsample
 import numpy as np
 import torch
 
+from .device import auto_device
 from .math_utils import pca_lowrank
 
-def auto_divice(feature_device, user_input_device):
-    if user_input_device is not None and str(user_input_device) != "auto":
-        try:
-            torch.device(str(user_input_device))
-            return str(user_input_device)
-        except RuntimeError:
-            raise ValueError(f"Invalid device: {user_input_device}")
-
-    is_cuda_available = torch.cuda.is_available()
-    if not is_cuda_available:
-        return "cpu"
-    if is_cuda_available:
-        if "cuda" in str(feature_device):
-            return str(feature_device)
-        else:
-            return "cuda"
 
 @torch.no_grad()
 def run_subgraph_sampling(
@@ -85,7 +70,7 @@ def _farthest_point_sampling(
     if isinstance(X, np.ndarray):
         X = torch.from_numpy(X)
     
-    device = auto_divice(X.device, device)
+    device = auto_device(X.device, device)
     X = X.to(device)
 
     # PCA to reduce the dimension, because fpsample.bucket_fps_kdline_sampling only supports up to 8 dimensions

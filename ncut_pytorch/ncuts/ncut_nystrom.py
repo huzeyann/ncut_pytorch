@@ -1,9 +1,13 @@
+from typing import Union
+
 import torch
 
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
 from ncut_pytorch.utils.math_utils import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
     keep_topk_per_row
-from ncut_pytorch.utils.sample_utils import auto_divice, farthest_point_sampling
+from ncut_pytorch.utils.sample_utils import farthest_point_sampling
+from ncut_pytorch.utils.device import auto_device
+
 
 class NystromConfig:
     """
@@ -33,7 +37,7 @@ def ncut_fn(
         make_orthogonal: bool = False,
         no_propagation: bool = False,
         **kwargs,
-) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
+) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
     """Normalized Cut, balanced sampling and nystrom approximation.
     Function interface that returns both eigenvectors and eigenvalues.
 
@@ -60,7 +64,7 @@ def ncut_fn(
     config.update(kwargs)
 
     # use GPU if available
-    device = auto_divice(X.device, device)
+    device = auto_device(X.device, device)
 
     # skip pytorch gradient computation if track_grad is False
     prev_grad_state = torch.is_grad_enabled()
@@ -83,7 +87,7 @@ def ncut_fn(
         return nystrom_eigvec, eigval, nystrom_indices, gamma
 
     # propagate eigenvectors from subgraph to full graph
-    eigvec = _nystrom_propagate(
+    eigvec = nystrom_propagate(
         nystrom_eigvec,
         X,
         nystrom_X,
@@ -125,7 +129,7 @@ def _plain_ncut(
     return eigvec, eigval
 
 
-def _nystrom_propagate(
+def nystrom_propagate(
         nystrom_out: torch.Tensor,
         X: torch.Tensor,
         nystrom_X: torch.Tensor,
@@ -158,7 +162,7 @@ def _nystrom_propagate(
     prev_grad_state = torch.is_grad_enabled()
     torch.set_grad_enabled(track_grad)
 
-    device = auto_divice(nystrom_out.device, device)
+    device = auto_device(nystrom_out.device, device)
     indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
     nystrom_out = nystrom_out[indices].to(device)
     nystrom_X = nystrom_X[indices].to(device)
