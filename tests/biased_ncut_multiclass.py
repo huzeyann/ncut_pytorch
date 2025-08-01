@@ -3,7 +3,7 @@
 from ncut_pytorch.utils.sample import farthest_point_sampling, nystrom_propagate
 from ncut_pytorch.utils.device import auto_device
 from ncut_pytorch.affinity_gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.utils.math import get_affinity, normalize_affinity, svd_lowrank, correct_rotation
+from ncut_pytorch.utils.math import rbf_affinity, normalize_affinity, svd_lowrank, correct_rotation
 from ncut_pytorch.ncuts.ncut_kway import kway_ncut
 
 def bias_ncut_multiclass(features, click_list, 
@@ -43,7 +43,7 @@ def bias_ncut_multiclass(features, click_list,
     _input = features[fps_idx].to(device)
 
     gamma = find_gamma_by_degree_after_fps(_input, degree=degree, distance=distance)
-    affinity = get_affinity(_input, distance=distance, gamma=gamma)
+    affinity = rbf_affinity(_input, distance=distance, gamma=gamma)
     affinity = normalize_affinity(affinity)
     
     # modify the affinity from the clicks
@@ -52,7 +52,7 @@ def bias_ncut_multiclass(features, click_list,
         click_f = 1 * affinity[click_idx].mean(0)
         click_fs.append(click_f)
     click_f = torch.stack(click_fs, dim=1)
-    click_affinity = get_affinity(click_f, distance=distance, gamma=gamma)
+    click_affinity = rbf_affinity(click_f, distance=distance, gamma=gamma)
     click_affinity = normalize_affinity(click_affinity)
     
     _A = bias_factor * click_affinity + (1 - bias_factor) * affinity

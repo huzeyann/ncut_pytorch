@@ -20,8 +20,8 @@ predictor.set_images(images)
 features = predictor.predictor._features
 print(features.shape)
 # %%
-from ncut_pytorch.utils.math import get_affinity
-A = get_affinity(features)
+from ncut_pytorch.utils.math import rbf_affinity
+A = rbf_affinity(features)
 
 # %%
 print(A.mean())
@@ -31,7 +31,7 @@ degree = 'auto'
 gamma = find_gamma_by_degree_after_fps(features, degree)
 print(gamma)
 # %%
-print(get_affinity(features, gamma=gamma).mean())
+print(rbf_affinity(features, gamma=gamma).mean())
 # %%
 import matplotlib.pyplot as plt
 plt.hist(A.mean(1).flatten(), bins=100)
@@ -39,9 +39,9 @@ plt.hist(A.mean(1).flatten(), bins=100)
 print(f"mean: {A.mean(1).mean()}, median: {np.median(A.mean(1))}")
 plt.show()
 # %%
-plt.hist(get_affinity(features, gamma=gamma).mean(1).flatten(), bins=100)
+plt.hist(rbf_affinity(features, gamma=gamma).mean(1).flatten(), bins=100)
 # show mean and median of A.mean(1)
-print(f"mean: {get_affinity(features, gamma=gamma).mean(1).mean()}, median: {np.median(get_affinity(features, gamma=gamma).mean(1))}")
+print(f"mean: {rbf_affinity(features, gamma=gamma).mean(1).mean()}, median: {np.median(rbf_affinity(features, gamma=gamma).mean(1))}")
 plt.show()
 # %%
 torch.quantile(A.mean(1), 0.5)

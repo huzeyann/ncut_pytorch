@@ -3,7 +3,7 @@ from typing import Callable, Union
 import torch
 
 from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
-from ncut_pytorch.utils.math import get_affinity
+from ncut_pytorch.utils.math import rbf_affinity
 
 
 class Ncut:
@@ -14,7 +14,7 @@ class Ncut:
             track_grad: bool = False,
             d_gamma: float = None,
             device: str = None,
-            affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity,
+            affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
             **kwargs,
     ):
         """
@@ -114,7 +114,7 @@ class Ncut:
         return self.fit(X).transform(X)
 
     def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = None,
-                device: str = None, affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity, 
+                device: str = None, affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity, 
                 **kwargs) -> Union["Ncut", torch.Tensor]:
         if X is not None:
             # function-like behavior

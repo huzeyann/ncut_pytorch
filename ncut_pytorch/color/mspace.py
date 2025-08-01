@@ -25,7 +25,7 @@ logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFil
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
 
-from ncut_pytorch.utils.math import get_affinity
+from ncut_pytorch.utils.math import rbf_affinity
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut
 from ncut_pytorch.ncuts.ncut_kway import kway_ncut
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
@@ -66,7 +66,7 @@ def filter_closeby_eigval(eigvec, eigval, threshold=1e-10):
     return eigvec[:, keep_idx], eigval[keep_idx]
 
 def ncut_wrapper(features, n_eig, gamma=0.5):
-    A = get_affinity(features, gamma=gamma)
+    A = rbf_affinity(features, gamma=gamma)
     eigvec, eigval = _plain_ncut(A, n_eig)
     eigvec, eigval = filter_closeby_eigval(eigvec, eigval)
     return eigvec, eigval

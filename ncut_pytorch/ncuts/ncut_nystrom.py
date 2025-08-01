@@ -5,7 +5,7 @@ from typing import Callable, Union
 import torch
 
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.utils.math import get_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
+from ncut_pytorch.utils.math import rbf_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
     keep_topk_per_row
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
@@ -39,7 +39,7 @@ def ncut_fn(
         gamma: float = None,
         make_orthogonal: bool = False,
         no_propagation: bool = False,
-        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity,
+        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
         **kwargs,
 ) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
     """Normalized Cut, balanced sampling and nystrom approximation.
@@ -54,7 +54,7 @@ def ncut_fn(
         gamma (float): affinity parameter, override d_gamma if provided
         make_orthogonal (bool): make eigenvectors orthogonal
         no_propagation (bool): if True, return intermediate results without propagation
-        affinity_fn (callable): affinity function, default get_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
+        affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
     Returns:
         (torch.Tensor): eigenvectors, shape (N, n_eig)
         (torch.Tensor): eigenvalues, sorted in descending order, shape (n_eig,)
@@ -137,7 +137,7 @@ def nystrom_propagate(
         track_grad: bool = False,
         device: str = None,
         return_indices: bool = False,
-        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity,
+        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
         **kwargs,
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """propagate output from nystrom sampled nodes to all nodes,
@@ -150,7 +150,7 @@ def nystrom_propagate(
         gamma (float): affinity parameter, default 1.0
         track_grad (bool): keep track of pytorch gradients, default False
         device (str): device to use for computation, if 'auto', will detect GPU automatically
-        affinity_fn (callable): affinity function, default get_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
+        affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
 
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)

@@ -6,7 +6,7 @@ import torch
 from .torch_mod import svd_lowrank as my_torch_svd_lowrank
 
 
-def get_affinity(
+def rbf_affinity(
         X1: torch.Tensor,
         X2: torch.Tensor = None,
         gamma: float = 1.0,

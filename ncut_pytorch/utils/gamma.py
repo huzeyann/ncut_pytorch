@@ -1,10 +1,10 @@
 import torch
 
-from .math import get_affinity
+from .math import rbf_affinity
 from .sample import farthest_point_sampling
 
 @torch.no_grad()
-def find_gamma_by_degree(X, d_gamma='auto', affinity_fn=get_affinity, X2=None, init_gamma=0.5, r_tol=1e-2, max_iter=100):
+def find_gamma_by_degree(X, d_gamma='auto', affinity_fn=rbf_affinity, X2=None, init_gamma=0.5, r_tol=1e-2, max_iter=100):
     # X: (n_samples, n_features)
     # d_gamma: target mean edge weight
     # binary search for optimal gamma, such that the mean edge weight is close to d_gamma
@@ -34,7 +34,7 @@ def find_gamma_by_degree(X, d_gamma='auto', affinity_fn=get_affinity, X2=None, i
     return gamma
 
 @torch.no_grad()
-def find_gamma_by_degree_after_fps(X, d_gamma='auto', affinity_fn=get_affinity, n_sample=1000, **kwargs):
+def find_gamma_by_degree_after_fps(X, d_gamma='auto', affinity_fn=rbf_affinity, n_sample=1000, **kwargs):
     indices = farthest_point_sampling(X, n_sample)
     return find_gamma_by_degree(X[indices], d_gamma, affinity_fn, **kwargs)
 

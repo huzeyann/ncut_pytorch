@@ -1,7 +1,7 @@
 import torch
 from ncut_pytorch import ncut_fn
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, nystrom_propagate
-from ncut_pytorch.utils.math import get_affinity
+from ncut_pytorch.utils.math import rbf_affinity
 
 
 class TestNystromNcut:
@@ -153,7 +153,7 @@ class TestCustomAffinity:
     def test_default_affinity_behavior(self, small_feature_matrix):
         """Test that default behavior still works (affinity_fn=None)."""
         n_eig = 5
-        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, affinity_fn=get_affinity, d_gamma='auto')
+        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, affinity_fn=rbf_affinity, d_gamma='auto')
         
         # Check shapes
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
@@ -223,7 +223,7 @@ class TestCustomAffinity:
         
         # Get results with default RBF affinity
         eigvec_rbf, eigval_rbf = ncut_fn(
-            small_feature_matrix, n_eig=n_eig, gamma=gamma, affinity_fn=get_affinity
+            small_feature_matrix, n_eig=n_eig, gamma=gamma, affinity_fn=rbf_affinity
         )
         
         # Get results with custom linear affinity
