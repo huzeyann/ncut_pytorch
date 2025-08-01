@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 # %%
 
-predictor = NcutDinoPredictor(dtype=torch.float32, super_resolution=False)
+predictor = NcutDinoPredictor(dtype=torch.float32)
 predictor = predictor.to('cpu')
 # predictor.run_faster()
 

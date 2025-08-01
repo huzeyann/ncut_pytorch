@@ -78,15 +78,6 @@ def pca_lowrank(mat, q):
     return u @ torch.diag(s)
 
 
-def check_if_normalized(x, n_sample=1000):
-    """check if the input tensor is normalized (unit norm)"""
-    n_sample = min(n_sample, x.shape[0])
-    random_indices = torch.randperm(x.shape[0])[:n_sample]
-    _x = x[random_indices]
-    flag = torch.allclose(torch.norm(_x, dim=-1), torch.ones(n_sample, device=x.device))
-    return flag
-
-
 def quantile_min_max(x, q1=0.01, q2=0.99, n_sample=10000):
     if x.shape[0] > n_sample:
         # random sampling to reduce the load of quantile calculation, torch.quantile does not support large tensor
