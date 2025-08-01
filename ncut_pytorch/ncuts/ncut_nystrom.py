@@ -1,6 +1,6 @@
 __all__ = ['ncut_fn', 'nystrom_propagate']
 
-from typing import Union
+from typing import Callable, Union
 
 import torch
 
@@ -35,10 +35,11 @@ def ncut_fn(
         n_eig: int = 100,
         track_grad: bool = False,
         d_gamma: float = 'auto',
-        device: str = 'auto',
+        device: str = None,
         gamma: float = None,
         make_orthogonal: bool = False,
         no_propagation: bool = False,
+        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity,
         **kwargs,
 ) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
     """Normalized Cut, balanced sampling and nystrom approximation.
@@ -53,6 +54,7 @@ def ncut_fn(
         gamma (float): affinity parameter, override d_gamma if provided
         make_orthogonal (bool): make eigenvectors orthogonal
         no_propagation (bool): if True, return intermediate results without propagation
+        affinity_fn (callable): affinity function, default get_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
     Returns:
         (torch.Tensor): eigenvectors, shape (N, n_eig)
         (torch.Tensor): eigenvalues, sorted in descending order, shape (n_eig,)
@@ -79,10 +81,10 @@ def ncut_fn(
 
     # find optimal gamma for affinity matrix
     if gamma is None:
-        gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma)
+        gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma, affinity_fn)
 
     # compute Ncut on the nystrom sampled subgraph
-    A = get_affinity(nystrom_X, gamma=gamma)
+    A = affinity_fn(nystrom_X, gamma=gamma)
     nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
 
     if no_propagation:
@@ -101,6 +103,7 @@ def ncut_fn(
         device=device,
         move_output_to_cpu=config.move_output_to_cpu,
         track_grad=track_grad,
+        affinity_fn=affinity_fn,
     )
 
     # post-hoc orthogonalization
@@ -132,8 +135,9 @@ def nystrom_propagate(
         nystrom_X: torch.Tensor,
         gamma: float = 1.0,
         track_grad: bool = False,
-        device: str = 'auto',
+        device: str = None,
         return_indices: bool = False,
+        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity,
         **kwargs,
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """propagate output from nystrom sampled nodes to all nodes,
@@ -146,6 +150,7 @@ def nystrom_propagate(
         gamma (float): affinity parameter, default 1.0
         track_grad (bool): keep track of pytorch gradients, default False
         device (str): device to use for computation, if 'auto', will detect GPU automatically
+        affinity_fn (callable): affinity function, default get_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
 
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
@@ -163,7 +168,7 @@ def nystrom_propagate(
     nystrom_out = nystrom_out[indices].to(device)
     nystrom_X = nystrom_X[indices].to(device)
     
-    D = get_affinity(nystrom_X, gamma=gamma).mean(1)
+    D = affinity_fn(nystrom_X, gamma=gamma).mean(1)
 
     all_outs = []
     n_chunk = config.matmul_chunk_size
@@ -171,7 +176,7 @@ def nystrom_propagate(
     for i in range(0, X.shape[0], n_chunk):
         end = min(i + n_chunk, X.shape[0])
 
-        _Ai = get_affinity(X[i:end].to(device), nystrom_X, gamma=gamma)
+        _Ai = affinity_fn(X[i:end].to(device), nystrom_X, gamma=gamma)
         _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
         _Di = D[_indices].sum(1)
         _Ai = _Ai / _Di[:, None]

@@ -1,6 +1,6 @@
 __all__ = ['ncut_click_prompt']
 
-from typing import Union
+from typing import Callable, Union
 
 import numpy as np
 import torch
@@ -23,9 +23,10 @@ def ncut_click_prompt(
         bg_weight: float = 0.1,
         n_eig: int = 2,
         track_grad: bool = False,
-        d_gamma: float = 'auto',
-        device: str = 'auto',
+        d_gamma: float = None,
+        device: str = None,
         gamma: float = None,
+        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity,
         no_propagation: bool = False,
         return_indices_and_gamma: bool = False,
         **kwargs,
@@ -59,10 +60,10 @@ def ncut_click_prompt(
     
     # find optimal gamma for affinity matrix
     if gamma is None:
-        gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma)
+        gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma, affinity_fn)
 
     # compute Ncut on the nystrom sampled subgraph
-    A = get_affinity(nystrom_X, gamma=gamma)
+    A = affinity_fn(nystrom_X, gamma=gamma)
     A = normalize_affinity(A)
 
     # modify the affinity from the clicks
@@ -72,7 +73,7 @@ def ncut_click_prompt(
     
     X_click = X_click * A.shape[0]
 
-    A_click = get_affinity(X_click.unsqueeze(1), gamma=0.5)
+    A_click = affinity_fn(X_click.unsqueeze(1), gamma=0.5)
     A_click = normalize_affinity(A_click)
     
     _A = click_weight * A_click + (1 - click_weight) * A
@@ -96,6 +97,7 @@ def ncut_click_prompt(
         move_output_to_cpu=config.move_output_to_cpu,
         track_grad=track_grad,
         return_indices=True,
+        affinity_fn=affinity_fn,
     )
     
     torch.set_grad_enabled(prev_grad_state)    

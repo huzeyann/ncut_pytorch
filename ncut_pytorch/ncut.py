@@ -1,8 +1,9 @@
-from typing import Union
+from typing import Callable, Union
 
 import torch
 
 from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
+from ncut_pytorch.utils.math import get_affinity
 
 
 class Ncut:
@@ -11,8 +12,9 @@ class Ncut:
             self,
             n_eig: int = 100,
             track_grad: bool = False,
-            d_gamma: float = 'auto',
-            device: str = 'auto',
+            d_gamma: float = None,
+            device: str = None,
+            affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity,
             **kwargs,
     ):
         """
@@ -48,6 +50,7 @@ class Ncut:
         self.d_gamma = d_gamma
         self.device = device
         self.track_grad = track_grad
+        self.affinity_fn = affinity_fn
         self.kwargs = kwargs
 
         self._nystrom_x = None
@@ -73,6 +76,7 @@ class Ncut:
                 device=self.device,
                 track_grad=self.track_grad,
                 no_propagation=True,
+                affinity_fn=self.affinity_fn,
                 **self.kwargs
             )
         # store Ncut state to use in transform()
@@ -101,6 +105,7 @@ class Ncut:
             gamma=self.gamma,
             device=self.device,
             track_grad=self.track_grad,
+            affinity_fn=self.affinity_fn,
             **self.kwargs
         )
         return eigvec
@@ -108,11 +113,12 @@ class Ncut:
     def fit_transform(self, X: torch.Tensor) -> torch.Tensor:
         return self.fit(X).transform(X)
 
-    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = 'auto',
-                device: str = 'auto', **kwargs) -> Union["Ncut", torch.Tensor]:
+    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = None,
+                device: str = None, affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = get_affinity, 
+                **kwargs) -> Union["Ncut", torch.Tensor]:
         if X is not None:
             # function-like behavior
-            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_gamma=d_gamma, device=device, **kwargs)
+            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_gamma=d_gamma, device=device, affinity_fn=affinity_fn, **kwargs)
             return eigvec
         # normal class instantiation
         return super().__new__(cls)

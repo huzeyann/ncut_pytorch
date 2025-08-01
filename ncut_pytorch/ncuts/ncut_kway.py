@@ -8,7 +8,7 @@ from ncut_pytorch.utils.device import auto_device
 from ncut_pytorch.utils.math import chunked_matmul
 
 
-def kway_ncut(eigvec: torch.Tensor, device: str = 'auto', **kwargs):
+def kway_ncut(eigvec: torch.Tensor, device: str = None, **kwargs):
     """
     Args:
         eigvec (torch.Tensor): eigenvectors from Ncut output, shape (n, k)
@@ -25,7 +25,7 @@ def kway_ncut(eigvec: torch.Tensor, device: str = 'auto', **kwargs):
 
 
 @torch.no_grad()
-def axis_align(eigvec: torch.Tensor, device: str = 'auto', max_iter=1000, n_sample=10240):
+def axis_align(eigvec: torch.Tensor, device: str = None, max_iter=1000, n_sample=10240):
     """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
 
     Args:
