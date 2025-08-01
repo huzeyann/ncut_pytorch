@@ -1,13 +1,12 @@
 # %%
 import torch
-from ncut_pytorch.predictor import NcutDinoPredictor
+from ncut_pytorch.predictor import NcutDinoPredictorSR
 from PIL import Image
 import numpy as np
 # %%
 
-predictor = NcutDinoPredictor(backbone='dino_512',
-                          n_segments=[5, 10, 20, 40, 80]
-                          )
+predictor = NcutDinoPredictorSR(input_size=512, dtype=torch.float16, batch_size=8)
+predictor = predictor.to('cuda')
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', '/images/guitar_ego.jpg']
 
@@ -17,7 +16,7 @@ predictor.set_images(images)
 # %%
 %matplotlib widget
 # %%
-heatmaps, masks = predictor.preview([500, 500], 0)
+masks = predictor.preview([500, 500], 0)
 
 import matplotlib.pyplot as plt
 
@@ -62,7 +61,7 @@ def on_hover(event):
         if ax == event.inaxes:
             x, y = event.xdata, event.ydata
             # Recompute masks for all images, using the hovered coordinates and image index
-            heatmaps_new, masks_new = predictor.preview([x, y], idx)
+            masks_new = predictor.preview([x, y], idx)
             plot_masks(images, masks_new, fig, axes)
             break
 

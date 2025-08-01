@@ -30,13 +30,13 @@ class NcutVisionPredictor:
 
     def set_images(self,
                    images: List[Image.Image],
-                   n_segments: List[int] = (5, 10, 20, 40, 80)):
+                   n_segments: List[int] = (5, 10, 25, 50, 100)):
         """
         set the images and save its features in the cache.
         
         Args:
             images (List[Image.Image]): List of images to set.
-            n_segments (List[int], optional): Number of segments to cache. Defaults to [5, 10, 20, 40, 80]. 
+            n_segments (List[int], optional): Number of segments to cache.
                 n_segments is showed in the preview function.
         """
         features = self.forward_model(images)
@@ -94,8 +94,11 @@ class NcutVisionPredictor:
         self.__check_initialized()
         b, h, w = len(self._images), self._feat_hws[0], self._feat_hws[1]
 
-        point_index = self._image_xy_to_tensor_index(self._image_whs, self._feat_hws,
-                                                     [point_coord], [image_indices])[0]
+        point_index = self._image_xy_to_tensor_index(self._image_whs, 
+                                                     self._feat_hws,
+                                                     np.array([point_coord]), 
+                                                     np.array([image_indices])
+                                                     )[0]
         masks = self.predictor.get_hierarchy_masks(point_index)
         masks = [mask.reshape(b, h, w) for mask in masks]
         return masks
@@ -169,7 +172,10 @@ class NcutVisionPredictor:
         rgb = (rgb * 255).to(torch.uint8).cpu().numpy()
         return rgb
 
-    def color_discrete(self, cluster_assignment: torch.Tensor, draw_boundaries: bool = True) -> np.ndarray:
+    def color_discrete(self, 
+                       cluster_assignment: torch.Tensor,
+                       draw_border: bool = True,
+                       ) -> List[Image.Image]:
         """
         color the features by discrete mspace color palette.
         
@@ -178,7 +184,7 @@ class NcutVisionPredictor:
             draw_boundaries (bool, optional): Whether to draw boundaries. Defaults to True.
             
         Returns:
-            np.ndarray: RGB image. (b, h, w, 3)
+            List[Image.Image]: List of RGB images.
         """
         self.__check_initialized()
         b, h, w = cluster_assignment.shape
@@ -193,11 +199,34 @@ class NcutVisionPredictor:
             color = np.clip(color, 0, 255).astype(np.uint8)
             discrete_rgb[mask] = color
         discrete_rgb = discrete_rgb.reshape(b, h, w, 3)
-
-        if draw_boundaries:
-            discrete_rgb = self._draw_segments_boundaries(discrete_rgb)
-
-        return discrete_rgb
+        
+        # convert to PIL image and resize to the original size
+        pil_images = []
+        for i in range(b):
+            img = Image.fromarray(discrete_rgb[i])
+            img = img.resize(self._images[i].size, Image.Resampling.NEAREST)
+            if draw_border:
+                img = self._draw_segments_border(img)
+            pil_images.append(img)
+        
+        return pil_images
+    
+    @staticmethod
+    def _draw_segments_border(img: Image.Image, min_area_ratio: float = 0.0005) -> Image.Image:
+        img = np.array(img)
+        src_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        src_gray = src_gray.astype(np.int32)
+    
+        contours, hierarchy = cv2.findContours(src_gray, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    
+        area_threshold = src_gray.shape[0] * src_gray.shape[1] * min_area_ratio
+        drawing = img.copy()
+        for i in range(len(contours)):
+            area = cv2.contourArea(contours[i])
+            if area >= area_threshold:
+                color = (0, 0, 0)
+                cv2.drawContours(drawing, contours, i, color, 1, cv2.LINE_8, hierarchy, 0)
+        return Image.fromarray(drawing)
 
     @staticmethod
     def _image_xy_to_tensor_index(image_whs: np.array,
@@ -232,43 +261,6 @@ class NcutVisionPredictor:
         point_indices = point_indices + offsets
         point_indices = point_indices.astype(np.int64)
         return point_indices
-
-    @staticmethod
-    def _draw_segments_boundaries(images: np.ndarray, min_area: int = 100):
-        # images: (n_images, h, w, 3)
-        assert images.ndim == 4
-        n_images = images.shape[0]
-
-        def __draw_segments_boundaries_one_image(image: np.ndarray, min_area: int = 100):
-            # image: (h, w, 3)
-            assert image.ndim == 3
-            # Get unique colors (excluding black as background if necessary)
-            unique_colors = np.unique(image.reshape(-1, 3), axis=0)
-
-            # Create a copy of the original image to draw boundaries
-            output = image.copy()
-
-            # Iterate through each unique color
-            for color in unique_colors:
-                # Create a mask for the current color
-                mask = np.all(image == color, axis=-1).astype(np.uint8) * 255
-
-                # Find contours of the component
-                contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-                # Draw black boundary only if the component is large enough
-                for contour in contours:
-                    area = cv2.contourArea(contour)
-                    if area >= min_area:
-                        cv2.drawContours(output, [contour], -1, (0, 0, 0), 1)
-
-            return output
-
-        output = []
-        for i in range(n_images):
-            output.append(__draw_segments_boundaries_one_image(images[i], min_area))
-        output = np.stack(output)
-        return output
 
     def __check_initialized(self):
         if not self._initialized:

@@ -11,7 +11,7 @@ class Ncut:
             self,
             n_eig: int = 100,
             track_grad: bool = False,
-            d_gamma: float = 0.1,
+            d_gamma: float = 'auto',
             device: str = 'auto',
             **kwargs,
     ):
@@ -108,7 +108,7 @@ class Ncut:
     def fit_transform(self, X: torch.Tensor) -> torch.Tensor:
         return self.fit(X).transform(X)
 
-    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = 0.1,
+    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = 'auto',
                 device: str = 'auto', **kwargs) -> Union["Ncut", torch.Tensor]:
         if X is not None:
             # function-like behavior

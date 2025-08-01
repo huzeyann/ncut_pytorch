@@ -34,7 +34,7 @@ def ncut_fn(
         X: torch.Tensor,
         n_eig: int = 100,
         track_grad: bool = False,
-        d_gamma: float = 0.1,
+        d_gamma: float = 'auto',
         device: str = 'auto',
         gamma: float = None,
         make_orthogonal: bool = False,

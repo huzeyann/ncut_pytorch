@@ -3,6 +3,7 @@ __all__ = ["train_mspace_model", "mspace_viz_transform"]
 import logging
 from collections import defaultdict
 from functools import partial
+import warnings
 
 import pytorch_lightning as pl
 import torch
@@ -57,7 +58,7 @@ def flag_space_loss(eigvec_gt, eigvec_hat, n_eig, start=2, step_mult=2, weight=N
             break
     return loss
 
-def filter_closeby_eigval(eigvec, eigval, threshold=1e-12):
+def filter_closeby_eigval(eigvec, eigval, threshold=1e-10):
     # filter out eigvals that are too close to each other
     # so the gradient is more stable
     eigval_diff = torch.diff(eigval).abs()
@@ -394,7 +395,7 @@ class TrainEncoder(pl.LightningModule):
                     total_loss += eigvec_loss
 
                     _log_grad_norm = log_grad_norm and i == 0
-                    self._log_loss(eigvec_loss, f"eigvec_d{self.degree[i]:.2f}", log_grad_norm=_log_grad_norm)
+                    self._log_loss(eigvec_loss, f"eigvec_d{self.degree[i]}", log_grad_norm=_log_grad_norm)
 
 
             if self.recon_loss > 0:
@@ -584,10 +585,22 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
 
     return model
 
+
+def try_train_three_times(*args, **kwargs):
+    for i in range(3):
+        try:
+            model, trainer = train_mspace_model(*args, **kwargs)
+            return model, trainer
+        except Exception as e:
+            warnings.warn(f"Error in training mspace model: {e}\nTrying again...")
+            continue
+    raise Exception("Failed to train mspace model after 3 times")
+
+
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()
     
-    model, trainer = train_mspace_model(X, X, return_trainer=True, **kwargs)
+    model, trainer = try_train_three_times(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)
     test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False, num_workers=4)

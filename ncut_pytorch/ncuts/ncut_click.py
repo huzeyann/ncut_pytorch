@@ -23,7 +23,7 @@ def ncut_click_prompt(
         bg_weight: float = 0.1,
         n_eig: int = 2,
         track_grad: bool = False,
-        d_gamma: float = 0.1,
+        d_gamma: float = 'auto',
         device: str = 'auto',
         gamma: float = None,
         no_propagation: bool = False,

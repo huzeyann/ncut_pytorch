@@ -1,6 +1,6 @@
 import torch
 import time
-from ncut_pytorch.utils.torch_mod import svd_lowrank as my_svd_lowrank
+from ncut_pytorch.utils.torch_mod import svd_lowrank as my_torch_svd_lowrank
 
 
 def svd_lowrank(mat: torch.Tensor, q: int):
@@ -14,7 +14,7 @@ def svd_lowrank(mat: torch.Tensor, q: int):
     if dtype == torch.float16 or dtype == torch.bfloat16:
         mat = mat.float()  # svd_lowrank does not support float16
 
-    u, s, v = my_svd_lowrank(mat, q=q + 10)
+    u, s, v = my_torch_svd_lowrank(mat, q=q + 10)
 
     u = u[:, :q]
     s = s[:q]
@@ -38,7 +38,7 @@ def svd_lowrank_jit(mat: torch.Tensor, q: int):
     if dtype == torch.float16 or dtype == torch.bfloat16:
         mat = mat.float()  # svd_lowrank does not support float16
 
-    u, s, v = my_svd_lowrank(mat, q=q + 10)
+    u, s, v = my_torch_svd_lowrank(mat, q=q + 10)
 
     u = u[:, :q]
     s = s[:q]

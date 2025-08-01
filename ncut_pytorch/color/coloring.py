@@ -45,7 +45,7 @@ def mspace_color(
         repulsion_loss=1.0,
         attraction_loss=100.,
         axis_align_loss=100.,
-        degree=[0.1, 0.5],
+        degree=['auto'],
         **kwargs)
 
     rgb = rgb_from_nd_colormap(low_dim_embedding, q=q)

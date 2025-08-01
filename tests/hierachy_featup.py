@@ -1,6 +1,6 @@
 # %%
 from ncut_pytorch import Ncut, mspace_color
-from ncut_pytorch.predictor.dino import hires_dino_1024
+from ncut_pytorch.predictor.dino import hires_dino_1024, hires_dino_512
 
 import os
 
@@ -10,7 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 from einops import rearrange, repeat
 # %%
-model, transform = hires_dino_1024()
+model, transform = hires_dino_512()
 # %%
 from PIL import Image
 

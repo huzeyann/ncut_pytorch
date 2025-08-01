@@ -3,7 +3,7 @@ import math
 import numpy as np
 import torch
 
-from .torch_mod import svd_lowrank as my_svd_lowrank
+from .torch_mod import svd_lowrank as my_torch_svd_lowrank
 
 
 def get_affinity(
@@ -25,7 +25,7 @@ def get_affinity(
     X2 = X1 if X2 is None else X2
 
     distances = torch.cdist(X1, X2, p=2) ** 2
-    A = torch.exp(-distances / (2 * gamma * X1.shape[1] + 1e-8))
+    A = torch.exp(-distances / (2 * gamma * X1.var(0).sum() + 1e-8))
 
     return A
 
@@ -53,7 +53,7 @@ def svd_lowrank(mat: torch.Tensor, q: int):
     if dtype == torch.float16 or dtype == torch.bfloat16:
         mat = mat.float()  # svd_lowrank does not support float16
 
-    u, s, v = my_svd_lowrank(mat, q=q + 10)
+    u, s, v = my_torch_svd_lowrank(mat, q=q + 10)
 
     u = u[:, :q]
     s = s[:q]

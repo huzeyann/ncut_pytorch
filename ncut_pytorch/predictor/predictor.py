@@ -36,7 +36,7 @@ class NcutPredictor:
 
     def initialize(self,
                    features: torch.Tensor,
-                   n_segments: Union[List[int], int] = (5, 10, 20, 40, 80)
+                   n_segments: Union[List[int], int] = (5, 10, 25, 50, 100)
                    ) -> None:
         self._features = features
         if isinstance(n_segments, int):
@@ -144,9 +144,9 @@ class NcutPredictor:
         self._color_palette = mspace_color(self._eigvecs[:, :n_eig])
 
     def __check_initialized(self) -> None:
-        if not self._initialized or not hasattr(self, '_features') or not hasattr(self,
-                                                                                  '_hierarchy_assign') or not hasattr(
-            self, '_eigvecs'):
+        if not self._initialized or not hasattr(self, '_features') or \
+            not hasattr(self, '_hierarchy_assign') or \
+            not hasattr(self, '_eigvecs'):
             raise NotInitializedError("Not initialized, please call initialize() first")
 
     def to(self, device: Union[str, torch.device]):
