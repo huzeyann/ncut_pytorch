@@ -8,6 +8,7 @@ from ncut_pytorch import mspace_color
 from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 from ncut_pytorch.ncuts.ncut_kway import axis_align
 from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
+from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.math import chunked_matmul
 
 
@@ -33,21 +34,25 @@ class NcutPredictor:
         self._R: torch.Tensor
         self._fg_idx: int
         self._bg_idx: int
+        
+        # kway ncut states
+        self._kway_sample_idx: torch.Tensor
 
     def initialize(self,
                    features: torch.Tensor,
-                   n_segments: Union[List[int], int] = (5, 10, 25, 50, 100)
+                   n_segments: Union[List[int], int] = (5, 25, 50, 100, 250)
                    ) -> None:
         self._features = features
         if isinstance(n_segments, int):
             n_segments = [n_segments]
         self.refresh_eigvecs(max(n_segments))
-        self.cache_hierarchy(n_segments)
         self._initialized = True
+        self.cache_hierarchy(n_segments)
 
     def refresh_eigvecs(self, n_eig: int) -> None:
         eigvecs, eigval = ncut_fn(self._features, n_eig=n_eig, device=self.device)
         self._eigvecs = eigvecs
+        self._kway_sample_idx = farthest_point_sampling(eigvecs, 10240, device=self.device)
 
     def get_n_eigvecs(self, n_eig: int) -> torch.Tensor:
         cache_hit = n_eig <= self._eigvecs.shape[1]
@@ -58,16 +63,13 @@ class NcutPredictor:
     def cache_hierarchy(self, n_segments: List[int]) -> None:
         hierarchy_assign = []
         for n_eig in n_segments:
-            eigvecs = self.get_n_eigvecs(n_eig)
-            kway_eigvecs = kway_ncut(eigvecs, device=self.device)
-            cluster_assignment = kway_eigvecs.argmax(dim=1).cpu()
-            hierarchy_assign.append(cluster_assignment)
+            hierarchy_assign.append(self.get_n_segments(n_eig))
         self._hierarchy_assign = hierarchy_assign
 
     def get_n_segments(self, n_cluster: int) -> torch.Tensor:
         self.__check_initialized()
         eigvecs = self.get_n_eigvecs(n_cluster)
-        kway_eigvec = kway_ncut(eigvecs, device=self.device)
+        kway_eigvec = kway_ncut(eigvecs, device=self.device, sample_idx=self._kway_sample_idx)
         cluster_assignment = kway_eigvec.argmax(dim=1).cpu()
         return cluster_assignment
 
@@ -145,7 +147,6 @@ class NcutPredictor:
 
     def __check_initialized(self) -> None:
         if not self._initialized or not hasattr(self, '_features') or \
-            not hasattr(self, '_hierarchy_assign') or \
             not hasattr(self, '_eigvecs'):
             raise NotInitializedError("Not initialized, please call initialize() first")
 

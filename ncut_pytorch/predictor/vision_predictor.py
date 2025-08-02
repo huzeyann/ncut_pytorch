@@ -30,7 +30,7 @@ class NcutVisionPredictor:
 
     def set_images(self,
                    images: List[Image.Image],
-                   n_segments: List[int] = (5, 10, 25, 50, 100)):
+                   n_segments: List[int] = (5, 25, 50, 100, 250)):
         """
         set the images and save its features in the cache.
         
@@ -62,7 +62,7 @@ class NcutVisionPredictor:
             all_features.append(features)
         return torch.cat(all_features, dim=0)
 
-    def generate(self, n_cluster: int) -> torch.Tensor:
+    def generate(self, n_segment: int) -> torch.Tensor:
         """
         generate the cluster assignment for the images.
         
@@ -73,7 +73,7 @@ class NcutVisionPredictor:
             torch.Tensor: Cluster assignment for the images. (b, h, w)
         """
         self.__check_initialized()
-        cluster_assignment = self.predictor.get_n_segments(n_cluster)
+        cluster_assignment = self.predictor.get_n_segments(n_segment)
         b, h, w = len(self._images), self._feat_hws[0], self._feat_hws[1]
         cluster_assignment = cluster_assignment.reshape(b, h, w)
         return cluster_assignment
@@ -102,6 +102,40 @@ class NcutVisionPredictor:
         masks = self.predictor.get_hierarchy_masks(point_index)
         masks = [mask.reshape(b, h, w) for mask in masks]
         return masks
+
+    def summary(self,
+                n_segments: List[int] = (5, 10, 25, 50, 100),
+                draw_border: bool = True,
+                ) -> List[torch.Tensor]:
+        """
+        summary the cluster assignment for the images.
+        
+        Args:
+            n_segments (List[int]): Number of segments to summary.
+        """
+        self.__check_initialized()
+        display_hw = 512
+        
+        colors = []
+        colors.append(self._images)
+        for n_segment in n_segments:
+            cluster_assignment = self.generate(n_segment)
+            color = self.color_discrete(cluster_assignment, draw_border=draw_border)
+            colors.append(color)
+        color = self.color_continues()
+        colors.append(color)
+        
+        # make a grid of images
+        n_rows = len(self._images)
+        n_cols = len(n_segments) + 2
+        grid_image = Image.new('RGB', size=(n_cols * display_hw, n_rows * display_hw))
+        for i in range(n_rows):
+            for j in range(n_cols):
+                img = colors[j][i]
+                img = Image.fromarray(np.array(img))
+                img = img.resize((display_hw, display_hw), Image.Resampling.NEAREST)
+                grid_image.paste(img, box=(j * display_hw, i * display_hw))
+        return grid_image
 
     def predict(self,
                 point_coords: np.ndarray,

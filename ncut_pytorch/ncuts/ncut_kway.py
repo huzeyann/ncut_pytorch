@@ -25,7 +25,7 @@ def kway_ncut(eigvec: torch.Tensor, device: str = None, **kwargs):
 
 
 @torch.no_grad()
-def axis_align(eigvec: torch.Tensor, device: str = None, max_iter=1000, n_sample=10240):
+def axis_align(eigvec: torch.Tensor, device: str = None, max_iter=1000, n_sample=10240, sample_idx=None):
     """Multiclass Spectral Clustering, SX Yu, J Shi, 2003
 
     Args:
@@ -38,7 +38,8 @@ def axis_align(eigvec: torch.Tensor, device: str = None, max_iter=1000, n_sample
 
     # subsample the eigenvectors, to speed up the computation
     n, k = eigvec.shape
-    sample_idx = farthest_point_sampling(eigvec, n_sample, device=device)
+    if sample_idx is None:
+        sample_idx = farthest_point_sampling(eigvec, n_sample, device=device)
     eigvec = eigvec[sample_idx]
 
     eigvec = F.normalize(eigvec, dim=1)

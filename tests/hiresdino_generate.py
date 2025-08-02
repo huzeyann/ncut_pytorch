@@ -14,7 +14,7 @@ images = [Image.open(image_path) for image_path in default_images]
 predictor.set_images(images)
 
 # %%
-segments = predictor.generate(n_cluster=32)
+segments = predictor.generate(n_segment=32)
 color = predictor.color_discrete(segments, draw_border=True)
 # %%
 import matplotlib.pyplot as plt

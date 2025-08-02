@@ -1,3 +1,4 @@
+# %%
 import torch
 from PIL import Image
 from matplotlib import pyplot as plt
@@ -34,12 +35,15 @@ if __name__ == "__main__":
     transform = get_input_transform(resize=1024)
     model = SAM()
     ncut_sam = NcutVisionPredictor(model, transform, batch_size=1)
-    ncut_sam = ncut_sam.to('mps')
+    ncut_sam = ncut_sam.to('cuda')
 
-    image = Image.open("images/view_0.jpg")
-    ncut_sam.set_images([image])
-    segments = ncut_sam.generate(n_cluster=32)
-    color = ncut_sam.color_discrete(segments, draw_border=True)
-    plt.imshow(color[0])
-    plt.show()
+    
+    images = [Image.open("images/view_0.jpg"), Image.open("images/view_1.jpg"), Image.open("images/view_2.jpg")
+              , Image.open("images/view_3.jpg"), Image.open("images/view_ego.jpg"), Image.open("images/image2.jpg")]
+    ncut_sam.set_images(images)
+    
+    image = ncut_sam.summary()
 
+# %%
+image
+# %%
