@@ -1,8 +1,8 @@
 
 ### pytorch code package
-    [ ] custom model unit test
+    [x] custom model
     [ ] inverse transform
-    [ ] predictors
+    [^] predictors
         [x] vision predictor  `ncut_pytorch/predictor/vision_predictor.py`
         [ ] language predictor
         [ ] vision-language predictor

@@ -176,7 +176,7 @@ def combine_transforms_pairwise(
 def get_input_transform(resize: int = 512, crop: Optional[int] = None) -> transforms.Compose:
     if crop is None:
         crop = resize
-
+    
     transform = transforms.Compose(
         [
             transforms.Resize(resize),

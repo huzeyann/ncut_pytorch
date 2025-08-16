@@ -39,7 +39,7 @@ class NcutVisionPredictor:
             n_segments (List[int], optional): Number of segments to cache.
                 n_segments is showed in the preview function.
         """
-        features = self.forward_model(images)
+        features = self.forward_model(images)  # (b, c, h, w)
         self._images = images
         self._image_whs = np.array([image.size for image in images])
         self._feat_hws = (features.shape[2], features.shape[3])
@@ -48,18 +48,18 @@ class NcutVisionPredictor:
         self.predictor.initialize(flat_features, n_segments)
         self._initialized = True
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def forward_model(self, images: List[Image.Image]) -> torch.Tensor:
         device = next(self.model.parameters()).device
-
-        all_features = []
-        for i in range(0, len(images), self.batch_size):
-            batch_images = images[i:i + self.batch_size]
-            transformed_images = torch.stack([self.transform(image) for image in batch_images])
-            transformed_images = transformed_images.to(device)
-            features = self.model(transformed_images)
-            features = features.to('cpu')
-            all_features.append(features)
+        with torch.autocast(device_type=device.type, enabled=True):
+            all_features = []
+            for i in range(0, len(images), self.batch_size):
+                batch_images = images[i:i + self.batch_size]
+                transformed_images = torch.stack([self.transform(image) for image in batch_images])
+                transformed_images = transformed_images.to(device)
+                features = self.model(transformed_images)
+                features = features.to('cpu')
+                all_features.append(features)
         return torch.cat(all_features, dim=0)
 
     def generate(self, n_segment: int) -> torch.Tensor:
@@ -104,7 +104,7 @@ class NcutVisionPredictor:
         return masks
 
     def summary(self,
-                n_segments: List[int] = (5, 10, 25, 50, 100),
+                n_segments: List[int] = (5, 25, 50, 100, 250),
                 draw_border: bool = True,
                 ) -> List[torch.Tensor]:
         """
@@ -244,6 +244,9 @@ class NcutVisionPredictor:
             pil_images.append(img)
         
         return pil_images
+    
+    def refresh_color_palette(self):
+        self.predictor.refresh_color_palette()
     
     @staticmethod
     def _draw_segments_border(img: Image.Image, min_area_ratio: float = 0.0005) -> Image.Image:

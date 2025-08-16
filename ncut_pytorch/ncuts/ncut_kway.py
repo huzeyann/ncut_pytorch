@@ -69,9 +69,17 @@ def axis_align(eigvec: torch.Tensor, device: str = None, max_iter=1000, n_sample
 
         # SVD decomposition
         _out = _eigenvectors_discrete.T @ eigvec
-        U, S, Vh = torch.linalg.svd(_out, full_matrices=False)
+        # Handle autocast for SVD - SVD operations don't support half precision
+        _out_dtype = _out.dtype
+        with torch.autocast(device_type=_out.device.type, enabled=False):
+            if _out_dtype == torch.float16 or _out_dtype == torch.bfloat16:
+                _out = _out.float()
+            U, S, Vh = torch.linalg.svd(_out, full_matrices=False)
+        # Convert back to original dtype
+        U = U.to(_out_dtype)
+        S = S.to(_out_dtype)
+        Vh = Vh.to(_out_dtype)
         V = Vh.T
-        # U, S, V = svd_lowrank(_out, 100)
 
         # Compute the Ncut value
         ncut_value = 2 * (n - torch.sum(S))

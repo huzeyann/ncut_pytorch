@@ -16,7 +16,6 @@ class NotInitializedError(Exception):
     """Raised when trying to use predictor methods before calling initialize()"""
     pass
 
-
 class NcutPredictor:
     _initialized: bool = False
     device: str = 'cpu'

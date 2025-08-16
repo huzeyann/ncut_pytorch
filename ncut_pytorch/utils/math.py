@@ -41,7 +41,6 @@ def keep_topk_per_row(A: torch.Tensor, k: int = 10):
     topk_A, topk_indices = A.topk(k=k, dim=-1, largest=True)
     return topk_A, topk_indices
 
-
 def svd_lowrank(mat: torch.Tensor, q: int):
     """
     SVD lowrank
@@ -50,10 +49,11 @@ def svd_lowrank(mat: torch.Tensor, q: int):
     return: (n, q), (q,), (q, m)
     """
     dtype = mat.dtype
-    if dtype == torch.float16 or dtype == torch.bfloat16:
-        mat = mat.float()  # svd_lowrank does not support float16
+    with torch.autocast(device_type=mat.device.type, enabled=False):
+        if dtype == torch.float16 or dtype == torch.bfloat16:
+            mat = mat.float()  # svd_lowrank does not support float16
 
-    u, s, v = my_torch_svd_lowrank(mat, q=q + 10)
+        u, s, v = my_torch_svd_lowrank(mat, q=q + 10)
 
     u = u[:, :q]
     s = s[:q]
