@@ -553,7 +553,7 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
     model = TrainEncoder(c_in, c_out, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
     
     dataset = TensorDataset(compress_feats, uncompress_feats)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
     trainer_args = {
         'accelerator': auto_device(),
@@ -587,15 +587,16 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
 
 
 def try_train_three_times(*args, **kwargs):
-    for i in range(3):
-        try:
-            model, trainer = train_mspace_model(*args, **kwargs)
-            return model, trainer
-        except Exception as e:
-            warnings.warn(f"Error in training mspace model: {e}\nTrying again...")
-            continue
-    raise Exception("Failed to train mspace model after 3 times")
-
+    # for i in range(3):
+    #     try:
+    #         model, trainer = train_mspace_model(*args, **kwargs)
+    #         return model, trainer
+    #     except Exception as e:
+    #         warnings.warn(f"Error in training mspace model: {e}\nTrying again...")
+    #         continue
+    # raise Exception("Failed to train mspace model after 3 times")
+    model, trainer = train_mspace_model(*args, **kwargs)
+    return model, trainer
 
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()
@@ -603,7 +604,7 @@ def mspace_viz_transform(X, return_model=False, **kwargs):
     model, trainer = try_train_three_times(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)
-    test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False, num_workers=0)
     compressed = trainer.predict(model, test_loader)
     compressed = torch.cat(compressed, dim=0)
     if return_model:

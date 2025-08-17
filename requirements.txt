@@ -1,5 +1,5 @@
-torch~=2.0
-torchvision>=0.15.0
+torch>=2.7.1
+torchvision>=0.23.0
 fpsample>=0.2.0
 pytorch-lightning~=2.0
 pillow

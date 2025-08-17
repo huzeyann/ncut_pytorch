@@ -173,7 +173,7 @@ def combine_transforms_pairwise(
 
 
 # ==================== PYTORCH INPUT TRANSFORMS ====================
-def get_input_transform(resize: int = 512, crop: Optional[int] = None) -> transforms.Compose:
+def get_input_transform(resize: Union[int, Tuple[int, int]] = 512, crop: Optional[int] = None) -> transforms.Compose:
     if crop is None:
         crop = resize
     
