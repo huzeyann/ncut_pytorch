@@ -1,11 +1,11 @@
 URLS = {
-    "dinov3_vits16": "https://huggingface.co/huzey/mydv3/blob/master/dinov3_vits16.pth?download=true",
-    "dinov3_vits16plus": "https://huggingface.co/huzey/mydv3/blob/master/dinov3_vits16plus.pth?download=true",
-    "dinov3_vitb16": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vitb16.pth?download=true",
-    "dinov3_vitl16": "https://huggingface.co/huzey/mydv3/blob/master/dinov3_vitl16.pth?download=true",
-    "dinov3_vith16plus": "https://huggingface.co/huzey/mydv3/blob/master/dinov3_vith16plus.pth?download=true",
-    "dinov3_vitl16_sat493m": "https://huggingface.co/huzey/mydv3/blob/master/dinov3_vitl16_sat493m.pth?download=true",
-    "dinov3_vitl16_dinotxt": "https://huggingface.co/huzey/mydv3/blob/master/dinov3_vitl16_dinotxt.pth?download=true",
+    "dinov3_vits16": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
+    "dinov3_vits16plus": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vits16plus_pretrain_lvd1689m-4057cbaa.pth",
+    "dinov3_vitb16": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+    "dinov3_vitl16": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth",
+    "dinov3_vith16plus": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth",
+    "dinov3_vitl16_sat493m": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vitl16_pretrain_sat493m-eadcf0ff.pth",
+    "dinov3_vitl16_dinotxt": "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vitl16_dinotxt_vision_head_and_text_encoder-a442d8f5.pth",
 }
 
 import torch
@@ -19,11 +19,17 @@ class Dinov3Backbone(nn.Module):
         super().__init__()
         # ckpt_path = download_by_wget(URLS[config])
         # dinov3 = torch.hub.load("facebookresearch/dinov3", config, weights=ckpt_path)
-        dinov3 = torch.hub.load("facebookresearch/dinov3", config, weights=URLS[config])
+        if config == "dinov3_vitl16_sat493m":
+            c = "dinov3_vitl16"
+        else:
+            c = config
+        # if config == "dinov3_vitl16_dinotxt":
+        #     config = "dinov3_vitl16"
+        dinov3 = torch.hub.load("facebookresearch/dinov3", c, weights=URLS[config])
         self.model = dinov3
 
     def forward(self, x: torch.Tensor):
-        return self.model.get_intermediate_layers(x, reshape=True)[0]
+        return self.model.get_intermediate_layers(x, reshape=True)[0]  # b, c, h, w
 
 
 def download_by_wget(url):

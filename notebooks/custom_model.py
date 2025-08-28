@@ -15,7 +15,7 @@ URL_DICT = {
 }
 
 class SAM(torch.nn.Module):
-    def __init__(self, model_cfg='vit_b', **kwargs):
+    def __init__(self, model_cfg='vit_l', **kwargs):
         super().__init__(**kwargs)
 
         statedict = torch.hub.load_state_dict_from_url(URL_DICT[model_cfg], map_location='cpu')
@@ -29,6 +29,7 @@ class SAM(torch.nn.Module):
         with torch.no_grad():
             x = torch.nn.functional.interpolate(x, size=(1024, 1024), mode="bilinear")
         out = self.sam.image_encoder(x)
+        out = torch.nn.functional.normalize(out, dim=-1)
         return out
 
 if __name__ == "__main__":
@@ -40,10 +41,13 @@ if __name__ == "__main__":
     
     images = [Image.open("images/view_0.jpg"), Image.open("images/view_1.jpg"), Image.open("images/view_2.jpg")
               , Image.open("images/view_3.jpg"), Image.open("images/view_ego.jpg"), Image.open("images/image2.jpg")]
+    images = [Image.open("images/view_0.jpg"), Image.open("images/view_2.jpg"), Image.open("images/view_ego.jpg")]
+
+    images = [Image.open(f"images/pose/single_{i:04d}.jpg") for i in range(20)]
+
     ncut_sam.set_images(images)
     
-    image = ncut_sam.summary()
-
-# %%
+    image = ncut_sam.summary(n_segments=[10, 25, 50, 100])
+#%%
 image
 # %%

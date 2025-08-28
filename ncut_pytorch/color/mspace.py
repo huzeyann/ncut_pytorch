@@ -586,22 +586,22 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
     return model
 
 
-def try_train_three_times(*args, **kwargs):
-    # for i in range(3):
-    #     try:
-    #         model, trainer = train_mspace_model(*args, **kwargs)
-    #         return model, trainer
-    #     except Exception as e:
-    #         warnings.warn(f"Error in training mspace model: {e}\nTrying again...")
-    #         continue
-    # raise Exception("Failed to train mspace model after 3 times")
-    model, trainer = train_mspace_model(*args, **kwargs)
-    return model, trainer
+def try_train_mspace(*args, **kwargs):
+    # TODO: msapce training sometimes fails into nan, why?
+    for i in range(3):
+        try:
+            model, trainer = train_mspace_model(*args, **kwargs)
+            return model, trainer
+        except Exception as e:
+            warnings.warn(f"Error in training mspace model: {e}\nTrying again...")
+            continue
+    raise Exception("Failed to train mspace model after 3 times")
+    # model, trainer = train_mspace_model(*args, **kwargs)
+    # return model, trainer
 
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()
-    
-    model, trainer = try_train_three_times(X, X, return_trainer=True, **kwargs)
+    model, trainer = train_mspace_model(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)
     test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False, num_workers=0)

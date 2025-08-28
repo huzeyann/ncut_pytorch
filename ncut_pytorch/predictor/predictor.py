@@ -47,6 +47,7 @@ class NcutPredictor:
         self.refresh_eigvecs(max(n_segments))
         self._initialized = True
         self.cache_hierarchy(n_segments)
+        self._color_palette = []
 
     def refresh_eigvecs(self, n_eig: int) -> None:
         eigvecs, eigval = ncut_fn(self._features, n_eig=n_eig, device=self.device)
@@ -143,6 +144,9 @@ class NcutPredictor:
     def refresh_color_palette(self, n_eig: int = 50) -> None:
         self.__check_initialized()
         self._color_palette = mspace_color(self._eigvecs[:, :n_eig])
+        
+    def inference_new_color_palette(self, new_image: torch.Tensor) -> torch.Tensor:
+        ... # TODO: implement this
 
     def __check_initialized(self) -> None:
         if not self._initialized or not hasattr(self, '_features') or \

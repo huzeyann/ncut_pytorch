@@ -1,9 +1,9 @@
 # %%
 from ncut_pytorch.predictor import NcutDinov3Predictor
 import time
-predictor = NcutDinov3Predictor((512, 512), "dinov3_vits16")
+predictor = NcutDinov3Predictor((2048, 2048), "dinov3_vitl16")
 # %%
-predictor = predictor.to('mps')
+predictor = predictor.to('cuda')
 from PIL import Image
 
 
