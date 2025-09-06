@@ -269,7 +269,7 @@ class TrainEncoder(pl.LightningModule):
                  repulsion_loss=0.1, attraction_loss=0., 
                  boundary_loss=0., zero_center_loss=0.01,
                  lr=0.001, progress_bar=True, training_steps=500,
-                 degree=[0.05, 0.1, 0.2, 0.5], kway_weight_gamma=5.0,
+                 degree=['auto'], kway_weight_gamma=5.0,
                  encoder_activation='gelu', decoder_activation='gelu', 
                  final_activation='identity',
                  log_grad_norm=False, 
@@ -333,7 +333,7 @@ class TrainEncoder(pl.LightningModule):
                 # Calculate average eigvec loss from all degree values
                 eigvec_losses = []
                 for i, degree in enumerate(self.degree):
-                    loss_key = f"loss/eigvec_d{degree:.2f}"
+                    loss_key = f"loss/eigvec_d{degree}"
                     if loss_key in self.loss_history and self.loss_history[loss_key]:
                         eigvec_losses.append(self.loss_history[loss_key][-1])
                 if eigvec_losses:
@@ -346,7 +346,6 @@ class TrainEncoder(pl.LightningModule):
         input_feats, output_feats = batch
         
         stored_eigvec_gt = {}
-        stored_eigvec_weight = {}
         with torch.no_grad():
             # Compute eigvec_gt only once for each set of iterations
             if self.eigvec_loss != 0:
@@ -366,11 +365,6 @@ class TrainEncoder(pl.LightningModule):
                     eigvec_gt, eigval_gt = ncut_wrapper(input_feats, n_eig, gamma=gamma)
                     stored_eigvec_gt[key] = eigvec_gt
 
-                    # Compute weight for each node, using kway ncut
-                    eigvec_gt_kway = kway_ncut(eigvec_gt)
-                    weight = eigvec_gt_kway.max(1).values.flatten()
-                    weight = weight ** self.kway_weight_gamma
-                    stored_eigvec_weight[key] = weight
         
         # Run the same batch 10 times, updating parameters after each iteration
         for iteration in range(self.N_ITER_PER_STEP):
@@ -386,11 +380,10 @@ class TrainEncoder(pl.LightningModule):
                     # Reuse the stored eigvec_gt
                     key = f"{i}_{degree}_{gamma}_{n_eig}"
                     eigvec_gt = stored_eigvec_gt[key]
-                    weight = stored_eigvec_weight[key]
 
                     # Compute eigvec_hat for each iteration
                     eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, n_eig, gamma=gamma)
-                    eigvec_loss = flag_space_loss(eigvec_gt, eigvec_hat, n_eig=n_eig, weight=weight)
+                    eigvec_loss = flag_space_loss(eigvec_gt, eigvec_hat, n_eig=n_eig, weight=None)
                     eigvec_loss = eigvec_loss * self.eigvec_loss
                     total_loss += eigvec_loss
 

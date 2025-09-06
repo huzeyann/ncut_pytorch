@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from ncut_pytorch import kway_ncut, ncut_fn
-from ncut_pytorch import mspace_color
+from ncut_pytorch import mspace_color, tsne_color, umap_color
 from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 from ncut_pytorch.ncuts.ncut_kway import axis_align
 from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
@@ -19,6 +19,7 @@ class NotInitializedError(Exception):
 class NcutPredictor:
     _initialized: bool = False
     device: str = 'cpu'
+    color_method: str = 'umap'
 
     def __init__(self):
         self._features: torch.Tensor
@@ -143,7 +144,14 @@ class NcutPredictor:
 
     def refresh_color_palette(self, n_eig: int = 50) -> None:
         self.__check_initialized()
-        self._color_palette = mspace_color(self._eigvecs[:, :n_eig])
+        if self.color_method == 'mspace':
+            self._color_palette = mspace_color(self._eigvecs[:, :n_eig])
+        elif self.color_method == 'tsne':
+            self._color_palette = tsne_color(self._eigvecs[:, :n_eig])
+        elif self.color_method == 'umap':
+            self._color_palette = umap_color(self._eigvecs[:, :n_eig])
+        else:
+            raise ValueError(f"Invalid color method: {self.color_method}")
         
     def inference_new_color_palette(self, new_image: torch.Tensor) -> torch.Tensor:
         ... # TODO: implement this

@@ -18,7 +18,8 @@ class NystromConfig:
     """
     n_sample = 10240  # number of samples for nystrom approximation, 10240 is large enough for most cases
     n_sample2 = 1024  # number of samples for eigenvector propagation, 1024 is large enough for most cases
-    n_neighbors = 8  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
+    n_neighbors = 32  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
+    n_neighbors_max_ratio = 1/32  # max ratio of n_neighbors to n_sample2, to avoid over smoothing
     matmul_chunk_size = 65536  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
     move_output_to_cpu = True  # if True, will move output to cpu, saves VRAM
     
@@ -172,7 +173,7 @@ def nystrom_propagate(
 
     all_outs = []
     n_chunk = config.matmul_chunk_size
-    n_neighbors = min(config.n_neighbors, len(indices))
+    n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
     for i in range(0, X.shape[0], n_chunk):
         end = min(i + n_chunk, X.shape[0])
 
