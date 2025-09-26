@@ -110,11 +110,6 @@ from ncut_pytorch import get_mask
 masks = get_mask(eigvectors, clicked_eigvec, threshold=0.5, gamma=1.0, denoise=True, denoise_area_th=3)
 ```
 
-#### Documentation
-::: ncut_pytorch.get_mask
-    options:
-      heading_level: 3
-
 
 ### Results: One point
 

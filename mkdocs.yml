@@ -61,9 +61,7 @@ nav:
     - Application: gallery_application.md
 
   - Guides:
-    - How to Get Better Segmentation: how_to_get_better_segmentation.md
     - Aligned NCUT: alignedcut_vs_ncut.md
-    - Memory Usage: memory_usage.md
     - Speed and Performance: speed_and_performance.md
     - Gradient of NCUT: gradient_of_ncut.md
 
@@ -77,7 +75,6 @@ nav:
   
   - API References:
     - NCUT APIs: api_reference.md
-    - Backbone APIs: backbones.md
     - Install Trouble Shooting: trouble_shooting.md
   
   - Demo: demo.md

@@ -7,7 +7,10 @@ from ncut_pytorch.utils.math import rbf_affinity
 
 
 class Ncut:
-
+    """
+    Class interface for Normalized Cut, save states of nystrom approximation, can be used to transform new data.
+    """
+    
     def __init__(
             self,
             n_eig: int = 100,
@@ -18,7 +21,6 @@ class Ncut:
             **kwargs,
     ):
         """
-        Normalized Cut, balanced sampling and nystrom approximation.
         
         Args:       
             n_eig (int): number of eigenvectors
@@ -63,10 +65,12 @@ class Ncut:
 
     def fit(self, X: torch.Tensor) -> "Ncut":
         """
+        Fit the Ncut model to the input features. save states of nystrom approximation.
+        
         Args:
             X (torch.Tensor): input features, shape (N, D)
         Returns:
-            self: Ncut instance
+            ncut (Ncut): Ncut instance
         """
         eigvec, eigval, indices, gamma = \
             ncut_fn(
@@ -88,10 +92,13 @@ class Ncut:
 
     def transform(self, X: torch.Tensor) -> torch.Tensor:
         """
+        Transform new data using the fitted Ncut model and it's saved states of nystrom approximation.
+        
         Args:
             X (torch.Tensor): input features, shape (N, D)
+            
         Returns:
-            (torch.Tensor): eigenvectors, shape (N, n_eig)
+            eigvec (torch.Tensor): eigenvectors, shape (N, n_eig)
         """
         # check if fit has been called
         if self._nystrom_x is None:
@@ -111,6 +118,14 @@ class Ncut:
         return eigvec
 
     def fit_transform(self, X: torch.Tensor) -> torch.Tensor:
+        """
+        
+        Args:
+            X (torch.Tensor): input features, shape (N, D)
+
+        Returns:
+            eigvec (torch.Tensor): eigenvectors, shape (N, n_eig)
+        """
         return self.fit(X).transform(X)
 
     def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = None,

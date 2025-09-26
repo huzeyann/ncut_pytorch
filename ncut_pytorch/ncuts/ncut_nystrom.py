@@ -40,12 +40,11 @@ def ncut_fn(
         device: str = None,
         gamma: float = None,
         make_orthogonal: bool = False,
-        no_propagation: bool = False,
         affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
+        no_propagation: bool = False,
         **kwargs,
 ) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
     """Normalized Cut, balanced sampling and nystrom approximation.
-    Function interface that returns both eigenvectors and eigenvalues.
 
     Args:
         X (torch.Tensor): input features, shape (N, D)
@@ -55,11 +54,12 @@ def ncut_fn(
         device (str): device, default 'auto' (auto detect GPU)
         gamma (float): affinity parameter, override d_gamma if provided
         make_orthogonal (bool): make eigenvectors orthogonal
-        no_propagation (bool): if True, return intermediate results without propagation
         affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
+        
     Returns:
-        (torch.Tensor): eigenvectors, shape (N, n_eig)
-        (torch.Tensor): eigenvalues, sorted in descending order, shape (n_eig,)
+        eigenvectors (torch.Tensor): shape (N, n_eig)
+        eigenvalues (torch.Tensor): sorted in descending order, shape (n_eig,)
+    
     Examples:
         >>> from ncut_pytorch import ncut_fn
         >>> import torch
