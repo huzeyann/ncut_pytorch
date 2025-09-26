@@ -4,11 +4,6 @@
 
 ## Convert Eigenvectors to RGB Color
 
-::: ncut_pytorch.eigenvector_to_rgb
-    options:
-      show_source: true
-      heading_level: 3
-
 ::: ncut_pytorch.rgb_from_tsne_3d
     options:
       show_source: true
@@ -70,21 +65,6 @@
       show_source: true
       heading_level: 3
 
-## Adding New Nodes to Existing Graph
-::: ncut_pytorch.propagate_eigenvectors
-    options:
-      show_source: true
-      heading_level: 3
-
-::: ncut_pytorch.propagate_rgb_color
-    options:
-      show_source: true
-      heading_level: 3
-
-::: ncut_pytorch.propagate_knn
-    options:
-      show_source: true
-      heading_level: 3
 
 ## NCUT Functional API
 ::: ncut_pytorch.nystrom_ncut
@@ -97,7 +77,3 @@
     options:
       heading_level: 3
 
-## Application: Segmentation
-::: ncut_pytorch.get_mask
-    options:
-      heading_level: 3

@@ -1,4 +1,6 @@
 mkdocs-material
 mkdocs-autorefs
 mkdocstrings[python]
+mkdocs-gen-files
+tomli
 ncut-pytorch

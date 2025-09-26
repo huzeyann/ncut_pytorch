@@ -1,4 +1,5 @@
 site_name: Nyström Normalized Cuts PyTorch
+site_description: !ENV [SITE_DESCRIPTION, "Normalized Cut and Nyström Approximation - v1.13.14"]
 
 repo_url: https://github.com/huzeyann/ncut_pytorch
 repo_name: ncut_pytorch
@@ -39,6 +40,9 @@ theme:
 plugins:
 - search
 - autorefs
+- gen-files:
+    scripts:
+      - docs/gen_version.py
 - mkdocstrings:
     enabled: !ENV [ENABLE_MKDOCSTRINGS, true]
     default_handler: python
@@ -54,6 +58,7 @@ nav:
     - Install & Quick Start: index.md
     - How NCUT Works: how_ncut_works.md 
     - NCUT and t-SNE/UMAP: compare.md
+    - Version Info: version.md
 
   - Gallery:
     - Gallery - Dataset: gallery_dataset.md
@@ -100,6 +105,9 @@ extra_javascript:
 copyright: Copyright &copy; 2024 Huzheng Yang
 
 extra:
+  version:
+    provider: mike
+    default: latest
   analytics:
     provider: google
     property: G-8CPZDV5GR1

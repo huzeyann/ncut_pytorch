@@ -10,6 +10,13 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.10"
+  jobs:
+    post_create_environment:
+      # Install tomli for Python < 3.11 compatibility
+      - pip install tomli
+    pre_build:
+      # Set up version information
+      - python docs/update_version.py
 
 mkdocs:
   configuration: mkdocs.yml
@@ -18,3 +25,5 @@ mkdocs:
 python:
   install:
     - requirements: mkdocs.txt
+    - method: pip
+      path: .
