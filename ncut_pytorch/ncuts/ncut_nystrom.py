@@ -17,6 +17,7 @@ class NystromConfig:
     Values are optimized based on empirical experiments, no need to change the values
     """
     n_sample = 10240  # number of samples for nystrom approximation, 10240 is large enough for most cases
+    n_sample_max_ratio = 1/4  # max ratio of n_sample to n_data, not full sample ensures balanced sampling
     n_sample2 = 1024  # number of samples for eigenvector propagation, 1024 is large enough for most cases
     n_neighbors = 32  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
     n_neighbors_max_ratio = 1/32  # max ratio of n_neighbors to n_sample2, to avoid over smoothing
@@ -77,7 +78,8 @@ def ncut_fn(
     torch.set_grad_enabled(track_grad)
 
     # subsample for nystrom approximation
-    nystrom_indices = farthest_point_sampling(X, n_sample=config.n_sample, device=device)
+    n_sample = min(config.n_sample, int(X.shape[0]*config.n_sample_max_ratio))
+    nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device)
     nystrom_X = X[nystrom_indices].to(device)
 
     # find optimal gamma for affinity matrix

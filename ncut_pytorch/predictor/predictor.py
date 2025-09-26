@@ -19,7 +19,7 @@ class NotInitializedError(Exception):
 class NcutPredictor:
     _initialized: bool = False
     device: str = 'cpu'
-    color_method: str = 'umap'
+    color_method: str = 'tsne'
 
     def __init__(self):
         self._features: torch.Tensor

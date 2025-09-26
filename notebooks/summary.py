@@ -13,7 +13,7 @@ ncut_sam = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
 # transform = get_input_transform(resize=(448, 448))
 # ncut_sam = NcutVisionPredictor(model, transform, 1)
 ncut_sam = ncut_sam.to('cuda')
-ncut_sam.predictor.color_method = 'umap'
+ncut_sam.predictor.color_method = 'mspace'
 
 
 images = [Image.open("images/view_0.jpg"), Image.open("images/view_1.jpg"), Image.open("images/view_2.jpg")

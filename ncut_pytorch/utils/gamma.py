@@ -44,12 +44,11 @@ def bin_and_find_mode(degrees, n_bins=20):
     degrees = degrees.to(torch.float32).to(torch.device('cpu'))
     counts, bin_edges = torch.histogram(degrees, bins=n_bins)
     
-    # Find the bin with most data
-    max_bin_idx = counts.argmax()
+    middle_bin_idx = n_bins // 2
     
     # Get the actual data in that bin
-    left_edge = bin_edges[max_bin_idx]
-    right_edge = bin_edges[max_bin_idx + 1]
+    left_edge = bin_edges[middle_bin_idx]
+    right_edge = bin_edges[middle_bin_idx + 1]
     
     mask = (degrees >= left_edge) & (degrees < right_edge)
     
