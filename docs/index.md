@@ -32,7 +32,7 @@
 </style>
 
 <div style="width: 60%; text-align: center; margin:0 auto;">
-    <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
+    <pre><code class="language-shell">pip install ncut-pytorch==1.13.14</code></pre>
 </div>
 
 
