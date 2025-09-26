@@ -1,0 +1,37 @@
+# Read the Docs configuration file for ncut_pytorch
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+# Set the OS, Python version and other tools you might need
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.11"
+    # You can also specify other tools here
+  jobs:
+    post_create_environment:
+      # Install poetry
+      - pip install poetry
+    post_install:
+      # Install dependencies with poetry
+      - poetry install --with docs
+
+# Build documentation in the "docs/" directory with MkDocs
+mkdocs:
+  configuration: mkdocs.yml
+  fail_on_warning: false
+
+# Optionally declare the Python requirements required to build your docs
+python:
+  install:
+    - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
+
+# Optional but recommended, declare the Python packages required to build your documentation
+# python:
+#   install:
+#   - requirements: docs/requirements.txt
