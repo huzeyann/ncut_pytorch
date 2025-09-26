@@ -176,6 +176,7 @@ def nystrom_propagate(
     all_outs = []
     n_chunk = config.matmul_chunk_size
     n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
+    n_neighbors = max(n_neighbors, 4)
     for i in range(0, X.shape[0], n_chunk):
         end = min(i + n_chunk, X.shape[0])
 
