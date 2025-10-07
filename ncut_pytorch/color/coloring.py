@@ -19,9 +19,9 @@ def _identity(X: torch.Tensor) -> torch.Tensor:
 def mspace_color(
         X: torch.Tensor,
         q: float = 0.95,
-        n_eig: Optional[int] = 32,
+        n_eig: Optional[int] = 8,
         n_dim: int = 3,
-        training_steps: int = 100,
+        training_steps: int = 300,
         progress_bar: bool = False,
         **kwargs: Any,
 ):
