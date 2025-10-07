@@ -1,11 +1,11 @@
 # %%
 import torch
-from ncut_pytorch.predictor import NcutDinoPredictorFeatUp, NcutDinoPredictorSR
-from ncut_pytorch.predictor.dino_predictor import NcutDinoPredictor
+from ncut_pytorch.predictor import NcutDinov3Predictor, NcutDinoPredictorSR
 from PIL import Image
 # %%
 
-predictor = NcutDinoPredictorSR(input_size=512, dtype=torch.float16, batch_size=8)
+# predictor = NcutDinoPredictorSR(input_size=(1024, 1024), batch_size=8)
+predictor = NcutDinoPredictorSR(batch_size=8)
 predictor = predictor.to('cuda')
 
 default_images = ['/images/image_0.jpg', '/images/image_1.jpg', '/images/guitar_ego.jpg'] * 1
@@ -14,7 +14,7 @@ images = [Image.open(image_path) for image_path in default_images]
 predictor.set_images(images)
 
 # %%
-segments = predictor.generate(n_segment=32)
+segments = predictor.generate(n_segment=32) 
 color = predictor.color_discrete(segments, draw_border=True)
 # %%
 import matplotlib.pyplot as plt

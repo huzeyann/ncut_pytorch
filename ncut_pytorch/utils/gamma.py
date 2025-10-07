@@ -11,16 +11,21 @@ def find_gamma_by_degree(X, d_gamma='auto', affinity_fn=rbf_affinity, X2=None, i
     if isinstance(d_gamma, float):
         assert d_gamma > 0, "d_gamma must be positive"
     gamma = init_gamma
-    current_degrees = affinity_fn(X, X2=X2, gamma=gamma).mean(1)
-    current_degree = current_degrees.mean().item()
+    scale_inv_gamma = gamma * X.var(0).sum()
+    
+    # find d_gamma
     if d_gamma == 'auto' or d_gamma is None:
+        current_degrees = affinity_fn(X, X2=X2, gamma=scale_inv_gamma).mean(1)
+        current_degree = current_degrees.mean().item()
         mask = current_degrees < current_degree
         d_gamma = bin_and_find_mode(current_degrees[mask])
-
+    
+    # find gamma, binary search
+    current_degree = affinity_fn(X, X2=X2, gamma=gamma).mean().item()
     i_iter = 0
     low, high = 0, float('inf')
     tol = r_tol * d_gamma
-    while abs(current_degree - d_gamma) > tol and i_iter < max_iter and gamma < 1:
+    while abs(current_degree - d_gamma) > tol and i_iter < max_iter:
         if current_degree > d_gamma:
             high = gamma
             gamma = (low + gamma) / 2
@@ -30,7 +35,6 @@ def find_gamma_by_degree(X, d_gamma='auto', affinity_fn=rbf_affinity, X2=None, i
         current_degree = affinity_fn(X, X2=X2, gamma=gamma).mean().item()
         i_iter += 1
         
-    gamma = min(gamma, 1)
     return gamma
 
 @torch.no_grad()

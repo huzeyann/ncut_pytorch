@@ -25,8 +25,7 @@ def rbf_affinity(
     X2 = X1 if X2 is None else X2
 
     distances = torch.cdist(X1, X2, p=2) ** 2
-    A = torch.exp(-distances / (2 * gamma * X1.var(0).sum() + 1e-8))
-
+    A = torch.exp(-distances / (2 * gamma + 1e-8))
     return A
 
 
