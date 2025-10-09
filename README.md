@@ -62,6 +62,7 @@ image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
 
 ```
 
+![summary](https://github.com/user-attachments/assets/a5d8a966-990b-4f6d-be10-abb00291bee2)
 
 
 >
