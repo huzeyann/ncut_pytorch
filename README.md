@@ -9,7 +9,7 @@
 
 ## Nyström Normalized Cut
 
-Normalized Cut and spectral embedding, 100x faster than sklean implementation. 
+Normalized Cut and spectral embedding, 100x faster than sklean implementation. $O(n)$ time complexity, $O(1)$ space complexity.
 
 
 https://github.com/user-attachments/assets/f0d40b1f-b8a5-4077-ab5f-e405f3ffb70f
@@ -60,6 +60,7 @@ images = [Image.open(f"images/view_{i}.jpg") for i in range(4)]
 predictor.set_images(images)
 
 image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
+display(image)
 
 ```
 
@@ -69,9 +70,9 @@ image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
 
 ## Performance
 
-`ncut_pytorch.Ncut` is $O(n)$ time complexity
+- `ncut_pytorch.Ncut` is $O(n)$ time complexity
 
-`sklearn.SpectralEmbedding` is $O(n^2)$ complexity.
+- `sklearn.SpectralEmbedding` is $O(n^2)$ time complexity.
 
 #### Setup:
 
@@ -90,7 +91,7 @@ SYSTEM: Ubuntu 22.04.3 LTS
 pytest unit_tests/bench_speed.py --benchmark-columns=mean,stddev --benchmark-sort=mean
 ```
 
-#### Results
+#### Results:
 
 ```
 ------------- benchmark 'ncut-pytorch (CPU) vs sklearn': 8 tests ------------
@@ -107,11 +108,12 @@ test_sklearn_3000_data_10_eig      1,246.4295 (488.11)   1,047.0191 (>1000.0)
 -----------------------------------------------------------------------------
 ```
 ```
-------------- benchmark 'ncut-pytorch (GPU) n_data': 4 tests -------------
+------------- benchmark 'ncut-pytorch (GPU) n_data': 5 tests -------------
 Name (time in ms)                         Mean            StdDev          
 --------------------------------------------------------------------------
 test_ncut_gpu_100_data_10_eig           2.9564 (1.0)      0.1816 (1.0)    
 test_ncut_gpu_1000_data_10_eig          4.6938 (1.59)     0.3933 (2.17)   
+test_ncut_gpu_10000_data_10_eig        67.9607 (22.98)    4.0902 (22.52)  
 test_ncut_gpu_100000_data_10_eig      396.9994 (134.29)   3.6202 (19.93)  
 test_ncut_gpu_1000000_data_10_eig     798.4598 (270.08)   1.5704 (8.65)   
 --------------------------------------------------------------------------
