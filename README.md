@@ -63,6 +63,8 @@ display(image)
 
 
 
+More examples and detailed usage can be found in the `examples` directory.
+
 ## Performance
 
 - `ncut_pytorch.Ncut` is $O(n)$ time complexity
