@@ -71,7 +71,12 @@ def axis_align(eigvec: torch.Tensor, device: str = None, max_iter=1000, n_sample
         _out = _eigenvectors_discrete.T @ eigvec
         # Handle autocast for SVD - SVD operations don't support half precision
         _out_dtype = _out.dtype
-        with torch.autocast(device_type=_out.device.type, enabled=False):
+        try:
+            with torch.autocast(device_type=_out.device.type, enabled=False):
+                if _out_dtype == torch.float16 or _out_dtype == torch.bfloat16:
+                    _out = _out.float()
+                U, S, Vh = torch.linalg.svd(_out, full_matrices=False)
+        except RuntimeError:
             if _out_dtype == torch.float16 or _out_dtype == torch.bfloat16:
                 _out = _out.float()
             U, S, Vh = torch.linalg.svd(_out, full_matrices=False)

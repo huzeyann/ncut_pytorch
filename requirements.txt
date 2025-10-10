@@ -1,12 +1,9 @@
-torch>=2.7.1
-torchvision>=0.23.0
+#torch>=2.7.1
+#torchvision>=0.23.0
+#pytorch-lightning~=2.0
 fpsample>=0.2.0
-pytorch-lightning~=2.0
 pillow
-numpy
+numpy<2.0
 tqdm
-pycolormap_2d
 scikit-learn
-scikit-image
 matplotlib
-memory_profiler

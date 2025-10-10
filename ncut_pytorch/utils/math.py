@@ -48,10 +48,16 @@ def svd_lowrank(mat: torch.Tensor, q: int):
     return: (n, q), (q,), (q, m)
     """
     dtype = mat.dtype
-    with torch.autocast(device_type=mat.device.type, enabled=False):
-        if dtype == torch.float16 or dtype == torch.bfloat16:
-            mat = mat.float()  # svd_lowrank does not support float16
 
+    try:
+        with torch.autocast(device_type=mat.device.type, enabled=False):
+            if dtype == torch.float16 or dtype == torch.bfloat16:
+                mat = mat.float()  # svd_lowrank does not support float16
+
+            u, s, v = my_torch_svd_lowrank(mat, q=q + 10)
+    except RuntimeError:
+        if dtype == torch.float16 or dtype == torch.bfloat16:
+            mat = mat.float()
         u, s, v = my_torch_svd_lowrank(mat, q=q + 10)
 
     u = u[:, :q]

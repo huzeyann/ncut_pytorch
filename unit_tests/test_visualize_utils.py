@@ -44,7 +44,7 @@ class TestVisualizeUtils:
             small_feature_matrix,
             num_sample=50,
             perplexity=10,
-            n_dim=2,
+            n_dim=3,
             metric="cosine",
             q=0.95,
             knn=5
@@ -70,7 +70,7 @@ class TestVisualizeUtils:
             num_sample=50,
             n_neighbors=10,
             min_dist=0.1,
-            n_dim=2,
+            n_dim=3,
             metric="cosine",
             q=0.95,
             knn=5

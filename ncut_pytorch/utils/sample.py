@@ -42,7 +42,7 @@ def farthest_point_sampling(
         return _farthest_point_sampling(X, n_sample, device=device)
 
     # random draw num_draw samples to reduce the load of farthest point sampling
-    draw_indices = np.random.permutation(num_data)[:num_draw]
+    draw_indices = torch.randperm(num_data)[:num_draw]
     sampled_indices = _farthest_point_sampling(
         X[draw_indices],
         n_sample=n_sample,
