@@ -85,8 +85,8 @@ class NcutVisionPredictor:
         preview the hierarchy cluster assignment for the images.
         
         Args:
-            point_coord (Tuple[int, int]): The coordinate of the point to preview.
-            image_indices (int): The index of the image to preview.
+            point_coord (Tuple[int, int]): The coordinate of the point to preview, in original image resolution.
+            image_indices (int): The index of the image to preview, corresponds to the point_coord.
             
         Returns:
             List[torch.Tensor]: List of masks for each hierarchy level. each mask is (b, h, w)
@@ -147,9 +147,9 @@ class NcutVisionPredictor:
         predict the mask and heatmap for the images, based on the clicks.
         
         Args:
-            point_coords (np.ndarray): The coordinates of the points to predict. (n, 2)
-            point_labels (np.ndarray): The labels of the points to predict. (n, )
-            image_indices (np.ndarray): The indices of the images to predict. (n, )
+            point_coords (np.ndarray): The coordinates of the points to predict, in original image resolution. (n, 2)
+            point_labels (np.ndarray): The labels of the points to predict, can be 1 (positive) or 0 (negative). (n, )
+            image_indices (np.ndarray): The indices of the images corresponde to the point_coords. (n, )
             click_weight (float, optional): The weight of the click. Defaults to 0.5.
             
         Returns:
