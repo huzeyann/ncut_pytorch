@@ -79,6 +79,8 @@ CPU: Intel(R) Core(TM) i9-13900K CPU
 
 RAM: 128 GiB
 
+GPU: RTX 4090 24 GiB
+
 SYSTEM: Ubuntu 22.04.3 LTS
 
 #### Run benchmark:
@@ -124,7 +126,6 @@ test_ncut_gpu_10000_data_1000_eig     179.8690 (2.65)     0.3801 (1.0)
 --------------------------------------------------------------------------
 ```
 
-`ncut-pytorch.Ncut` is $O(1)$ space complexity
 
 #### Run benchmark:
 
@@ -133,6 +134,8 @@ python unit_tests/bench_memory.py
 ```
 
 #### Results:
+
+`ncut-pytorch.Ncut` is $O(1)$ space complexity
 
 ```
 +---------------+------------------------+
