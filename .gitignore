@@ -1,4 +1,6 @@
 __pycache__/
+.pytest_cache/
+.benchmarks/
 *.egg-info/
 venv/
 dist/

@@ -30,7 +30,7 @@ class SAM(torch.nn.Module):
             x = torch.nn.functional.interpolate(x, size=(1024, 1024), mode="bilinear")
         out = self.sam.image_encoder(x)
         out = torch.nn.functional.normalize(out, dim=-1)
-        return out
+        return out  # (B, C, H, W)
 
 if __name__ == "__main__":
     transform = get_input_transform(resize=1024)
@@ -48,6 +48,4 @@ if __name__ == "__main__":
     ncut_sam.set_images(images)
     
     image = ncut_sam.summary(n_segments=[10, 25, 50, 100])
-#%%
-image
-# %%
+    display(image)
