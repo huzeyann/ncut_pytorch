@@ -10,38 +10,29 @@ URLS = {
 
 import torch
 from torch import nn
-import os
-import subprocess
 
 
 class Dinov3Backbone(nn.Module):
     def __init__(self, config="dinov3_vitl16"):
         super().__init__()
-        # ckpt_path = download_by_wget(URLS[config])
-        # dinov3 = torch.hub.load("facebookresearch/dinov3", config, weights=ckpt_path)
         if config == "dinov3_vitl16_sat493m":
-            c = "dinov3_vitl16"
-        else:
-            c = config
-        # if config == "dinov3_vitl16_dinotxt":
-        #     config = "dinov3_vitl16"
-        dinov3 = torch.hub.load("facebookresearch/dinov3", c, weights=URLS[config])
+            config = "dinov3_vitl16"
+        dinov3 = torch.hub.load("facebookresearch/dinov3", config, weights=URLS[config])
         self.model = dinov3
+        
+        self.keep_idx = None
 
     def forward(self, x: torch.Tensor):
-        return self.model.get_intermediate_layers(x, reshape=True)[0]  # b, c, h, w
-
-
-def download_by_wget(url):
-    # Get the torch hub directory
-    torch_hub_dir = torch.hub._get_torch_home()
-    cache_dir = os.path.join(torch_hub_dir, 'checkpoints')
-    os.makedirs(cache_dir, exist_ok=True)
-
-    model_filename = url.split('/')[-1].split('?')[0]
-    output_file = os.path.join(cache_dir, model_filename)
-
-    # Download the file using wget (with quotes around the URL to handle special characters)
-    # print(f"Downloading model to {output_file}...")
-    subprocess.run(['wget', '-O', output_file, url], check=True)
-    return output_file
+        out = self.model.get_intermediate_layers(x, reshape=True)[0]  # b, c, h, w
+        if self.keep_idx is None:
+            self.keep_idx = self.remove_high_variance_channels(out)
+        out = out[:, self.keep_idx, :, :]
+        return out
+    
+    def remove_high_variance_channels(self, out: torch.Tensor, n_remove: int = 8):
+        _out = out.permute(0, 2, 3, 1)
+        _out = _out.reshape(-1, _out.shape[-1])
+        var = torch.var(_out, dim=0)
+        var_sorted_idx = torch.argsort(var, descending=True)
+        keep_idx = var_sorted_idx[n_remove:]
+        return keep_idx
