@@ -51,15 +51,18 @@ class NcutVisionPredictor:
     @torch.inference_mode()
     def forward_model(self, images: List[Image.Image]) -> torch.Tensor:
         device = next(self.model.parameters()).device
-        with torch.autocast(device_type=device.type, enabled=True):
-            all_features = []
-            for i in range(0, len(images), self.batch_size):
-                batch_images = images[i:i + self.batch_size]
-                transformed_images = torch.stack([self.transform(image) for image in batch_images])
-                transformed_images = transformed_images.to(device)
+        all_features = []
+        for i in range(0, len(images), self.batch_size):
+            batch_images = images[i:i + self.batch_size]
+            transformed_images = torch.stack([self.transform(image) for image in batch_images])
+            transformed_images = transformed_images.to(device)
+            try:
+                with torch.autocast(device_type=device.type, enabled=True):
+                    features = self.model(transformed_images)
+            except RuntimeError:  # old torch version
                 features = self.model(transformed_images)
-                features = features.to('cpu')
-                all_features.append(features)
+            features = features.to('cpu')
+            all_features.append(features)
         return torch.cat(all_features, dim=0)
 
     def generate(self, n_segment: int) -> torch.Tensor:
