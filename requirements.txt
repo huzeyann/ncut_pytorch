@@ -9,3 +9,4 @@ pycolormap_2d
 scikit-learn
 scikit-image
 matplotlib
+memory_profiler
