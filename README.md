@@ -11,8 +11,6 @@
 
 Normalized Cut and spectral embedding, 100x faster than sklean implementation. 
 
-$O(n)$ time complexity, $O(1)$ space complexity. 
-
 
 https://github.com/user-attachments/assets/f0d40b1f-b8a5-4077-ab5f-e405f3ffb70f
 
@@ -28,7 +26,7 @@ https://github.com/user-attachments/assets/f0d40b1f-b8a5-4077-ab5f-e405f3ffb70f
 ## Installation
 
 <div style="text-align:">
-    <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
+    <pre><code class="language-shell">pip install -U ncut-pytorch</code></pre>
 </div>
 
 
@@ -72,12 +70,15 @@ image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
 ## Performance
 
 `ncut_pytorch.Ncut` is $O(n)$ time complexity
- `sklearn.SpectralEmbedding` is $O(n^2)$ complexity.
+
+`sklearn.SpectralEmbedding` is $O(n^2)$ complexity.
 
 #### Setup:
 
 CPU: Intel(R) Core(TM) i9-13900K CPU
+
 RAM: 128 GiB
+
 SYSTEM: Ubuntu 22.04.3 LTS
 
 #### Run benchmark:
@@ -124,7 +125,6 @@ test_ncut_gpu_10000_data_1000_eig     179.8690 (2.65)     0.3801 (1.0)
 ```
 
 `ncut-pytorch.Ncut` is $O(1)$ space complexity
-`sklearn.SpectralEmbedding` is $O(n^2)$ space complexity
 
 #### Run benchmark:
 
@@ -149,8 +149,8 @@ python unit_tests/bench_memory.py
 ```
 
 
----
 
+## Citation
 
 ```
 @misc{yang2024alignedcutvisualconceptsdiscovery,
