@@ -7,7 +7,9 @@
 Normalized Cut and spectral embedding, 100x faster than sklean implementation. $O(n)$ time complexity, $O(1)$ space complexity.
 
 
-https://github.com/user-attachments/assets/f0d40b1f-b8a5-4077-ab5f-e405f3ffb70f
+
+https://github.com/user-attachments/assets/cdf53e33-bb34-4a84-b1f4-679b66da1d48
+
 
 
 
