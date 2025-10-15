@@ -191,7 +191,7 @@ def nystrom_propagate(
         out = weights * neighbors  # (n, n_neighbors, d)
         out = out.sum(dim=1)  # (n, d)
 
-        if config.move_output_to_cpu:
+        if config.move_output_to_cpu and not track_grad:
             out = out.to("cpu")
         all_outs.append(out)
 
