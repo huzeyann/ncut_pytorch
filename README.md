@@ -35,7 +35,7 @@ import torch
 from ncut_pytorch import Ncut
 
 features = torch.rand(1960, 768)
-eigvecs = Ncut(n_eig=20).fit_tranform(features)
+eigvecs = Ncut(n_eig=20).fit_transform(features)
   # (1960, 20)
 
 from ncut_pytorch import kway_ncut
