@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "2.1.5"
+version = "2.1.6"
 authors = [
     { name = "Huzheng Yang", email = "huze.yann@gmail.com" },
 ]
@@ -39,6 +39,13 @@ cmap = [
     "pycolormap_2d",
     "scikit-image",
 ]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "tabulate",
+    "pytest-benchmark>=5.1.0",
+]
 
 [project.urls]
 Documentation = "https://ncut-pytorch.readthedocs.io/"
@@ -50,3 +57,13 @@ packages = {find = {include = ["ncut_pytorch*"]}}
 
 [tool.setuptools.package-data]
 "ncut_pytorch" = ["*.txt", "*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["unit_tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--verbose -m 'not slow'"
+markers = [
+    "slow: marks tests as slow (deselected by default)",
+]
