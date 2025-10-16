@@ -5,8 +5,8 @@ from typing import Callable, Union
 import torch
 
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
-from ncut_pytorch.utils.math import rbf_affinity, gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, \
-    keep_topk_per_row
+from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
+from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, keep_topk_per_row
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
 
@@ -40,7 +40,7 @@ def ncut_fn(
         device: str = None,
         gamma: float = None,
         make_orthogonal: bool = False,
-        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
+        affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
         no_propagation: bool = False,
         **kwargs,
 ) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
@@ -140,7 +140,7 @@ def nystrom_propagate(
         track_grad: bool = False,
         device: str = None,
         return_indices: bool = False,
-        affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
+        affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
         **kwargs,
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """propagate output from nystrom sampled nodes to all nodes,

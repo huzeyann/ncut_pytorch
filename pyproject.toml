@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "2.1.6"
+version = "2.1.7"
 authors = [
     { name = "Huzheng Yang", email = "huze.yann@gmail.com" },
 ]
@@ -45,6 +45,9 @@ dev = [
     "pytest-mock>=3.10.0",
     "tabulate",
     "pytest-benchmark>=5.1.0",
+]
+all = [
+    "ncut_pytorch[torch,cmap,dev]",
 ]
 
 [project.urls]

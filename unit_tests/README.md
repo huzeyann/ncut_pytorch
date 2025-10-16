@@ -18,7 +18,7 @@ The tests are organized into the following files:
 To run the tests, you need to install the development dependencies:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install ncut-pytorch[dev]
 ```
 
 This will install pytest and other dependencies needed for testing.

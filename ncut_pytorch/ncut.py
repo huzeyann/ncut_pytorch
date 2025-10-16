@@ -17,7 +17,7 @@ class Ncut:
             track_grad: bool = False,
             d_gamma: float = None,
             device: str = None,
-            affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
+            affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
             **kwargs,
     ):
         """
@@ -32,18 +32,12 @@ class Ncut:
             >>> from ncut_pytorch import Ncut
             >>> import torch
             >>> X = torch.rand(10000, 100)
-            >>> 
-            >>> # Method 1: Function-like call
-            >>> eigvec = Ncut(X, n_eig=20)
-            >>> print(eigvec.shape)  # (10000, 20)
-            >>> 
-            >>> # Method 2: Create instance and call
             >>> ncut = Ncut(n_eig=20)
-            >>> eigvec = ncut(X)  # returns just eigvec
-            >>> eigval = ncut.eigval  # access eigenvalues separately
+            >>> eigvec = ncut.fit_transform(X)
+            >>> eigval = ncut.eigval
             >>> print(eigvec.shape, eigval.shape)  # (10000, 20) (20,)
             >>> 
-            >>> # Method 2.1: Transform new data after fitting
+            >>> # transform new data
             >>> new_X = torch.rand(500, 100)
             >>> new_eigvec = ncut.transform(new_X)
             >>> print(new_eigvec.shape)  # (500, 20)
