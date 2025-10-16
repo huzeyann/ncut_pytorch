@@ -98,6 +98,9 @@ def axis_align(eigvec: torch.Tensor, device: str = None, max_iter=1000, n_sample
             R = V @ U.T
             
     R = R.to(device=original_device, dtype=original_dtype)
+    
+    # sort the columns of R by the 2nd row of R
+    R = R[:, torch.argsort(R[1])]
     return R
 
 

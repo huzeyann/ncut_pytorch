@@ -3,7 +3,7 @@ from typing import Callable, Union
 import torch
 
 from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
-from ncut_pytorch.utils.math import rbf_affinity
+from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
 
 
 class Ncut:
