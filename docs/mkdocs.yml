@@ -67,10 +67,11 @@ nav:
 
   - Tutorials:
     - Tutorial 1 - Quick Start: tutorials.md
-    - Tutorial 2 - Parameters: parameters.md
-    - Tutorial 3 - Add Nodes: add_nodes.md
-    - Tutorial 4 - Mixing Data: mixing_data.md
-    - Tutorial 5 - Coloring: coloring.md
+    - Tutorial 2 - Kway-NCUT: kway_ncut.md
+    - Tutorial 3 - Parameters: parameters.md
+    - Tutorial 4 - Add Nodes: add_nodes.md
+    - Tutorial 5 - Mixing Data: mixing_data.md
+    - Tutorial 6 - Coloring: coloring.md
     - Application - Point Prompting: application_segmentation.md
   
   - API References:
