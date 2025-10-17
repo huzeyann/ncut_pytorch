@@ -77,7 +77,7 @@ The first row is theoretically close to a constant; deeper rows show higher spat
 </div>
 
 Visualization of k-way projection channels (k=10)
-Before argmax (i.e., before turning into one-hot), the 10 channel responses are visualized below.
+Before argmax (i.e., before turning into one-hot), the 10 channel responses are visualized below. 
 
 <div style="text-align:center;">
 <img src="images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
