@@ -25,22 +25,22 @@ The following image is calculated by the features of DINO V2.
 </div>
 
 <div class="kway-img k-img-5">
-  <img src="images/k_5.png" alt="Discrete NCut result for k=5" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/k_5.png" alt="Discrete NCut result for k=5" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-6">
-  <img src="images/k_6.png" alt="Discrete NCut result for k=6" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/k_6.png" alt="Discrete NCut result for k=6" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-7">
-  <img src="images/k_7.png" alt="Discrete NCut result for k=7" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/k_7.png" alt="Discrete NCut result for k=7" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-8">
-  <img src="images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-9">
-  <img src="images/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-10">
-  <img src="images/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 </div>
 <style>
@@ -131,7 +131,7 @@ render();
 <noscript>
 <p><em>JavaScript is disabled: both before/after k-way views are shown below.</em></p>
 <p><strong>Before k-way</strong></p>
-<img src="images/ncut_batch_eigenvectors.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
+<img src="../images/ncut_batch_eigenvectors.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
 <p><strong>After k-way</strong></p>
-<img src="images/ncut_kway_all_dimensions.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
+<img src="../images/ncut_kway_all_dimensions.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
 </noscript>
