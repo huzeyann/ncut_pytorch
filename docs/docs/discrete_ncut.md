@@ -37,12 +37,12 @@ update();
 <noscript>
 <p>JavaScript is disabled. Please view the results:</p>
 <ul>
-<li><a href="images/k_5.png">k=5</a></li>
-<li><a href="images/k_6.png">k=6</a></li>
-<li><a href="images/k_7.png">k=7</a></li>
-<li><a href="images/k_8.png">k=8</a></li>
-<li><a href="images/k_9.png">k=9</a></li>
-<li><a href="images/k_10.png">k=10</a></li>
+<li><a href="../images/k_5.png">k=5</a></li>
+<li><a href="../images/k_6.png">k=6</a></li>
+<li><a href="../images/k_7.png">k=7</a></li>
+<li><a href="../images/k_8.png">k=8</a></li>
+<li><a href="../images/k_9.png">k=9</a></li>
+<li><a href="../images/k_10.png">k=10</a></li>
 </ul>
 </noscript>
 
@@ -76,7 +76,7 @@ cluster_centroids = kway_eigvecs.argmax(0)
 <p><strong>Before k-way (NCut eigenvectors)</strong></p>
 <p>The first row is theoretically near-constant; deeper rows have higher spatial frequency.</p>
 <div style="text-align:center;">
-<img src="images/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="../images/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
 </div>
 
@@ -84,7 +84,7 @@ cluster_centroids = kway_eigvecs.argmax(0)
 <p><strong>After k-way (K-way projection channels, k=10)</strong></p>
 <p>These are the 10 channel responses before one-hot; after alignment, channels become more axis-aligned (unimodal).</p>
 <div style="text-align:center;">
-<img src="images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="../images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
 </div>
 </div>
