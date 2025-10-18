@@ -65,7 +65,7 @@ kway_eigvecs = kway_ncut(eigvecs)
 
 # cluster assignment and (axis-wise) centroids
 cluster_assignment = kway_eigvecs.argmax(1)
-cluster_centroids = kway_eigvecs.argmax(0)
+cluster_centroids = kway_eigvecs.argmax(0) 
 ```
 
 
