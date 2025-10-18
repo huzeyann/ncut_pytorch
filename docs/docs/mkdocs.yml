@@ -67,7 +67,7 @@ nav:
 
   - Tutorials:
     - Tutorial 1 - Quick Start: tutorials.md
-    - Tutorial 2 - Kway-NCUT: kway_ncut.md
+    - Tutorial 2 - Discrete NCUT: discrete_ncut.md
     - Tutorial 3 - Parameters: parameters.md
     - Tutorial 4 - Add Nodes: add_nodes.md
     - Tutorial 5 - Mixing Data: mixing_data.md
