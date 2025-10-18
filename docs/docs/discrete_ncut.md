@@ -8,43 +8,54 @@ We have used K-Way Ncut to discretize the clustering results. We can see the clu
 
 The following image is calculated by the features of DINO V2.
 
-<div id="discrete-ncut-slider" style="text-align:center;">
-<div>
-<img id="k-image" src="images/k_5.png" alt="Discrete NCut result for k=5" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+<div class="kway-tabs" style="text-align:center;">
+<div class="kway-controls" style="margin-bottom:8px;">
+  <input type="radio" id="k5" name="k" checked>
+  <label for="k5" class="kbtn">k=5</label>
+  <input type="radio" id="k6" name="k">
+  <label for="k6" class="kbtn">k=6</label>
+  <input type="radio" id="k7" name="k">
+  <label for="k7" class="kbtn">k=7</label>
+  <input type="radio" id="k8" name="k">
+  <label for="k8" class="kbtn">k=8</label>
+  <input type="radio" id="k9" name="k">
+  <label for="k9" class="kbtn">k=9</label>
+  <input type="radio" id="k10" name="k">
+  <label for="k10" class="kbtn">k=10</label>
 </div>
-<div style="margin-top:8px;">
-<label for="k-slider">k = <span id="k-value">5</span></label>
-<input type="range" id="k-slider" min="5" max="10" step="1" value="5" />
+
+<div class="kway-img k-img-5">
+  <img src="images/k_5.png" alt="Discrete NCut result for k=5" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-6">
+  <img src="images/k_6.png" alt="Discrete NCut result for k=6" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-7">
+  <img src="images/k_7.png" alt="Discrete NCut result for k=7" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-8">
+  <img src="images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-9">
+  <img src="images/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-10">
+  <img src="images/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 </div>
-<script>
-(function(){
-var slider = document.getElementById('k-slider');
-var valueEl = document.getElementById('k-value');
-var imgEl = document.getElementById('k-image');
-if (!slider || !valueEl || !imgEl) return;
-function update(){
-  var k = parseInt(slider.value, 10);
-  valueEl.textContent = k;
-  imgEl.src = 'images/k_' + k + '.png';
-  imgEl.alt = 'Discrete NCut result for k=' + k;
-}
-slider.addEventListener('input', update);
-slider.addEventListener('change', update);
-update();
-})();
-</script>
-<noscript>
-<p>JavaScript is disabled. Please view the results:</p>
-<ul>
-<li><a href="images/k_5.png">k=5</a></li>
-<li><a href="images/k_6.png">k=6</a></li>
-<li><a href="images/k_7.png">k=7</a></li>
-<li><a href="images/k_8.png">k=8</a></li>
-<li><a href="images/k_9.png">k=9</a></li>
-<li><a href="images/k_10.png">k=10</a></li>
-</ul>
-</noscript>
+<style>
+.kway-tabs input[type="radio"]{display:none;}
+/* Default: show all images. When a radio is checked, hide others and show the selected */
+.kway-tabs .kway-img{display:block;}
+#k5:checked ~ .kway-img{display:none;} #k5:checked ~ .k-img-5{display:block;}
+#k6:checked ~ .kway-img{display:none;} #k6:checked ~ .k-img-6{display:block;}
+#k7:checked ~ .kway-img{display:none;} #k7:checked ~ .k-img-7{display:block;}
+#k8:checked ~ .kway-img{display:none;} #k8:checked ~ .k-img-8{display:block;}
+#k9:checked ~ .kway-img{display:none;} #k9:checked ~ .k-img-9{display:block;}
+#k10:checked ~ .kway-img{display:none;} #k10:checked ~ .k-img-10{display:block;}
+.kway-controls .kbtn{display:inline-block; padding:6px 12px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; margin:0 4px; cursor:pointer;}
+#k5:checked + label, #k6:checked + label, #k7:checked + label, #k8:checked + label, #k9:checked + label, #k10:checked + label{background: var(--md-primary-fg-color, #3f51b5); color: #fff; border-color: transparent;}
+</style>
 
 We can see from the results that K should be an appropriate number. Large K tends to segment the images into more blocks while small K will only show an abstract segmentation restul of the feature space.
 
@@ -70,7 +81,10 @@ cluster_centroids = kway_eigvecs.argmax(0)
 
 
 <div id="kway-toggle" style="text-align:center;">
-<button id="kway-switch" style="margin-bottom:8px;">Switch to after k-way</button>
+<div class="kway-toggle-bar" style="margin-bottom:8px;">
+  <a id="btn-before" class="md-button md-button--primary" href="#" style="padding:6px 14px; margin-right:6px;">Before k-way</a>
+  <a id="btn-after" class="md-button" href="#" style="padding:6px 14px;">After k-way</a>
+  </div>
 
 <div id="kway-before">
 <p><strong>Before k-way (NCut eigenvectors)</strong></p>
@@ -90,26 +104,27 @@ cluster_centroids = kway_eigvecs.argmax(0)
 </div>
 <script>
 (function(){
-var btn = document.getElementById('kway-switch');
+var btnBefore = document.getElementById('btn-before');
+var btnAfter = document.getElementById('btn-after');
 var beforeEl = document.getElementById('kway-before');
 var afterEl = document.getElementById('kway-after');
-if (!btn || !beforeEl || !afterEl) return;
+if (!btnBefore || !btnAfter || !beforeEl || !afterEl) return;
 var showAfter = false;
 function render(){
   if (showAfter){
     beforeEl.style.display = 'none';
     afterEl.style.display = '';
-    btn.textContent = 'Switch to before k-way';
+    btnBefore.classList.remove('md-button--primary');
+    btnAfter.classList.add('md-button--primary');
   } else {
     beforeEl.style.display = '';
     afterEl.style.display = 'none';
-    btn.textContent = 'Switch to after k-way';
+    btnAfter.classList.remove('md-button--primary');
+    btnBefore.classList.add('md-button--primary');
   }
 }
-btn.addEventListener('click', function(){
-  showAfter = !showAfter;
-  render();
-});
+btnBefore.addEventListener('click', function(e){ e.preventDefault(); showAfter = false; render(); });
+btnAfter.addEventListener('click', function(e){ e.preventDefault(); showAfter = true; render(); });
 render();
 })();
 </script>
