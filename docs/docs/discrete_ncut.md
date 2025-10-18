@@ -8,49 +8,43 @@ We have used K-Way Ncut to discretize the clustering results. We can see the clu
 
 The following image is calculated by the features of DINO V2.
 
-<div class="kway-tabs" style="text-align:center;">
-<input type="radio" id="k5" name="k" checked>
-<label for="k5">k=5</label>
-<input type="radio" id="k6" name="k">
-<label for="k6">k=6</label>
-<input type="radio" id="k7" name="k">
-<label for="k7">k=7</label>
-<input type="radio" id="k8" name="k">
-<label for="k8">k=8</label>
-<input type="radio" id="k9" name="k">
-<label for="k9">k=9</label>
-<input type="radio" id="k10" name="k">
-<label for="k10">k=10</label>
-
-<div class="kway-img k-img-5">
-<img src="../images/k_5.png" alt="Discrete NCut result for k=5" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+<div id="discrete-ncut-slider" style="text-align:center;">
+<div>
+<img id="k-image" src="images/k_5.png" alt="Discrete NCut result for k=5" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
-<div class="kway-img k-img-6">
-<img src="../images/k_6.png" alt="Discrete NCut result for k=6" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-7">
-<img src="../images/k_7.png" alt="Discrete NCut result for k=7" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-8">
-<img src="../images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-9">
-<img src="../images/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-10">
-<img src="../images/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+<div style="margin-top:8px;">
+<label for="k-slider">k = <span id="k-value">5</span></label>
+<input type="range" id="k-slider" min="5" max="10" step="1" value="5" />
 </div>
 </div>
-<style>
-.kway-tabs .kway-img{display:none;}
-#k5:checked ~ .k-img-5{display:block;}
-#k6:checked ~ .k-img-6{display:block;}
-#k7:checked ~ .k-img-7{display:block;}
-#k8:checked ~ .k-img-8{display:block;}
-#k9:checked ~ .k-img-9{display:block;}
-#k10:checked ~ .k-img-10{display:block;}
-.kway-tabs label{margin:0 8px; cursor:pointer;}
-</style>
+<script>
+(function(){
+var slider = document.getElementById('k-slider');
+var valueEl = document.getElementById('k-value');
+var imgEl = document.getElementById('k-image');
+if (!slider || !valueEl || !imgEl) return;
+function update(){
+  var k = parseInt(slider.value, 10);
+  valueEl.textContent = k;
+  imgEl.src = 'images/k_' + k + '.png';
+  imgEl.alt = 'Discrete NCut result for k=' + k;
+}
+slider.addEventListener('input', update);
+slider.addEventListener('change', update);
+update();
+})();
+</script>
+<noscript>
+<p>JavaScript is disabled. Please view the results:</p>
+<ul>
+<li><a href="images/k_5.png">k=5</a></li>
+<li><a href="images/k_6.png">k=6</a></li>
+<li><a href="images/k_7.png">k=7</a></li>
+<li><a href="images/k_8.png">k=8</a></li>
+<li><a href="images/k_9.png">k=9</a></li>
+<li><a href="images/k_10.png">k=10</a></li>
+</ul>
+</noscript>
 
 We can see from the results that K should be an appropriate number. Large K tends to segment the images into more blocks while small K will only show an abstract segmentation restul of the feature space.
 
@@ -75,16 +69,54 @@ cluster_centroids = kway_eigvecs.argmax(0)
 ```
 
 
-Visualization of NCut eigenvectors (before k-way)
-The first row is theoretically close to a constant; deeper rows show higher spatial frequencies.
+<div id="kway-toggle" style="text-align:center;">
+<button id="kway-switch" style="margin-bottom:8px;">Switch to after k-way</button>
 
+<div id="kway-before">
+<p><strong>Before k-way (NCut eigenvectors)</strong></p>
+<p>The first row is theoretically near-constant; deeper rows have higher spatial frequency.</p>
 <div style="text-align:center;">
-<img src="../images/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="images/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+</div>
 </div>
 
-Visualization of k-way projection channels (k=10)
-Before argmax (i.e., before turning into one-hot), the 10 channel responses are visualized below. 
-
+<div id="kway-after" style="display:none;">
+<p><strong>After k-way (K-way projection channels, k=10)</strong></p>
+<p>These are the 10 channel responses before one-hot; after alignment, channels become more axis-aligned (unimodal).</p>
 <div style="text-align:center;">
-<img src="../images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
+</div>
+</div>
+<script>
+(function(){
+var btn = document.getElementById('kway-switch');
+var beforeEl = document.getElementById('kway-before');
+var afterEl = document.getElementById('kway-after');
+if (!btn || !beforeEl || !afterEl) return;
+var showAfter = false;
+function render(){
+  if (showAfter){
+    beforeEl.style.display = 'none';
+    afterEl.style.display = '';
+    btn.textContent = 'Switch to before k-way';
+  } else {
+    beforeEl.style.display = '';
+    afterEl.style.display = 'none';
+    btn.textContent = 'Switch to after k-way';
+  }
+}
+btn.addEventListener('click', function(){
+  showAfter = !showAfter;
+  render();
+});
+render();
+})();
+</script>
+<noscript>
+<p><em>JavaScript is disabled: both before/after k-way views are shown below.</em></p>
+<p><strong>Before k-way</strong></p>
+<img src="images/ncut_batch_eigenvectors.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
+<p><strong>After k-way</strong></p>
+<img src="images/ncut_kway_all_dimensions.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
+</noscript>
