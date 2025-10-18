@@ -9,7 +9,6 @@ We have used K-Way Ncut to discretize the clustering results. We can see the clu
 The following image is calculated by the features of DINO V2.
 
 <div class="kway-tabs" style="text-align:center;">
-<div class="kway-controls" style="margin-bottom:8px;">
   <input type="radio" id="k5" name="k" checked>
   <label for="k5" class="kbtn">k=5</label>
   <input type="radio" id="k6" name="k">
@@ -22,7 +21,6 @@ The following image is calculated by the features of DINO V2.
   <label for="k9" class="kbtn">k=9</label>
   <input type="radio" id="k10" name="k">
   <label for="k10" class="kbtn">k=10</label>
-</div>
 
 <div class="kway-img k-img-5">
   <img src="../images/k_5.png" alt="Discrete NCut result for k=5" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
@@ -45,16 +43,24 @@ The following image is calculated by the features of DINO V2.
 </div>
 <style>
 .kway-tabs input[type="radio"]{display:none;}
-/* Default: show all images. When a radio is checked, hide others and show the selected */
-.kway-tabs .kway-img{display:block;}
-#k5:checked ~ .kway-img{display:none;} #k5:checked ~ .k-img-5{display:block;}
-#k6:checked ~ .kway-img{display:none;} #k6:checked ~ .k-img-6{display:block;}
-#k7:checked ~ .kway-img{display:none;} #k7:checked ~ .k-img-7{display:block;}
-#k8:checked ~ .kway-img{display:none;} #k8:checked ~ .k-img-8{display:block;}
-#k9:checked ~ .kway-img{display:none;} #k9:checked ~ .k-img-9{display:block;}
-#k10:checked ~ .kway-img{display:none;} #k10:checked ~ .k-img-10{display:block;}
-.kway-controls .kbtn{display:inline-block; padding:6px 12px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; margin:0 4px; cursor:pointer;}
-#k5:checked + label, #k6:checked + label, #k7:checked + label, #k8:checked + label, #k9:checked + label, #k10:checked + label{background: var(--md-primary-fg-color, #3f51b5); color: #fff; border-color: transparent;}
+/* Default: hide all, show the selected image when radio works */
+.kway-tabs .kway-img{display:none;}
+#k5:checked ~ .k-img-5{display:block;}
+#k6:checked ~ .k-img-6{display:block;}
+#k7:checked ~ .k-img-7{display:block;}
+#k8:checked ~ .k-img-8{display:block;}
+#k9:checked ~ .k-img-9{display:block;}
+#k10:checked ~ .k-img-10{display:block;}
+.kbtn{display:inline-block; padding:6px 12px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; margin:0 4px; cursor:pointer;}
+#k5:checked + label.kbtn, #k6:checked + label.kbtn, #k7:checked + label.kbtn, #k8:checked + label.kbtn, #k9:checked + label.kbtn, #k10:checked + label.kbtn{background: var(--md-primary-fg-color, #3f51b5); color: #fff; border-color: transparent;}
+</style>
+<style>
+/* Enhance toggle buttons look */
+.kway-toggle-bar{display:inline-flex; align-items:center; gap:6px;}
+.kway-toggle-bar .md-button{border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; background: var(--md-default-bg-color, transparent); color: var(--md-default-fg-color, inherit); cursor:pointer; user-select:none; min-width: 140px;} 
+.kway-toggle-bar .md-button--primary{background: var(--md-primary-fg-color, #3f51b5); color:#fff; border-color: transparent;}
+.kway-toggle-bar .md-button:hover{filter: brightness(0.95);} 
+.kway-toggle-bar .md-button:active{transform: translateY(1px);} 
 </style>
 
 We can see from the results that K should be an appropriate number. Large K tends to segment the images into more blocks while small K will only show an abstract segmentation restul of the feature space.
@@ -81,57 +87,33 @@ cluster_centroids = kway_eigvecs.argmax(0)
 
 
 <div id="kway-toggle" style="text-align:center;">
-<div class="kway-toggle-bar" style="margin-bottom:8px;">
-  <a id="btn-before" class="md-button md-button--primary" href="#" style="padding:6px 14px; margin-right:6px;">Before k-way</a>
-  <a id="btn-after" class="md-button" href="#" style="padding:6px 14px;">After k-way</a>
-  </div>
+  <input type="radio" id="view-before" name="kview" checked>
+  <label for="view-before" class="md-button kview-btn">Before k-way</label>
+  <input type="radio" id="view-after" name="kview">
+  <label for="view-after" class="md-button kview-btn">After k-way</label>
 
-<div id="kway-before">
+<div id="kway-before" class="kview-panel">
 <p><strong>Before k-way (NCut eigenvectors)</strong></p>
 <p>The first row is theoretically near-constant; deeper rows have higher spatial frequency.</p>
 <div style="text-align:center;">
-<img src="images/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="../images/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
 </div>
 
-<div id="kway-after" style="display:none;">
+<div id="kway-after" class="kview-panel">
 <p><strong>After k-way (K-way projection channels, k=10)</strong></p>
 <p>These are the 10 channel responses before one-hot; after alignment, channels become more axis-aligned (unimodal).</p>
 <div style="text-align:center;">
-<img src="images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="../images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
 </div>
 </div>
-<script>
-(function(){
-var btnBefore = document.getElementById('btn-before');
-var btnAfter = document.getElementById('btn-after');
-var beforeEl = document.getElementById('kway-before');
-var afterEl = document.getElementById('kway-after');
-if (!btnBefore || !btnAfter || !beforeEl || !afterEl) return;
-var showAfter = false;
-function render(){
-  if (showAfter){
-    beforeEl.style.display = 'none';
-    afterEl.style.display = '';
-    btnBefore.classList.remove('md-button--primary');
-    btnAfter.classList.add('md-button--primary');
-  } else {
-    beforeEl.style.display = '';
-    afterEl.style.display = 'none';
-    btnAfter.classList.remove('md-button--primary');
-    btnBefore.classList.add('md-button--primary');
-  }
-}
-btnBefore.addEventListener('click', function(e){ e.preventDefault(); showAfter = false; render(); });
-btnAfter.addEventListener('click', function(e){ e.preventDefault(); showAfter = true; render(); });
-render();
-})();
-</script>
-<noscript>
-<p><em>JavaScript is disabled: both before/after k-way views are shown below.</em></p>
-<p><strong>Before k-way</strong></p>
-<img src="../images/ncut_batch_eigenvectors.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
-<p><strong>After k-way</strong></p>
-<img src="../images/ncut_kway_all_dimensions.png" style="max-width:100%; height:auto; display:block; margin:0 auto;" />
-</noscript>
+<style>
+#kway-toggle input[type="radio"]{display:none;}
+#kway-toggle .kview-btn{display:inline-block; padding:6px 14px; margin:0 4px 8px 4px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; cursor:pointer; user-select:none; min-width:140px;}
+#view-before:checked + label.kview-btn{background: var(--md-primary-fg-color, #3f51b5); color:#fff; border-color: transparent;}
+#view-after:checked + label.kview-btn{background: var(--md-primary-fg-color, #3f51b5); color:#fff; border-color: transparent;}
+.kview-panel{display:none;}
+#view-before:checked ~ #kway-before{display:block;}
+#view-after:checked ~ #kway-after{display:block;}
+</style>
