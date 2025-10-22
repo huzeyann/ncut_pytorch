@@ -55,6 +55,13 @@
     [ ] tutorial 4: feature align
         [ ] mutiple models: dino, clip
         [ ] diffusion layer x timesteps
+    
+    [ ] Advanced tutorials
+        [ ] custom affinity function
+        [ ] transform new data
+        [ ] transform new data (kway ncut)
+        [ ] custom model for NcutVisionPredictor
+        
 
 ### Convinece NcutPredictors
     [ ] vision
