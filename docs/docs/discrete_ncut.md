@@ -97,17 +97,17 @@ The following image is calculated by the features of dinov3_vith16plus. The seco
 
 <div class="kway-tabs" style="text-align:center;">
   <input type="radio" id="k5" name="k" checked>
-  <label for="k5" class="kbtn">k=5</label>
+  <label for="k5" class="kbtn">k=8</label>
   <input type="radio" id="k6" name="k">
-  <label for="k6" class="kbtn">k=6</label>
+  <label for="k6" class="kbtn">k=9</label>
   <input type="radio" id="k7" name="k">
-  <label for="k7" class="kbtn">k=7</label>
+  <label for="k7" class="kbtn">k=10</label>
   <input type="radio" id="k8" name="k">
-  <label for="k8" class="kbtn">k=8</label>
+  <label for="k8" class="kbtn">k=11</label>
   <input type="radio" id="k9" name="k">
-  <label for="k9" class="kbtn">k=9</label>
+  <label for="k9" class="kbtn">k=12</label>
   <input type="radio" id="k10" name="k">
-  <label for="k10" class="kbtn">k=10</label>
+  <label for="k10" class="kbtn">k=13</label>
 
 <div class="kway-img k-img-5">
   <img src="../images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
