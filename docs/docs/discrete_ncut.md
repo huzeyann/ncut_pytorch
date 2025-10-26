@@ -175,8 +175,8 @@ The visualization results below panels labeled “Before K-way” and “After K
 </div>
 
 <div id="kway-after" class="kview-panel">
-<p><strong>After k-way (K-way projection channels, k=10)</strong></p>
-<p>These are the 10 channel responses before one-hot; after alignment, channels become more axis-aligned (unimodal).</p>
+<p><strong>After k-way (K-way projection channels, k=11)</strong></p>
+<p>These are the 11 channel responses before one-hot; after alignment, channels become more axis-aligned (unimodal).</p>
 <div style="text-align:center;">
 <img src="../images/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
