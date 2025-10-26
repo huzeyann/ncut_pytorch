@@ -39,7 +39,6 @@ in this example (eq on right side), $Y$ is scaled by $\frac{1}{4}$ from $X$, rot
 $$
 x_i = f(z_i) \\
 y_i = \frac{1}{4} f(z_i) R + [10, 10]^T \\
-
 $$
 
 Before the alignment, the affinity (right side of the image above) shows: there’s 3 cluster in set1, but all dots in set2 belong to one big cluster. 
