@@ -68,11 +68,14 @@ nav:
   - Tutorials:
     - Tutorial 1 - Quick Start: tutorials.md
     - Tutorial 2 - Discrete NCUT: discrete_ncut.md
-    - Tutorial 3 - Parameters: parameters.md
-    - Tutorial 4 - Add Nodes: add_nodes.md
-    - Tutorial 5 - Mixing Data: mixing_data.md
-    - Tutorial 6 - Coloring: coloring.md
-    - Application - Point Prompting: application_segmentation.md
+    - Tutorial 3 - Hierarchy in NCUT: hierarchy_ncut.md
+    - Tutorial 4 - Feature Alignment: feature_alignment.md
+    - Tutorial 5 - Parameters: parameters.md
+    - Tutorial 6 - Add Nodes: add_nodes.md
+    - Tutorial 7 - Mixing Data: mixing_data.md
+    - Tutorial 8 - Coloring: coloring.md
+    - Tutorial 9 - Application - Point Prompting: application_segmentation.md
+  
   
   - API References:
     - NCUT APIs: api_reference.md
