@@ -34,6 +34,7 @@ cluster_centroids = kway_eigvecs.argmax(0)
 
 import torch
 from PIL import Image
+from ncut_pytorch import Ncut, kway_ncut
 import torchvision.transforms as transforms
 
 # DINO v3 model weights URL
