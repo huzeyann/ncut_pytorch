@@ -96,6 +96,7 @@ if __name__ == "__main__":
 
 The following image is calculated by the features of dinov3_vith16plus. The second line is the discrete NCUT assignments results and the third line is the clustering centroid. As we switch between different K, we can see the clustering results become different. The larger the K, the more detailed clustering restuls will appear but will also introduce some noise. As you can see the background is divided into different colors, this is because the effect of positional encoding of DINO structure.
 
+
 <div class="kway-tabs" style="text-align:center;">
   <input type="radio" id="k5" name="k" checked>
   <label for="k5" class="kbtn">k=8</label>
@@ -109,6 +110,8 @@ The following image is calculated by the features of dinov3_vith16plus. The seco
   <label for="k9" class="kbtn">k=12</label>
   <input type="radio" id="k10" name="k">
   <label for="k10" class="kbtn">k=13</label>
+  <input type="radio" id="k11" name="k">
+  <label for="k11" class="kbtn">k=60</label>
 
 <div class="kway-img k-img-5">
   <img src="../images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
@@ -128,6 +131,9 @@ The following image is calculated by the features of dinov3_vith16plus. The seco
 <div class="kway-img k-img-10">
   <img src="../images/k_13.png" alt="Discrete NCut result for k=13" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
+<div class="kway-img k-img-11">
+  <img src="../images/k_60.png" alt="Discrete NCut result for k=60" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
 </div>
 <style>
 .kway-tabs input[type="radio"]{display:none;}
@@ -139,8 +145,9 @@ The following image is calculated by the features of dinov3_vith16plus. The seco
 #k8:checked ~ .k-img-8{display:block;}
 #k9:checked ~ .k-img-9{display:block;}
 #k10:checked ~ .k-img-10{display:block;}
+#k11:checked ~ .k-img-11{display:block;}
 .kbtn{display:inline-block; padding:6px 12px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; margin:0 4px; cursor:pointer;}
-#k5:checked + label.kbtn, #k6:checked + label.kbtn, #k7:checked + label.kbtn, #k8:checked + label.kbtn, #k9:checked + label.kbtn, #k10:checked + label.kbtn{background: var(--md-primary-fg-color, #3f51b5); color: #fff; border-color: transparent;}
+#k5:checked + label.kbtn, #k6:checked + label.kbtn, #k7:checked + label.kbtn, #k8:checked + label.kbtn, #k9:checked + label.kbtn, #k10:checked + label.kbtn, #k11:checked + label.kbtn{background: var(--md-primary-fg-color, #3f51b5); color: #fff; border-color: transparent;}
 </style>
 <style>
 /* Enhance toggle buttons look */
