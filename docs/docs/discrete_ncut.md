@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
 
 
-The following image is calculated by the features of dinov3_vith16plus. The second line is the discrete NCUT assignments restuls and the third line is the clustering centroid. As we switch between different K, we can see the clustering results become different. The large the K, the more detailed clustering restuls will appear but will also introduce some noise. As you can see the background is divided into different colors, this is because the effect of positional encoding of DINO structure.
+The following image is calculated by the features of dinov3_vith16plus. The second line is the discrete NCUT assignments results and the third line is the clustering centroid. As we switch between different K, we can see the clustering results become different. The larger the K, the more detailed clustering restuls will appear but will also introduce some noise. As you can see the background is divided into different colors, this is because the effect of positional encoding of DINO structure.
 
 <div class="kway-tabs" style="text-align:center;">
   <input type="radio" id="k5" name="k" checked>
