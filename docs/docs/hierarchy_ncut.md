@@ -87,25 +87,6 @@ NCut hierarchy (middle column) provides a fundamentally different view: **"What 
   - Hierarchical nature allows multi-scale understanding
   - Segments are spatially coherent and semantically meaningful
 
-### Key Insights from the Comparison
-
-Looking at the three examples in the visualization:
-
-1. **Top row (desk workspace)**: 
-   - Attention map highlights regions similar to the query point on the table
-   - NCut hierarchy cleanly separates the table into semantic regions (papers, hands, keyboard area)
-   - NCut provides complete scene understanding, not just point-based relationships
-
-2. **Middle row (hands on keyboard)**:
-   - Attention map focuses on the hand and immediate surrounding area
-   - NCut hierarchy reveals the complete hand segmentation plus surrounding objects
-   - NCut captures semantic units (complete hand shape) rather than just attention-related regions
-
-3. **Bottom row (different viewing angle)**:
-   - Attention map shows diffuse activation across the floor and surrounding area
-   - NCut hierarchy clearly delineates floor, hands, and other objects with sharp boundaries
-   - NCut provides actionable segmentation masks for downstream tasks
-
 ### When to Use Each Approach
 
 | Task | Attention Maps | NCut Hierarchy |
