@@ -265,12 +265,6 @@ We showed RBF auto-scaling helped MLP, but that was 4 layer MLP, what about 12 l
 
 This 12-layer MLP even erased the affinity within Set 2, this MLP removed too much information, there’s no way Set 2 could align with Set 1.
 
----
-
-TODO: adding FPS sampling is important, if there’s repeated same dots, they will create a “1” block in affinity, thus make gamma too low, if only 1 point is sampled from repeated dots, the “1”-block issue is avoided
-
----
-
 ## Alignment Methods 2: training MLP
 
 Given 2 set of points 
@@ -333,7 +327,3 @@ Training loss is CrossEntropy or MSE of Z, plus the regularization term. There�
     
     ![image.png](../images/image%2019.png)
     
-
-TODO:
-
-MLP training might be too strong and might create huliciation, try when X and Y are not correlated, compare RBF vs MLP
