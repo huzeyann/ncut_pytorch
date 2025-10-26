@@ -156,9 +156,9 @@ From the visual results, it is evident that the choice of
 The visualization results below panels labeled “Before K-way” and “After K-way” highlight the difference between the raw eigenvectors produced by the standard NCut algorithm and the axis-aligned eigenvectors obtained after applying the K-way alignment.
 
 
-(1) Before K-way: The eigenvectors exhibit smooth, continuous variations across the image. The first few eigenvectors are often nearly constant or represent low-frequency global structures, while deeper eigenvectors capture finer spatial variations.
+(1) Before K-way: The eigenvectors exhibit smooth, continuous variations across the image. The eigenvectors of the first line are often nearly constant or represent low-frequency global structures, while deeper eigenvectors capture higher frequency information.
 
-(2) After K-way: Once the K-way alignment is applied, each projection channel becomes more axis-aligned and unimodal, meaning that each cluster now has a dominant direction. This makes the clustering results clearer and easier to discretize. The improved separation between channels directly contributes to more stable and meaningful segmentation outcomes.
+(2) After K-way: Once the K-way alignment is applied, each projection channel becomes more axis-aligned and unimodal, meaning that each cluster now has a dominant direction. This makes the clustering results clearer and easier to discretize. The improved separation between channels directly contributes to more stable and meaningful segmentation outcomes. You can see in the pictures that some channels are segmenting the human faces and some are segmenting the background.
 
 <div id="kway-toggle" style="text-align:center;">
   <input type="radio" id="view-before" name="kview" checked>
