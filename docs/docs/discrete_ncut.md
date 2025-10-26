@@ -169,7 +169,7 @@ The visualization results below panels labeled “Before K-way” and “After K
 
 <div id="kway-before" class="kview-panel">
 <p><strong>Before k-way (NCut eigenvectors)</strong></p>
-<p>The first row is theoretically near-constant; deeper rows have higher spatial frequency.</p>
+<p>The first row is theoretically near-constant; deeper rows have higher frequency information.</p>
 <div style="text-align:center;">
 <img src="../images/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
