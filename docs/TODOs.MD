@@ -52,8 +52,8 @@
         [-] discretize the mspace RGB, use mean RGB within each mask to fill the whole
         [-] convinence NcutVisionPredictor class
     [ ] tutorial 3: hierarchy in ncut
-        [ ] kway ncut at different k
-        [ ] click on a point, show mask at different k
+        [x] kway ncut at different k
+        [x] click on a point, show mask at different k
         [ ] convinence NcutVisionPredictor class
     [ ] tutorial 4: feature align
         [ ] mutiple models: dino, clip
