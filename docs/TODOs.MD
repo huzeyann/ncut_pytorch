@@ -35,6 +35,9 @@
     [ ] feature align method
 
 ### Tutorials
+    [ ] quickstart:
+        [ ] plain ncut
+        [ ] NcutVsionPredictor
     [ ] tutorial 1: feature visualization
         [ ] extract DINOv3 features
         [ ] ncut eigvec, show in raw, make a 11x6 plot, 6 images, 10 eigvec
@@ -54,7 +57,9 @@
         [ ] convinence NcutVisionPredictor class
     [ ] tutorial 4: feature align
         [ ] mutiple models: dino, clip
+        [ ] one model different layer
         [ ] diffusion layer x timesteps
+    [ ] tutorial 5: ncut gradient
     
     [ ] Advanced tutorials
         [ ] custom affinity function
