@@ -132,7 +132,6 @@ def ncut_with_repulsion(
     D = D_A + D_R
     W = A - R + torch.diag(D_R)
     W = W / D[:, None]
-    W = W / D[None, :]
     eigvec, eigval, _ = svd_lowrank(W, n_eig)
     eigvec = correct_rotation(eigvec)
     return eigvec, eigval
