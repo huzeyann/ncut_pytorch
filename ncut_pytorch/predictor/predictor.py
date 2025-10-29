@@ -1,9 +1,11 @@
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Callable
+from functools import partial
 
 import numpy as np
 import torch
 
 from ncut_pytorch import kway_ncut, ncut_fn
+from ncut_pytorch.utils.math import cosine_affinity
 from ncut_pytorch import mspace_color, tsne_color, umap_color
 from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 from ncut_pytorch.ncuts.ncut_kway import axis_align
@@ -19,7 +21,8 @@ class NotInitializedError(Exception):
 class NcutPredictor:
     _initialized: bool = False
     device: str = 'cpu'
-    color_method: str = 'tsne'
+    color_method: str = 'umap'
+    ncut_fn: Callable = partial(ncut_fn, affinity_fn=cosine_affinity)
 
     def __init__(self):
         self._features: torch.Tensor
@@ -51,7 +54,7 @@ class NcutPredictor:
         self._color_palette = []
 
     def refresh_eigvecs(self, n_eig: int) -> None:
-        eigvecs, eigval = ncut_fn(self._features, n_eig=n_eig, device=self.device)
+        eigvecs, eigval = self.ncut_fn(self._features, n_eig=n_eig, device=self.device)
         self._eigvecs = eigvecs
         self._kway_sample_idx = farthest_point_sampling(eigvecs, 10240, device=self.device)
 

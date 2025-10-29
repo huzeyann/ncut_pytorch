@@ -40,6 +40,7 @@ def ncut_fn(
         d_gamma: float = None,
         device: str = None,
         gamma: float = None,
+        repulsion_gamma: float = None,
         make_orthogonal: bool = False,
         affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
         no_propagation: bool = False,
@@ -82,11 +83,16 @@ def ncut_fn(
 
         # find optimal gamma for affinity matrix
         if gamma is None:
-            gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma, affinity_fn)
-
-        # compute Ncut on the nystrom sampled subgraph
-        A = affinity_fn(nystrom_X, gamma=gamma)
-        nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
+            if affinity_fn == rbf_affinity:
+                gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma, affinity_fn)
+            else:
+                gamma = 0.5
+                
+        if repulsion_gamma is not None:
+            nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, gamma_attraction=gamma, gamma_repulsion=repulsion_gamma, affinity_fn=affinity_fn)
+        else:
+            A = affinity_fn(nystrom_X, gamma=gamma)
+            nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
 
         if no_propagation:
             return nystrom_eigvec, eigval, nystrom_indices, gamma
@@ -109,6 +115,27 @@ def ncut_fn(
             eigvec = gram_schmidt(eigvec)
 
         return eigvec, eigval
+    
+
+def ncut_with_repulsion(
+    X: torch.Tensor,
+    n_eig: int = 100,
+    gamma_attraction: float = None,
+    gamma_repulsion: float = None,
+    affinity_fn: Union["rbf_affinity", "cosine_affinity"] = cosine_affinity,
+    eps: float = 1e-8,
+):
+    A = affinity_fn(X, gamma=gamma_attraction)
+    R = affinity_fn(X, gamma=gamma_repulsion, repluse=True)
+    D_A = A.sum(1) + eps
+    D_R = R.sum(1) + eps
+    D = D_A + D_R
+    W = A - R + torch.diag(D_R)
+    W = W / D[:, None]
+    W = W / D[None, :]
+    eigvec, eigval, _ = svd_lowrank(W, n_eig)
+    eigvec = correct_rotation(eigvec)
+    return eigvec, eigval
 
 
 def _plain_ncut(

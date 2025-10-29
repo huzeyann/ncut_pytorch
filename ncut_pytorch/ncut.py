@@ -17,6 +17,7 @@ class Ncut:
             track_grad: bool = False,
             d_gamma: float = None,
             gamma: float = None,
+            repulsion_gamma: float = None,
             device: str = None,
             affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
             **kwargs,
@@ -47,6 +48,7 @@ class Ncut:
         self.n_eig = n_eig
         self.d_gamma = d_gamma
         self.gamma = gamma
+        self.repulsion_gamma = repulsion_gamma
         self.device = device
         self.track_grad = track_grad
         self.affinity_fn = affinity_fn
@@ -75,6 +77,7 @@ class Ncut:
                 n_eig=self.n_eig,
                 d_gamma=self.d_gamma,
                 gamma=self.gamma,
+                repulsion_gamma=self.repulsion_gamma,
                 device=self.device,
                 track_grad=self.track_grad,
                 no_propagation=True,

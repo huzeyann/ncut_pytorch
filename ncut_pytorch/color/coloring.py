@@ -3,6 +3,7 @@ __all__ = ["mspace_color", "tsne_color", "umap_color", "umap_sphere_color", "rot
 import warnings
 from typing import Any, Callable, Dict, Literal, Tuple, Optional
 
+from numba.core.types import none
 import numpy as np
 import torch
 
@@ -21,7 +22,7 @@ def mspace_color(
         q: float = 0.95,
         n_eig: Optional[int] = 8,
         n_dim: int = 3,
-        training_steps: int = 300,
+        training_steps: int = 1000,
         progress_bar: bool = False,
         **kwargs: Any,
 ):
@@ -38,10 +39,10 @@ def mspace_color(
         training_steps=training_steps,
         progress_bar=progress_bar,
         eigvec_loss=1.0,
-        recon_loss=1.0,
+        recon_loss=0.0,
         decoder_training_steps=0,
         boundary_loss=0.0,
-        zero_center_loss=0.01,
+        zero_center_loss=0.001,
         repulsion_loss=0.01,
         attraction_loss=0,
         axis_align_loss=0.0,
@@ -60,7 +61,7 @@ def tsne_color(
         n_dim: int = 3,
         metric: Literal["cosine", "euclidean"] = "cosine",
         device: str = None,
-        seed: int = 0,
+        seed: int = None,
         q: float = 0.95,
         knn: int = 10,
         **kwargs: Any,
@@ -109,7 +110,7 @@ def umap_color(
         n_dim: int = 3,
         metric: Literal["cosine", "euclidean"] = "cosine",
         device: str = None,
-        seed: int = 0,
+        seed: int = None,
         q: float = 0.95,
         knn: int = 10,
         **kwargs: Any,
@@ -136,6 +137,7 @@ def umap_color(
             "min_dist": min_dist,
             "spread": spread,
             "low_memory": False,
+            "n_epochs": 200,
         },
     )
 
@@ -149,7 +151,7 @@ def umap_sphere_color(
         min_dist: float = 0.1,
         metric: Literal["cosine", "euclidean"] = "cosine",
         device: str = None,
-        seed: int = 0,
+        seed: int = None,
         q: float = 0.95,
         knn: int = 10,
         **kwargs: Any,

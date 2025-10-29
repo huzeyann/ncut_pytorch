@@ -31,15 +31,20 @@ def rbf_affinity(
 def cosine_affinity(
     X1: torch.Tensor, 
     X2: torch.Tensor = None, 
-    gamma: float = 1.0):
+    gamma: float = 1.0,
+    repluse: bool = False,
+):
     """Compute cosine similarity affinity matrix from input features.
     """
     X2 = X1 if X2 is None else X2
     X1_norm = torch.nn.functional.normalize(X1, p=2, dim=1, eps=1e-8)
     X2_norm = torch.nn.functional.normalize(X2, p=2, dim=1, eps=1e-8)
-    A = torch.mm(X1_norm, X2_norm.T)
-    A = 1 - A
-    A = torch.exp(A / (gamma + 1e-8))
+    S = torch.mm(X1_norm, X2_norm.T)
+    if not repluse:
+        num = S - 1
+    if repluse:
+        num = S + 1
+    A = torch.exp(- num**2 / (2 * gamma + 1e-8)**2)
     return A
 
 def keep_topk_per_row(A: torch.Tensor, k: int = 10):

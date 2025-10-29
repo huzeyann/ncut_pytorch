@@ -231,6 +231,8 @@ class NcutVisionPredictor:
         discrete_rgb = np.zeros((b * h * w, 3), dtype=np.uint8)
         for i in range(n_cluster):
             mask = cluster_assignment == i
+            if mask.sum() == 0:
+                continue
             color = color_palette[mask].mean(0)
             color = (color * 255).cpu().numpy()
             color = np.clip(color, 0, 255).astype(np.uint8)
