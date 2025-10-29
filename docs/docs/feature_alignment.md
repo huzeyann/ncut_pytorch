@@ -1,73 +1,34 @@
 # Feature Alignment
 
-The following video shows an example after feature alignment.
-
-<video controls autoplay loop muted playsinline width="100%">
-  <source src="../images/color_align.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
 
 ## Motivation
 
-Models (CLIP, DINO, SD) may have learned similar visual concepts, e.g. the concept of dog vs. cat exists in all models. However, each model represent visual concepts in its own language, so computing L2 distance from DINO feature to CLIP feature don’t make sense. 
+Models (CLIP, DINO, SD) may have learned similar visual concepts, e.g. the concept of dog vs. cat exists in all models. However, each model represent visual concepts in its own language, so computing L2 distance from DINO feature to CLIP feature don’t make sense. What's more, the representation languages of the different layers of the same model will also be different. This document discuss how to align the features into a unified space.
 
-This document discuss how to align the features into a unified space.
-
-## Expected Results
+## Results of Feature Alignment
 
 The goal of feature alignment is that corresponding semantic parts become more consistent across images.
 
+First of all, we show the visualization results of SAM model before and after alignment. 
+
 | Before alignment | After alignment |
 | --- | --- |
-| ![before](../images/before_align.png) | ![after](../images/after_align.png) |
+| ![before](../images/02_sam_original_ncut.png) | ![after](../images/02_sam_affinity_ncut.png) |
 
-You should observe that facial regions such as hair, forehead, eyes, nose, and mouth are mapped to more consistent locations/colors after alignment.
+You should observe that facial regions such as hair, forehead, eyes, nose, and mouth are mapped to more consistent locations/colors after alignment. And it has shown a consistency between layers.
 
-### Aligned examples
+After that, we show the visualization results of DINO V3 model before and after alignment.
 
-<div class="align-tabs" style="text-align:center;">
-  <input type="radio" id="ex1" name="ex" checked>
-  <label for="ex1" class="abtn">Example 1</label>
-  <input type="radio" id="ex2" name="ex">
-  <label for="ex2" class="abtn">Example 2</label>
-  <input type="radio" id="ex3" name="ex">
-  <label for="ex3" class="abtn">Example 3</label>
-  <input type="radio" id="ex4" name="ex">
-  <label for="ex4" class="abtn">Example 4</label>
-  <input type="radio" id="ex5" name="ex">
-  <label for="ex5" class="abtn">Example 5</label>
+| Before alignment | After alignment |
+| --- | --- |
+| ![before](../images/05_dinov3_original_ncut.png) | ![after](../images/04_dinov3_affinity_ncut.png) |
 
-<div class="align-img a-img-1">
-  <img src="../images/align_1.png" alt="Aligned example 1" style="width:100%; height:auto; display:block; margin:0 auto;" />
-  </div>
-<div class="align-img a-img-2">
-  <img src="../images/align_2.png" alt="Aligned example 2" style="width:100%; height:auto; display:block; margin:0 auto;" />
-  </div>
-<div class="align-img a-img-3">
-  <img src="../images/align_3.png" alt="Aligned example 3" style="width:100%; height:auto; display:block; margin:0 auto;" />
-  </div>
-<div class="align-img a-img-4">
-  <img src="../images/align_4.png" alt="Aligned example 4" style="width:100%; height:auto; display:block; margin:0 auto;" />
-  </div>
-<div class="align-img a-img-5">
-  <img src="../images/align_5.png" alt="Aligned example 5" style="width:100%; height:auto; display:block; margin:0 auto;" />
-  </div>
-</div>
-<style>
-.align-tabs input[type="radio"]{display:none;}
-.align-tabs .align-img{display:none;}
-#ex1:checked ~ .a-img-1{display:block;}
-#ex2:checked ~ .a-img-2{display:block;}
-#ex3:checked ~ .a-img-3{display:block;}
-#ex4:checked ~ .a-img-4{display:block;}
-#ex5:checked ~ .a-img-5{display:block;}
-.abtn{display:inline-block; padding:6px 12px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; margin:0 4px; cursor:pointer; user-select:none;}
-#ex1:checked + label.abtn, #ex2:checked + label.abtn, #ex3:checked + label.abtn, #ex4:checked + label.abtn, #ex5:checked + label.abtn{
-  background: var(--md-primary-fg-color, #3f51b5); color:#fff; border-color: transparent;
-}
-</style>
 
-## Toy Example
+You should observe that facial regions such as hair, forehead, eyes, nose, and mouth are mapped to more consistent locations/colors after alignment. It has not only shown a consistency between layers, but also a consistency across the models in comparison with SAM Model.
+
+As you can see in the results that, we can see that SAM model pays more attention to the edge information while DINO v3 model pays more attention to the general patterns.
+
+## Didactic Example
 Relevent Files:
 
 [n25c0006a_toy_layeralign_rbf.py](../images/n25c0006a_toy_layeralign_rbf.py)
