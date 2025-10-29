@@ -41,6 +41,7 @@ def ncut_fn(
         device: str = None,
         gamma: float = None,
         repulsion_gamma: float = None,
+        repulsion_weight: float = 0.2,
         make_orthogonal: bool = False,
         affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
         no_propagation: bool = False,
@@ -89,7 +90,7 @@ def ncut_fn(
                 gamma = 0.5
                 
         if repulsion_gamma is not None:
-            nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, gamma_attraction=gamma, gamma_repulsion=repulsion_gamma, affinity_fn=affinity_fn)
+            nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, gamma_attraction=gamma, gamma_repulsion=repulsion_gamma, repulsion_weight=repulsion_weight, affinity_fn=affinity_fn)
         else:
             A = affinity_fn(nystrom_X, gamma=gamma)
             nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
@@ -122,11 +123,13 @@ def ncut_with_repulsion(
     n_eig: int = 100,
     gamma_attraction: float = None,
     gamma_repulsion: float = None,
+    repulsion_weight: float = 0.2,
     affinity_fn: Union["rbf_affinity", "cosine_affinity"] = cosine_affinity,
     eps: float = 1e-8,
 ):
     A = affinity_fn(X, gamma=gamma_attraction)
     R = affinity_fn(X, gamma=gamma_repulsion, repluse=True)
+    R = R * repulsion_weight
     D_A = A.sum(1) + eps
     D_R = R.sum(1) + eps
     D = D_A + D_R
