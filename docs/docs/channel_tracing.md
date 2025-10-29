@@ -2,7 +2,7 @@
 
 Identify which feature channels contribute most to a given segment produced by k-way Normalized Cuts. We adopt a simple, Grad-CAM–style gradient attribution over feature channels to rank their importance and visualize them.
 
-Placeholders for images (replace with your own results):
+The examples of the results of channel tracing:
 
 <div class="ct-tabs" style="text-align:center;">
   <input type="radio" id="ct-ex1" name="ct" checked>
