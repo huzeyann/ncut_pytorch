@@ -78,7 +78,6 @@ class TestNystromNcut:
             nystrom_eigvec,
             small_feature_matrix,
             nystrom_X,
-            gamma=gamma
         )
         
         # Check shape

@@ -91,13 +91,11 @@ def ncut_click_prompt(
         nystrom_X,
         n_neighbors=config.n_neighbors,
         n_sample=config.n_sample2,
-        gamma=gamma,
         matmul_chunk_size=config.matmul_chunk_size,
         device=device,
         move_output_to_cpu=config.move_output_to_cpu,
         track_grad=track_grad,
         return_indices=True,
-        affinity_fn=affinity_fn,
     )
     
     torch.set_grad_enabled(prev_grad_state)    

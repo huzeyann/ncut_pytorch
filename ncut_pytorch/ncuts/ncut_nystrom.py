@@ -4,7 +4,7 @@ from typing import Callable, Union
 
 import torch
 
-from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
+from ncut_pytorch.utils.gamma import find_gamma_by_degree, find_gamma_by_degree_after_fps
 from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
 from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, keep_topk_per_row
 from ncut_pytorch.utils.sample import farthest_point_sampling
@@ -101,12 +101,10 @@ def ncut_fn(
         nystrom_X,
         n_neighbors=config.n_neighbors,
         n_sample=config.n_sample2,
-        gamma=gamma,
         matmul_chunk_size=config.matmul_chunk_size,
         device=device,
         move_output_to_cpu=config.move_output_to_cpu,
         track_grad=track_grad,
-        affinity_fn=affinity_fn,
     )
 
     # post-hoc orthogonalization
@@ -136,11 +134,9 @@ def nystrom_propagate(
         nystrom_out: torch.Tensor,
         X: torch.Tensor,
         nystrom_X: torch.Tensor,
-        gamma: float = 1.0,
         track_grad: bool = False,
         device: str = None,
         return_indices: bool = False,
-        affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
         **kwargs,
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """propagate output from nystrom sampled nodes to all nodes,
@@ -171,7 +167,9 @@ def nystrom_propagate(
     nystrom_out = nystrom_out[indices].to(device)
     nystrom_X = nystrom_X[indices].to(device)
     
-    D = affinity_fn(nystrom_X, gamma=gamma).mean(1)
+    gamma = find_gamma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
+    
+    D = rbf_affinity(nystrom_X, gamma=gamma).mean(1)
 
     all_outs = []
     n_chunk = config.matmul_chunk_size
@@ -180,7 +178,7 @@ def nystrom_propagate(
     for i in range(0, X.shape[0], n_chunk):
         end = min(i + n_chunk, X.shape[0])
 
-        _Ai = affinity_fn(X[i:end].to(device), nystrom_X, gamma=gamma)
+        _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, gamma=gamma)
         _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
         _Di = D[_indices].sum(1)
         _Ai = _Ai / _Di[:, None]

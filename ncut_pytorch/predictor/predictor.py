@@ -129,8 +129,7 @@ class NcutPredictor:
 
         nystrom_X = self._features[self._nystrom_indices]
         nystrom_out = self._click_eigvecs[self._nystrom_indices]
-        eigvecs = nystrom_propagate(nystrom_out, new_features, nystrom_X,
-                                    gamma=self._gamma, device=self.device)
+        eigvecs = nystrom_propagate(nystrom_out, new_features, nystrom_X, device=self.device)
         eigvecs = chunked_matmul(eigvecs, self._R, device=self.device, large_device=eigvecs.device)
         mask = eigvecs.argmax(dim=-1) == self._fg_idx
         heatmap = eigvecs[:, self._fg_idx] - eigvecs[:, self._bg_idx]

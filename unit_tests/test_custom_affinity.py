@@ -180,8 +180,6 @@ class TestCustomAffinity:
             nystrom_eigvec,
             small_feature_matrix,
             nystrom_X,
-            gamma=gamma,
-            affinity_fn=self.custom_linear_affinity
         )
 
         # Check shape

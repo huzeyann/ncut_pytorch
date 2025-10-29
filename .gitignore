@@ -12,3 +12,4 @@ build/
 /.venv/
 .venv/
 pyrightconfig.json
+experiments/

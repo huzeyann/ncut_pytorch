@@ -16,6 +16,7 @@ class Ncut:
             n_eig: int = 100,
             track_grad: bool = False,
             d_gamma: float = None,
+            gamma: float = None,
             device: str = None,
             affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
             **kwargs,
@@ -26,6 +27,7 @@ class Ncut:
             n_eig (int): number of eigenvectors
             track_grad (bool): keep track of pytorch gradients
             d_gamma (float): affinity gamma parameter, lower d_gamma results in a sharper eigenvectors
+            gamma (float): affinity parameter, override d_gamma if provided
             device (str): device, default 'auto'
 
         Examples:
@@ -44,6 +46,7 @@ class Ncut:
         """
         self.n_eig = n_eig
         self.d_gamma = d_gamma
+        self.gamma = gamma
         self.device = device
         self.track_grad = track_grad
         self.affinity_fn = affinity_fn
@@ -71,6 +74,7 @@ class Ncut:
                 X,
                 n_eig=self.n_eig,
                 d_gamma=self.d_gamma,
+                gamma=self.gamma,
                 device=self.device,
                 track_grad=self.track_grad,
                 no_propagation=True,
@@ -103,10 +107,8 @@ class Ncut:
             self._nystrom_eigvec,
             X,
             self._nystrom_x,
-            gamma=self.gamma,
             device=self.device,
             track_grad=self.track_grad,
-            affinity_fn=self.affinity_fn,
             **self.kwargs
         )
         return eigvec
