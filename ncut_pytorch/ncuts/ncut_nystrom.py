@@ -9,6 +9,7 @@ from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
 from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, keep_topk_per_row
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
+from ncut_pytorch.utils.grad import set_grad_enabled
 
 
 class NystromConfig:
@@ -73,47 +74,41 @@ def ncut_fn(
     # use GPU if available
     device = auto_device(X.device, device)
 
-    # skip pytorch gradient computation if track_grad is False
-    prev_grad_state = torch.is_grad_enabled()
-    torch.set_grad_enabled(track_grad)
+    with set_grad_enabled(track_grad):
+        # subsample for nystrom approximation
+        n_sample = min(config.n_sample, int(X.shape[0]*config.n_sample_max_ratio))
+        nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device)
+        nystrom_X = X[nystrom_indices].to(device)
 
-    # subsample for nystrom approximation
-    n_sample = min(config.n_sample, int(X.shape[0]*config.n_sample_max_ratio))
-    nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device)
-    nystrom_X = X[nystrom_indices].to(device)
+        # find optimal gamma for affinity matrix
+        if gamma is None:
+            gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma, affinity_fn)
 
-    # find optimal gamma for affinity matrix
-    if gamma is None:
-        gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma, affinity_fn)
+        # compute Ncut on the nystrom sampled subgraph
+        A = affinity_fn(nystrom_X, gamma=gamma)
+        nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
 
-    # compute Ncut on the nystrom sampled subgraph
-    A = affinity_fn(nystrom_X, gamma=gamma)
-    nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
+        if no_propagation:
+            return nystrom_eigvec, eigval, nystrom_indices, gamma
 
-    if no_propagation:
-        torch.set_grad_enabled(prev_grad_state)
-        return nystrom_eigvec, eigval, nystrom_indices, gamma
+        # propagate eigenvectors from subgraph to full graph
+        eigvec = nystrom_propagate(
+            nystrom_eigvec,
+            X,
+            nystrom_X,
+            n_neighbors=config.n_neighbors,
+            n_sample=config.n_sample2,
+            matmul_chunk_size=config.matmul_chunk_size,
+            device=device,
+            move_output_to_cpu=config.move_output_to_cpu,
+            track_grad=track_grad,
+        )
 
-    # propagate eigenvectors from subgraph to full graph
-    eigvec = nystrom_propagate(
-        nystrom_eigvec,
-        X,
-        nystrom_X,
-        n_neighbors=config.n_neighbors,
-        n_sample=config.n_sample2,
-        matmul_chunk_size=config.matmul_chunk_size,
-        device=device,
-        move_output_to_cpu=config.move_output_to_cpu,
-        track_grad=track_grad,
-    )
+        # post-hoc orthogonalization
+        if make_orthogonal:
+            eigvec = gram_schmidt(eigvec)
 
-    # post-hoc orthogonalization
-    if make_orthogonal:
-        eigvec = gram_schmidt(eigvec)
-
-    torch.set_grad_enabled(prev_grad_state)
-
-    return eigvec, eigval
+        return eigvec, eigval
 
 
 def _plain_ncut(
@@ -158,49 +153,44 @@ def nystrom_propagate(
     config = NystromConfig()
     config.update(kwargs)
 
-    # skip pytorch gradient computation if track_grad is False
-    prev_grad_state = torch.is_grad_enabled()
-    torch.set_grad_enabled(track_grad)
+    with set_grad_enabled(track_grad):
+        device = auto_device(nystrom_out.device, device)
+        indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
+        nystrom_out = nystrom_out[indices].to(device)
+        nystrom_X = nystrom_X[indices].to(device)
+        
+        gamma = find_gamma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
+        
+        D = rbf_affinity(nystrom_X, gamma=gamma).mean(1)
 
-    device = auto_device(nystrom_out.device, device)
-    indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
-    nystrom_out = nystrom_out[indices].to(device)
-    nystrom_X = nystrom_X[indices].to(device)
-    
-    gamma = find_gamma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
-    
-    D = rbf_affinity(nystrom_X, gamma=gamma).mean(1)
+        all_outs = []
+        n_chunk = config.matmul_chunk_size
+        n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
+        n_neighbors = max(n_neighbors, 4)
+        for i in range(0, X.shape[0], n_chunk):
+            end = min(i + n_chunk, X.shape[0])
 
-    all_outs = []
-    n_chunk = config.matmul_chunk_size
-    n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
-    n_neighbors = max(n_neighbors, 4)
-    for i in range(0, X.shape[0], n_chunk):
-        end = min(i + n_chunk, X.shape[0])
+            _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, gamma=gamma)
+            _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
+            _Di = D[_indices].sum(1)
+            _Ai = _Ai / _Di[:, None]
 
-        _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, gamma=gamma)
-        _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
-        _Di = D[_indices].sum(1)
-        _Ai = _Ai / _Di[:, None]
+            weights = _Ai[..., None]  # (n, n_neighbors, 1)
+            neighbors = nystrom_out[_indices.flatten()]
+            neighbors = neighbors.reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
+            out = weights * neighbors  # (n, n_neighbors, d)
+            out = out.sum(dim=1)  # (n, d)
 
-        weights = _Ai[..., None]  # (n, n_neighbors, 1)
-        neighbors = nystrom_out[_indices.flatten()]
-        neighbors = neighbors.reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
-        out = weights * neighbors  # (n, n_neighbors, d)
-        out = out.sum(dim=1)  # (n, d)
+            if config.move_output_to_cpu and not track_grad:
+                out = out.to("cpu")
+            all_outs.append(out)
 
-        if config.move_output_to_cpu and not track_grad:
-            out = out.to("cpu")
-        all_outs.append(out)
+        all_outs = torch.cat(all_outs, dim=0)
 
-    all_outs = torch.cat(all_outs, dim=0)
-
-    torch.set_grad_enabled(prev_grad_state)
-
-    if return_indices:
-        return all_outs, indices
-    
-    return all_outs
+        if return_indices:
+            return all_outs, indices
+        
+        return all_outs
 
 
 
