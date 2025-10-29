@@ -174,13 +174,10 @@ def combine_transforms_pairwise(
 
 # ==================== PYTORCH INPUT TRANSFORMS ====================
 def get_input_transform(resize: Union[int, Tuple[int, int]] = 512, crop: Optional[int] = None) -> transforms.Compose:
-    if crop is None:
-        crop = resize
-    
     transform = transforms.Compose(
         [
             transforms.Resize(resize),
-            transforms.CenterCrop(crop),
+            transforms.CenterCrop(crop) if crop is not None else true_iden_partial,
             transforms.ToTensor(),
             transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
         ]

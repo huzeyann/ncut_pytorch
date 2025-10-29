@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "2.2.2"
+version = "2.2.3"
 authors = [
     { name = "Huzheng Yang", email = "huze.yann@gmail.com" },
 ]
@@ -27,6 +27,7 @@ dependencies = [
     "pillow",
     "opencv-python",
     "matplotlib",
+    "umap-learn",
 ]
 
 [project.optional-dependencies]
