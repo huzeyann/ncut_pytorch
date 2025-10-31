@@ -128,7 +128,7 @@ def ncut_with_repulsion(
     eps: float = 1e-8,
 ):
     A = affinity_fn(X, gamma=gamma_attraction)
-    R = affinity_fn(X, gamma=gamma_repulsion, repluse=True)
+    R = affinity_fn(X, gamma=gamma_repulsion, repulse=True)
     R = R * repulsion_weight
     D_A = A.sum(1) + eps
     D_R = R.sum(1) + eps

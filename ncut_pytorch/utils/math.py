@@ -32,7 +32,7 @@ def cosine_affinity(
     X1: torch.Tensor, 
     X2: torch.Tensor = None, 
     gamma: float = 1.0,
-    repluse: bool = False,
+    repulse: bool = False,
 ):
     """Compute cosine similarity affinity matrix from input features.
     """
@@ -40,12 +40,12 @@ def cosine_affinity(
     X1_norm = torch.nn.functional.normalize(X1, p=2, dim=1, eps=1e-8)
     X2_norm = torch.nn.functional.normalize(X2, p=2, dim=1, eps=1e-8)
     S = torch.mm(X1_norm, X2_norm.T)
-    if not repluse:
+    if not repulse:
         num = S - 1
-    if repluse:
+    if repulse:
         num = S + 1
     A = torch.exp(- num**2 / (2 * (gamma + 1e-8)**2))
-    if not repluse:
+    if not repulse:
         A += 1e-3
     return A
 
