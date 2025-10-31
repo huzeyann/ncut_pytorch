@@ -42,6 +42,7 @@ def ncut_fn(
         gamma: float = None,
         repulsion_gamma: float = None,
         repulsion_weight: float = 0.2,
+        extrapolation_factor: float = 1.0,
         make_orthogonal: bool = False,
         affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
         no_propagation: bool = False,
@@ -56,6 +57,9 @@ def ncut_fn(
         d_gamma (float): affinity gamma parameter, lower d_gamma results in sharper eigenvectors
         device (str): device, default 'auto' (auto detect GPU)
         gamma (float): affinity parameter, override d_gamma if provided
+        repulsion_gamma (float): (if use repulsion) repulsion gamma parameter, default None (no repulsion)
+        repulsion_weight (float): (if use repulsion) repulsion weight, default 0.2
+        extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         make_orthogonal (bool): make eigenvectors orthogonal
         affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
         
@@ -103,6 +107,7 @@ def ncut_fn(
             nystrom_eigvec,
             X,
             nystrom_X,
+            extrapolation_factor=extrapolation_factor,
             n_neighbors=config.n_neighbors,
             n_sample=config.n_sample2,
             matmul_chunk_size=config.matmul_chunk_size,
@@ -158,7 +163,8 @@ def nystrom_propagate(
         nystrom_out: torch.Tensor,
         X: torch.Tensor,
         nystrom_X: torch.Tensor,
-        track_grad: bool = False,
+        extrapolation_factor: float = 1.0,
+        track_grad: bool = False,        
         device: str = None,
         return_indices: bool = False,
         **kwargs,
@@ -166,11 +172,11 @@ def nystrom_propagate(
     """propagate output from nystrom sampled nodes to all nodes,
     use a weighted sum of the nearest neighbors to propagate the output.
 
-    Args:
+    Args:   
         nystrom_out (torch.Tensor): output from nystrom sampled nodes, shape (m, D)
         X (torch.Tensor): input features for all nodes, shape (N, D)
         nystrom_X (torch.Tensor): input features from nystrom sampled nodes, shape (m, D)
-        gamma (float): affinity parameter, default 1.0
+        extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         track_grad (bool): keep track of pytorch gradients, default False
         device (str): device to use for computation, if 'auto', will detect GPU automatically
         affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
@@ -189,6 +195,7 @@ def nystrom_propagate(
         nystrom_X = nystrom_X[indices].to(device)
         
         gamma = find_gamma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
+        gamma = gamma * extrapolation_factor
         
         D = rbf_affinity(nystrom_X, gamma=gamma).mean(1)
 

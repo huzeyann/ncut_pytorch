@@ -19,6 +19,7 @@ class Ncut:
             gamma: float = None,
             repulsion_gamma: float = None,
             repulsion_weight: float = 0.2,
+            extrapolation_factor: float = 1.0,
             device: str = None,
             affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
             **kwargs,
@@ -30,8 +31,12 @@ class Ncut:
             track_grad (bool): keep track of pytorch gradients
             d_gamma (float): affinity gamma parameter, lower d_gamma results in a sharper eigenvectors
             gamma (float): affinity parameter, override d_gamma if provided
-            device (str): device, default 'auto'
-
+            repulsion_gamma (float): (if use repulsion) repulsion gamma parameter, default None (no repulsion)
+            repulsion_weight (float): (if use repulsion) repulsion weight, default 0.2
+            extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
+            device (str): device, default 'auto' (auto detect GPU)
+            affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
+            
         Examples:
             >>> from ncut_pytorch import Ncut
             >>> import torch
@@ -51,6 +56,7 @@ class Ncut:
         self.gamma = gamma
         self.repulsion_gamma = repulsion_gamma
         self.repulsion_weight = repulsion_weight
+        self.extrapolation_factor = extrapolation_factor
         self.device = device
         self.track_grad = track_grad
         self.affinity_fn = affinity_fn
@@ -113,6 +119,7 @@ class Ncut:
             self._nystrom_eigvec,
             X,
             self._nystrom_x,
+            extrapolation_factor=self.extrapolation_factor,
             device=self.device,
             track_grad=self.track_grad,
             **self.kwargs
