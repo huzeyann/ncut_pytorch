@@ -44,7 +44,9 @@ def cosine_affinity(
         num = S - 1
     if repluse:
         num = S + 1
-    A = torch.exp(- num**2 / (2 * gamma + 1e-8)**2)
+    A = torch.exp(- num**2 / (2 * (gamma + 1e-8)**2))
+    if not repluse:
+        A += 1e-3
     return A
 
 def keep_topk_per_row(A: torch.Tensor, k: int = 10):
