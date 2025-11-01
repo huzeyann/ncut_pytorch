@@ -136,8 +136,6 @@ Then we study hard cases:
 3. Hard case 2: **anisotropic linear transform.** $f$ and $g$ could be anisotrorpic, then a plain RBF is not invariant to the transform.
 4. Hard case 3: **anisotropic non-linear transfrom.** A MLP is both anisotropic and non-linear.
 
----
-
 To help hard cases, we developed **RBF auto-scaling**
 
 ---
@@ -258,34 +256,8 @@ The image above, Set 2 is transformed from Set 1 by a randomly initialized 4-lay
 
 After applying RBF auto-scaling, the 1-to-1 pair is stronger.
 
-## Limitation without Solutions yet
 
-### 1. Anisotropic scaling (strong anisotropicity)
 
-We showed RBF auto-scaling helped anisotropic scaling case, but that was only 1/4 and 4x Anisotropic, what about 1/1000 or 1000x?
-
-![image.png](../images/image%2011.png)
-
-in the image above, Set 2 dots are squeezed by 1/1000 horizontally, $R$ is 45 degree rotation matrix.
-
-$$
-x_i = f(z_i) \\
-y_i = \left[ f(z_i) R + [10, 10]^T \right] * [0.001, 1]^T \\
-$$
-
-![image.png](../images/image%2012.png)
-
-RBF auto-scaling do help bring up 1-to-1 pair, but is this good enough?
-
-### 2. bad non-linear transform
-
-We showed RBF auto-scaling helped MLP, but that was 4 layer MLP, what about 12 layers?
-
-![image.png](../images/image%2013.png)
-
-![image.png](../images/image%2014.png)
-
-This 12-layer MLP even erased the affinity within Set 2, this MLP removed too much information, there’s no way Set 2 could align with Set 1.
 
 ## Alignment Methods 2: training MLP
 
