@@ -41,11 +41,11 @@ The examples of the results of channel tracing:
 
 Assume you already have differentiable soft cluster scores for every pixel (or patch) from k-way N-cut. To trace which feature channels are most responsible for a target cluster:
 
-1) Pick a target cluster and build a hard region mask by assigning each pixel to the cluster with the highest soft score.
-2) Define a single scalar objective that becomes larger when those masked pixels are scored more confidently as the target cluster; a simple choice is the average absolute cluster score over the masked pixels.
-3) Backpropagate this objective to the input features so that every pixel-channel gets a gradient indicating how increasing that channel would increase the cluster confidence on its own region.
-4) Aggregate the gradients within the masked region by averaging across pixels, resulting in one value per channel.
-5) Rank channels by the magnitude of these aggregated gradients. The largest values indicate channels that most strongly support the target cluster on its region. Select the top-1 (or top-k) as the most influential.
+1) Pick a target cluster and build a hard region mask by assigning each pixel to the cluster with the highest soft score. \\
+2) Define a single scalar objective that becomes larger when those masked pixels are scored more confidently as the target cluster; a simple choice is the average absolute cluster score over the masked pixels. \\
+3) Backpropagate this objective to the input features so that every pixel-channel gets a gradient indicating how increasing that channel would increase the cluster confidence on its own region. \\
+4) Aggregate the gradients within the masked region by averaging across pixels, resulting in one value per channel. \\
+5) Rank channels by the magnitude of these aggregated gradients. The largest values indicate channels that most strongly support the target cluster on its region. Select the top-1 (or top-k) as the most influential. \\
 
 Practical notes: ensure the feature tensor requires gradients and that the N-cut pipeline is configured to propagate gradients. Clear feature gradients between clusters, and retain the computation graph if you need to compute attributions for multiple clusters from the same forward pass.
 
