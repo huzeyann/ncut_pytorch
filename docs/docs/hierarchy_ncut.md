@@ -121,7 +121,7 @@ Rather than competing methods, NCut hierarchy and attention maps serve **complem
 - **Attention maps** are excellent for understanding *how* a neural network makes decisions and *which* features it considers important
 - **NCut hierarchy** excels at *what* semantic structures exist in the data and *how* to segment them for practical applications
 
-## Implementation Tips
+## Custom Implementations
 
 ```python
 # Generate hierarchical segmentation
