@@ -5,7 +5,7 @@
 
 Models (CLIP, DINO, SD) may have learned similar visual concepts, e.g. the concept of dog vs. cat exists in all models. However, each model represent visual concepts in its own language, so computing L2 distance from DINO feature to CLIP feature don’t make sense. What's more, the representation languages of the different layers of the same model will also be different. The output of feature alignment should be a new aligned feature sapce that the visualization results are invariant to the layer and kinds of neural networks.
 
-## How to implement in a few lines
+## How to use it in a few lines
 
 ```py
 def RBF_affinity_from_features(
