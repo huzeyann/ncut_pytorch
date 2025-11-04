@@ -5,7 +5,6 @@ Whenever you want to integrate your own model into Ncut package, simply define t
 
 ```py
 
-# %%
 import torch
 from PIL import Image
 from matplotlib import pyplot as plt
@@ -57,5 +56,5 @@ if __name__ == "__main__":
     image = ncut_sam.summary(n_segments=[10, 25, 50, 100])
     display(image)
 
-``
+```
 
