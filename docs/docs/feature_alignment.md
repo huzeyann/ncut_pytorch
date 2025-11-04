@@ -3,7 +3,22 @@
 
 ## Motivation
 
-Models (CLIP, DINO, SD) may have learned similar visual concepts, e.g. the concept of dog vs. cat exists in all models. However, each model represent visual concepts in its own language, so computing L2 distance from DINO feature to CLIP feature don’t make sense. What's more, the representation languages of the different layers of the same model will also be different. This document discuss how to align the features into a unified space.
+Models (CLIP, DINO, SD) may have learned similar visual concepts, e.g. the concept of dog vs. cat exists in all models. However, each model represent visual concepts in its own language, so computing L2 distance from DINO feature to CLIP feature don’t make sense. What's more, the representation languages of the different layers of the same model will also be different. The output of feature alignment should be a new aligned feature sapce that the visualization results are invariant to the layer and kinds of neural networks.
+
+## How to implement in a few lines
+
+```py
+def RBF_affinity_from_features(
+    features: torch.Tensor,
+    gamma: float = 1.0,
+):
+    d = torch.cdist(features, features, p=2)
+    A = torch.pow(d, 2)
+
+    sigma = 2 * gamma * features.var(dim=0).sum()
+    A = torch.exp(-A / sigma)
+    return A
+```
 
 ## Results of Feature Alignment
 
