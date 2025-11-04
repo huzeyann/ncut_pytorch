@@ -4,9 +4,108 @@ We used the K-Way Ncut algorithm to discretize the clustering results. The discr
 𝐾 increases, we can observe noticeable changes in the clustering structure and segmentation boundaries. The discrete Ncut method is particularly valuable in practical applications such as image segmentation and pattern discovery. By transforming continuous clustering information into clear categorical assignments, it enables more interpretable and actionable results. This discretization not only improves the usability of clustering outputs in downstream tasks but also enhances the stability and robustness of the segmentation, especially when dealing with high-dimensional or noisy image data. Overall, discrete Ncut provides a more practical and meaningful way to utilize spectral clustering results in real-world applications.
 
 
-Example: compute K-way NCut from features
-<details>
+# How to output the results in a few lines
+``` py
+from ncut_pytorch.predictor import NcutDinov3Predictor
+from PIL import Image
 
+predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
+predictor = predictor.to('cuda')
+predictor.predictor.color_method = 'tsne'
+
+
+images = [Image.open("images/view_0.jpg"), Image.open("images/view_1.jpg"), Image.open("images/view_2.jpg")
+            , Image.open("images/view_3.jpg"), Image.open("images/view_ego.jpg"), Image.open("images/image2.jpg")]
+
+predictor.set_images(images)
+
+
+segments = predictor.generate(n_segment=20)
+color = predictor.color_discrete(segments, draw_border=True)
+
+import matplotlib.pyplot as plt
+fig, axes = plt.subplots(2, 6, figsize=(15, 5))
+for i in range(6):
+    axes[0, i].imshow(images[i])
+    axes[0, i].axis('off')
+    axes[1, i].imshow(color[i])
+    axes[1, i].axis('off')
+plt.show()
+
+```
+
+
+Example: compute K-way NCut from features
+
+The following images are calculated by the features of dinov3_vith16plus. The second line is the discrete NCUT assignments results and the third line is the clustering centroid. As we switch between different K, we can see the clustering results become different. The larger the K, the more detailed clustering restuls will appear but will also introduce some noise. As you can see the background is divided into different colors, this is because the effect of positional encoding of DINO structure.
+
+
+<div class="kway-tabs" style="text-align:center;">
+  <input type="radio" id="k5" name="k" checked>
+  <label for="k5" class="kbtn">k=8</label>
+  <input type="radio" id="k6" name="k">
+  <label for="k6" class="kbtn">k=9</label>
+  <input type="radio" id="k7" name="k">
+  <label for="k7" class="kbtn">k=10</label>
+  <input type="radio" id="k8" name="k">
+  <label for="k8" class="kbtn">k=11</label>
+  <input type="radio" id="k9" name="k">
+  <label for="k9" class="kbtn">k=12</label>
+  <input type="radio" id="k10" name="k">
+  <label for="k10" class="kbtn">k=60</label>
+  <input type="radio" id="k11" name="k">
+  <label for="k11" class="kbtn">k=80</label>
+
+<div class="kway-img k-img-5">
+  <img src="../images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-6">
+  <img src="../images/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-7">
+  <img src="../images/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-8">
+  <img src="../images/k_11.png" alt="Discrete NCut result for k=11" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-9">
+  <img src="../images/k_12.png" alt="Discrete NCut result for k=12" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-10">
+  <img src="../images/k_60.png" alt="Discrete NCut result for k=60" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+<div class="kway-img k-img-11">
+  <img src="../images/k_80.png" alt="Discrete NCut result for k=80" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+</div>
+</div>
+<style>
+.kway-tabs input[type="radio"]{display:none;}
+/* Default: hide all, show the selected image when radio works */
+.kway-tabs .kway-img{display:none;}
+#k5:checked ~ .k-img-5{display:block;}
+#k6:checked ~ .k-img-6{display:block;}
+#k7:checked ~ .k-img-7{display:block;}
+#k8:checked ~ .k-img-8{display:block;}
+#k9:checked ~ .k-img-9{display:block;}
+#k10:checked ~ .k-img-10{display:block;}
+#k11:checked ~ .k-img-11{display:block;}
+.kbtn{display:inline-block; padding:6px 12px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; margin:0 4px; cursor:pointer;}
+#k5:checked + label.kbtn, #k6:checked + label.kbtn, #k7:checked + label.kbtn, #k8:checked + label.kbtn, #k9:checked + label.kbtn, #k10:checked + label.kbtn, #k11:checked + label.kbtn{background: var(--md-primary-fg-color, #3f51b5); color: #fff; border-color: transparent;}
+</style>
+<style>
+/* Enhance toggle buttons look */
+.kway-toggle-bar{display:inline-flex; align-items:center; gap:6px;}
+.kway-toggle-bar .md-button{border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; background: var(--md-default-bg-color, transparent); color: var(--md-default-fg-color, inherit); cursor:pointer; user-select:none; min-width: 140px;} 
+.kway-toggle-bar .md-button--primary{background: var(--md-primary-fg-color, #3f51b5); color:#fff; border-color: transparent;}
+.kway-toggle-bar .md-button:hover{filter: brightness(0.95);} 
+.kway-toggle-bar .md-button:active{transform: translateY(1px);} 
+</style>
+
+From the visual results, it is evident that the choice of 
+ k-the number of clusters—plays a crucial role in determining the segmentation granularity. When K is too large, the algorithm over-segments the image, splitting it into many small, fine-grained regions that may correspond to texture variations rather than meaningful semantic parts. Conversely, when K is too small, the segmentation becomes overly coarse, merging distinct areas into broad abstract regions that fail to capture local structure. Therefore, selecting an appropriate K balances detail and interpretability, leading to segmentation maps that align more closely with perceptually coherent regions or objects in the image.
+
+
+If we want to see the intermediate outputs
 <summary>
 Click to expand full code
 
@@ -93,74 +192,6 @@ if __name__ == "__main__":
 </details>
 
 
-
-The following image is calculated by the features of dinov3_vith16plus. The second line is the discrete NCUT assignments results and the third line is the clustering centroid. As we switch between different K, we can see the clustering results become different. The larger the K, the more detailed clustering restuls will appear but will also introduce some noise. As you can see the background is divided into different colors, this is because the effect of positional encoding of DINO structure.
-
-
-<div class="kway-tabs" style="text-align:center;">
-  <input type="radio" id="k5" name="k" checked>
-  <label for="k5" class="kbtn">k=8</label>
-  <input type="radio" id="k6" name="k">
-  <label for="k6" class="kbtn">k=9</label>
-  <input type="radio" id="k7" name="k">
-  <label for="k7" class="kbtn">k=10</label>
-  <input type="radio" id="k8" name="k">
-  <label for="k8" class="kbtn">k=11</label>
-  <input type="radio" id="k9" name="k">
-  <label for="k9" class="kbtn">k=12</label>
-  <input type="radio" id="k10" name="k">
-  <label for="k10" class="kbtn">k=60</label>
-  <input type="radio" id="k11" name="k">
-  <label for="k11" class="kbtn">k=80</label>
-
-<div class="kway-img k-img-5">
-  <img src="../images/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-6">
-  <img src="../images/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-7">
-  <img src="../images/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-8">
-  <img src="../images/k_11.png" alt="Discrete NCut result for k=11" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-9">
-  <img src="../images/k_12.png" alt="Discrete NCut result for k=12" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-10">
-  <img src="../images/k_60.png" alt="Discrete NCut result for k=60" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-<div class="kway-img k-img-11">
-  <img src="../images/k_80.png" alt="Discrete NCut result for k=80" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
-</div>
-</div>
-<style>
-.kway-tabs input[type="radio"]{display:none;}
-/* Default: hide all, show the selected image when radio works */
-.kway-tabs .kway-img{display:none;}
-#k5:checked ~ .k-img-5{display:block;}
-#k6:checked ~ .k-img-6{display:block;}
-#k7:checked ~ .k-img-7{display:block;}
-#k8:checked ~ .k-img-8{display:block;}
-#k9:checked ~ .k-img-9{display:block;}
-#k10:checked ~ .k-img-10{display:block;}
-#k11:checked ~ .k-img-11{display:block;}
-.kbtn{display:inline-block; padding:6px 12px; border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; margin:0 4px; cursor:pointer;}
-#k5:checked + label.kbtn, #k6:checked + label.kbtn, #k7:checked + label.kbtn, #k8:checked + label.kbtn, #k9:checked + label.kbtn, #k10:checked + label.kbtn, #k11:checked + label.kbtn{background: var(--md-primary-fg-color, #3f51b5); color: #fff; border-color: transparent;}
-</style>
-<style>
-/* Enhance toggle buttons look */
-.kway-toggle-bar{display:inline-flex; align-items:center; gap:6px;}
-.kway-toggle-bar .md-button{border:1px solid var(--md-default-fg-color--lighter, #ccc); border-radius:6px; background: var(--md-default-bg-color, transparent); color: var(--md-default-fg-color, inherit); cursor:pointer; user-select:none; min-width: 140px;} 
-.kway-toggle-bar .md-button--primary{background: var(--md-primary-fg-color, #3f51b5); color:#fff; border-color: transparent;}
-.kway-toggle-bar .md-button:hover{filter: brightness(0.95);} 
-.kway-toggle-bar .md-button:active{transform: translateY(1px);} 
-</style>
-
-From the visual results, it is evident that the choice of 
- k-the number of clusters—plays a crucial role in determining the segmentation granularity. When K is too large, the algorithm over-segments the image, splitting it into many small, fine-grained regions that may correspond to texture variations rather than meaningful semantic parts. Conversely, when K is too small, the segmentation becomes overly coarse, merging distinct areas into broad abstract regions that fail to capture local structure. Therefore, selecting an appropriate K balances detail and interpretability, leading to segmentation maps that align more closely with perceptually coherent regions or objects in the image.
-
 The visualization results below panels labeled “Before K-way” and “After K-way” highlight the difference between the raw eigenvectors produced by the standard NCut algorithm and the axis-aligned eigenvectors obtained after applying the K-way alignment.
 
 
@@ -199,3 +230,5 @@ The visualization results below panels labeled “Before K-way” and “After K
 #view-before:checked ~ #kway-before{display:block;}
 #view-after:checked ~ #kway-after{display:block;}
 </style>
+
+<details>
