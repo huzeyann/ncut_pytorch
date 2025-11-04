@@ -71,7 +71,7 @@ nav:
     - Tutorial 3 - Hierarchy in NCUT: hierarchy_ncut.md
     - Tutorial 4 - Channel Tracing: channel_tracing.md
     - Tutorial 5 - Feature Alignment: feature_alignment.md
-    - Tutorial 6 - Use Your Own Model: own_model.md
+    - Tutorial 6 - Custom Model: own_model.md
     - Tutorial 7 - Parameters: parameters.md
     - Tutorial 8 - Add Nodes: add_nodes.md
     - Tutorial 9 - Mixing Data: mixing_data.md
