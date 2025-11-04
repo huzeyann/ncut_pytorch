@@ -4,7 +4,7 @@ We used the K-Way Ncut algorithm to discretize the clustering results. The discr
 𝐾 increases, we can observe noticeable changes in the clustering structure and segmentation boundaries. The discrete Ncut method is particularly valuable in practical applications such as image segmentation and pattern discovery. By transforming continuous clustering information into clear categorical assignments, it enables more interpretable and actionable results. This discretization not only improves the usability of clustering outputs in downstream tasks but also enhances the stability and robustness of the segmentation, especially when dealing with high-dimensional or noisy image data. Overall, discrete Ncut provides a more practical and meaningful way to utilize spectral clustering results in real-world applications.
 
 
-# How to output the results in a few lines
+## How to use it in a few lines
 ``` py
 from ncut_pytorch.predictor import NcutDinov3Predictor
 from PIL import Image
