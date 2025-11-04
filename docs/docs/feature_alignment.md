@@ -18,6 +18,7 @@ def RBF_affinity_from_features(
     sigma = 2 * gamma * features.var(dim=0).sum()
     A = torch.exp(-A / sigma)
     return A
+aligned_feature = RBF_affinity_from_features(original_feature)
 ```
 
 ## Results of Feature Alignment
