@@ -26,8 +26,7 @@ predictor.set_images(images)
 
 image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
 display(image)
-
-'''
+```
 
 ## DINO Features Hierarchical Segmentation
 
