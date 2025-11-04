@@ -106,6 +106,8 @@ From the visual results, it is evident that the choice of
 
 
 If we want to see the intermediate outputs
+<details>
+
 <summary>
 Click to expand full code
 
@@ -133,7 +135,6 @@ cluster_centroids = kway_eigvecs.argmax(0)
 
 import torch
 from PIL import Image
-from ncut_pytorch import Ncut, kway_ncut
 import torchvision.transforms as transforms
 
 # DINO v3 model weights URL
@@ -231,4 +232,4 @@ The visualization results below panels labeled “Before K-way” and “After K
 #view-after:checked ~ #kway-after{display:block;}
 </style>
 
-<details>
+
