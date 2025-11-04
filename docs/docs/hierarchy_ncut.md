@@ -4,14 +4,6 @@
 
 The k-way normalized cut algorithm naturally produces hierarchical segmentations by varying the number of clusters `k`. This hierarchical property allows us to control the granularity of segmentation from coarse to fine-grained levels, making it a powerful tool for multi-scale image understanding.
 
-## Interactive Demo (Video)
-
-The video below demonstrates interactive hierarchical NCut segmentation. It shows how the relationships between different regions in different K, and how user interactions can select coherent regions at different hierarchy levels.
-
-<video src="../images/hierarchy_ncut.mp4" controls playsinline muted loop style="width:100%; max-width:960px; height:auto; display:block; margin:0 auto;"></video>
-
-If the video does not render in your browser, you can download it directly: [Download hierarchy_ncut.mp4](../images/hierarchy_ncut.mp4)
-
 ## How to use it in a few lines
 
 ``` py
@@ -27,6 +19,15 @@ predictor.set_images(images)
 image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
 display(image)
 ```
+
+
+## Interactive Demo (Video)
+
+The video below demonstrates interactive hierarchical NCut segmentation. It shows how the relationships between different regions in different K, and how user interactions can select coherent regions at different hierarchy levels.
+
+<video src="../images/hierarchy_ncut.mp4" controls playsinline muted loop style="width:100%; max-width:960px; height:auto; display:block; margin:0 auto;"></video>
+
+If the video does not render in your browser, you can download it directly: [Download hierarchy_ncut.mp4](../images/hierarchy_ncut.mp4)
 
 ## DINO Features Hierarchical Segmentation
 
