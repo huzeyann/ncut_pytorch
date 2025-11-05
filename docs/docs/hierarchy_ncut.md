@@ -13,11 +13,11 @@ from PIL import Image
 predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
 predictor = predictor.to('cuda')
 
-images = [Image.open(f"images/view_{i}.jpg") for i in range(4)]
+images = [Image.open(f"example.jpg")]
 predictor.set_images(images)
 
 image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
-display(image)
+image.save("summary.jpg")
 ```
 
 
