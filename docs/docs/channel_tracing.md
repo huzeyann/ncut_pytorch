@@ -2,6 +2,25 @@
 
 Identify which feature channels contribute most to a given segment produced by k-way Normalized Cuts. We adopt a simple, Grad-CAM–style gradient attribution over feature channels to rank their importance and visualize them.
 
+# How to use it in a few lines
+
+```py
+from ncut_pytorch import NCUT
+import torch
+
+features = torch.randn(w, h, feature_dimenstions)
+features.requires_grad = True
+eigvectors, eigvalues = NCUT(num_eig=50, num_sample=1000).fit_transform(features)
+loss = eigvectors.sum()
+loss.backward()
+grad = features.grad  # shape: [w, h, feature_dimenstions]
+k = 10  # Change to any k you want
+topk_vals, topk_idx = grad.abs().mean(dim=(0, 1)).topk(k)
+print("Top-k feature indices:", topk_idx)
+
+```
+
+
 The examples of the results of channel tracing:
 
 <div class="ct-tabs" style="text-align:center;">
