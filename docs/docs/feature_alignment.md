@@ -8,17 +8,10 @@ Models (CLIP, DINO, SD) may have learned similar visual concepts, e.g. the conce
 ## How to use it in a few lines
 
 ```py
-def RBF_affinity_from_features(
-    features: torch.Tensor,
-    gamma: float = 1.0,
-):
-    d = torch.cdist(features, features, p=2)
-    A = torch.pow(d, 2)
-
-    sigma = 2 * gamma * features.var(dim=0).sum()
-    A = torch.exp(-A / sigma)
-    return A
-aligned_feature = RBF_affinity_from_features(original_feature)
+from ncut_pytorch import affinity_from_features  # use functional API
+import torch
+features = torch.randn(100, 768)
+aligned_features = affinity_from_features(features)
 ```
 
 ## Results of Feature Alignment
