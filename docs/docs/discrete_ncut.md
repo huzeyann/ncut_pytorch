@@ -5,32 +5,25 @@ We used the K-Way Ncut algorithm to discretize the clustering results. The discr
 
 ## How to use it in a few lines
 ``` py
+
 from ncut_pytorch.predictor import NcutDinov3Predictor
 from PIL import Image
 
 predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
 predictor = predictor.to('cuda')
-predictor.predictor.color_method = 'tsne'
 
+predictor.predictor.color_method = 'tsne' #can choose mspace
 
-images = [Image.open("../images/view_0.jpg"), Image.open("../images/view_1.jpg"), Image.open("../images/view_2.jpg")
-            , Image.open("../images/view_3.jpg"), Image.open("../images/view_ego.jpg"), Image.open("../images/image2.jpg")]
+images = [Image.open("/mnt/disk1/ilykyleliam/liam/re.jpg")]
+#can replace with a list of images images = [Image.open("../images/view_0.jpg"), Image.open("../images/view_1.jpg")]
 
 predictor.set_images(images)
-
-
 segments = predictor.generate(n_segment=20)
 color = predictor.color_discrete(segments, draw_border=True)
+color = color[0]
 
-import matplotlib.pyplot as plt
-fig, axes = plt.subplots(2, 6, figsize=(15, 5))
-for i in range(6):
-    axes[0, i].imshow(images[i])
-    axes[0, i].axis('off')
-    axes[1, i].imshow(color[i])
-    axes[1, i].axis('off')
-plt.show()
-
+# save the color image
+#color.save("color.jpg")
 ```
 
 
