@@ -23,7 +23,7 @@ color = predictor.color_discrete(segments, draw_border=True)
 color = color[0]
 
 # save the color image
-#color.save("color.jpg")
+color.save("color.jpg")
 ```
 
 
