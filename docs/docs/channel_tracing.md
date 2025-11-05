@@ -5,17 +5,19 @@ Identify which feature channels contribute most to a given segment produced by k
 # How to use it in a few lines
 
 ```py
-from ncut_pytorch import NCUT
+from ncut_pytorch import Ncut
 import torch
 
-features = torch.randn(w, h, feature_dimenstions)
-features.requires_grad = True
-eigvectors, eigvalues = NCUT(num_eig=50, num_sample=1000).fit_transform(features)
-loss = eigvectors.sum()
+features = torch.randn(100, 100, 300)  # features: (H, W, feature_dimenstion)
+features.requires_grad = True  # features: (H, W, feature_dimenstion)
+features_2d = features.view(-1, features.shape[-1])  # features_2d: (H*W, feature_dimenstion)
+n_eig = 20  # n_eig: int
+eigvecs = Ncut(n_eig=n_eig, track_grad=True, device='cuda').fit_transform(features_2d)  # eigvecs: (H*W, n_eig)
+loss = eigvecs.sum()  # loss: ()
 loss.backward()
-grad = features.grad  # shape: [w, h, feature_dimenstions]
-k = 10  # Change to any k you want
-topk_vals, topk_idx = grad.abs().mean(dim=(0, 1)).topk(k)
+grad = features.grad  # grad: (H, W, feature_dimenstion)
+k = 10  # k: int
+topk_vals, topk_idx = grad.abs().mean(dim=(0, 1)).topk(k)  # topk_vals: (k,), topk_idx: (k,)
 print("Top-k feature indices:", topk_idx)
 
 ```
