@@ -43,11 +43,6 @@ if __name__ == "__main__":
     ncut_sam = NcutVisionPredictor(model, transform, batch_size=1)
     ncut_sam = ncut_sam.to('cuda')
 
-    
-    images = [Image.open("images/view_0.jpg"), Image.open("images/view_1.jpg"), Image.open("images/view_2.jpg")
-              , Image.open("images/view_3.jpg"), Image.open("images/view_ego.jpg"), Image.open("images/image2.jpg")]
-    images = [Image.open("images/view_0.jpg"), Image.open("images/view_2.jpg"), Image.open("images/view_ego.jpg")]
-
     images = [Image.open(f"images/pose/single_{i:04d}.jpg") for i in range(20)]
 
     ncut_sam.set_images(images)
