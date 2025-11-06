@@ -128,6 +128,9 @@ cluster_centroids = kway_eigvecs.argmax(0)
 import torch
 from PIL import Image
 import torchvision.transforms as transforms
+from ncut_pytorch import Ncut, kway_ncut
+
+
 
 # DINO v3 model weights URL
 DINOV3_URL = "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth"
@@ -147,38 +150,40 @@ def extract_dinov3_features(image_path, layer=11):
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    
+
     # Load DINO v3 model
-    model = torch.hub.load("facebookresearch/dinov3", "dinov3_vith16plus", 
-                           weights=DINOV3_URL)
+    model = torch.hub.load("facebookresearch/dinov3", "dinov3_vith16plus", weights=DINOV3_URL)
     model.eval()
     model.requires_grad_(False)
     model = model.to(device)
-    
+
     # Preprocess image
     img_tensor = preprocess_image(image_path).to(device)
-    
+
     # Extract features
     with torch.no_grad():
         features = model.get_intermediate_layers(img_tensor, reshape=True, 
                                                  n=list(range(12)))[layer]
-    
+
     # Convert format: (1, D, H, W) -> (H, W, D)
     features = features.squeeze(0).permute(1, 2, 0).cpu()
-    
+
     print(f"Feature shape: {features.shape}")  # (H, W, D)
     return features
 
+
+
 # Usage example
 if __name__ == "__main__":
-    features = extract_dinov3_features("example.png", layer=11)
-    print(f"Extracted feature dimensions: {features.shape}")
-    eigvecs = Ncut(n_eig=20).fit_transform(features)  
+    features = extract_dinov3_features("example.jpg", layer=11)
+    h, w, d = features.shape
+    flattened = features.reshape(h * w, d)
+    eigvecs = Ncut(n_eig=20).fit_transform(flattened)
     # align for discretization-friendly basis
     kway_eigvecs = kway_ncut(eigvecs)
     # cluster assignment and (axis-wise) centroids
-    cluster_assignment = kway_eigvecs.argmax(1)
-    cluster_centroids = kway_eigvecs.argmax(0) 
+    cluster_assignment = kway_eigvecs.argmax(dim=1).reshape(h, w)
+    cluster_centroids = kway_eigvecs.argmax(dim=0)
 
 ```
 
