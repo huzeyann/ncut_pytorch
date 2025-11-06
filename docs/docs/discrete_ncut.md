@@ -14,7 +14,7 @@ predictor = predictor.to('cuda')
 
 predictor.predictor.color_method = 'tsne' #can choose mspace
 
-images = [Image.open("/mnt/disk1/ilykyleliam/liam/re.jpg")]
+images = [Image.open("example.jpg")]
 #can replace with a list of images images = [Image.open("../images/view_0.jpg"), Image.open("../images/view_1.jpg")]
 
 predictor.set_images(images)
