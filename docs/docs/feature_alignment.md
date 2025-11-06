@@ -8,10 +8,10 @@ Models (CLIP, DINO, SD) may have learned similar visual concepts, e.g. the conce
 ## How to use it in a few lines
 
 ```py
-from ncut_pytorch import affinity_from_features  # use functional API
+from ncut_pytorch.utils.math import rbf_affinity
 import torch
 features = torch.randn(100, 768)
-aligned_features = affinity_from_features(features)
+aligned_features = rbf_affinity(features)
 ```
 
 ## Results of Feature Alignment
