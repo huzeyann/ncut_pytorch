@@ -4,7 +4,7 @@
 
 ## Nyström Normalized Cut
 
-Normalized Cut and spectral embedding, 100x faster than sklean implementation. $O(n)$ time complexity, $O(1)$ space complexity.
+Normalized Cut with Nyström approximation, handle large-scale graph with $O(n)$ time complexity, $O(1)$ space complexity. Solve million-scale graph in milliseconds.
 
 
 

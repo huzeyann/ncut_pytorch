@@ -1,4 +1,5 @@
 mkdocs-material
 mkdocs-autorefs
 mkdocstrings[python]
+mkdocs-awesome-nav
 ncut-pytorch

@@ -1,0 +1,25 @@
+sort:
+  by: filename
+
+nav:
+  - Overview: 
+    - index.md
+
+  - How it Works:
+    - methods/*.md
+
+  - Gallery:
+    - Gallery - Dataset: gallery/gallery_dataset.md
+    - Gallery - Model: gallery.md
+    - Application: gallery/gallery_application.md
+
+  - Guides:
+    - Aligned NCUT: alignedcut_vs_ncut.md
+    - Speed and Performance: speed_and_performance.md
+    - Gradient of NCUT: gradient_of_ncut.md
+
+  - Tutorials: 
+    - tutorials/*.md
+  
+  - API References: api_reference.md
+  

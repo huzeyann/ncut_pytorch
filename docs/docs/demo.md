@@ -101,7 +101,7 @@ docker run -it -p 7860:7860 --platform=linux/amd64 --gpus all \
 	registry.hf.space/huzey-ncut-pytorch:latest python app.py
 ```
 
-`HF_ACCESS_TOKEN` can be left blank, only fill it if you need access to restricted models (Llama, SDv3), please see [Backbones](backbones.md).
+`HF_ACCESS_TOKEN` can be left blank, only fill it if you need access to restricted models (Llama, SDv3), please see [Backbones](/backbones/).
 
 Step 3. Use the printed out link to access your local demo.
 

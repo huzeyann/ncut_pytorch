@@ -1,0 +1,19 @@
+/* Enlarge font in admonitions */
+.admonition {
+    font-size: 1.3em;
+}
+
+/* Enlarge admonition title */
+.admonition .admonition-title {
+    font-size: 1.3em;
+    font-weight: 700;
+}
+
+/* Optional: Make the content within admonitions even larger */
+.admonition p,
+.admonition ol,
+.admonition ul {
+    font-size: 1.2em;
+    line-height: 1.6;
+}
+
