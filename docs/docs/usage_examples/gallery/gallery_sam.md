@@ -6,7 +6,7 @@
 Click to expand full code
 
 ``` py
-class CLIP(torch.nn.Module):
+class SAM(torch.nn.Module):
 ```
 
 </summary>
@@ -14,7 +14,6 @@ class CLIP(torch.nn.Module):
 ```py linenums="1"
 
 # %%
-from typing import Optional, Tuple
 from einops import rearrange
 import torch
 from PIL import Image
@@ -22,73 +21,70 @@ import torchvision.transforms as transforms
 from torch import nn
 import numpy as np
 
-# %%
-class CLIP(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
 
-        from transformers import CLIPProcessor, CLIPModel
+class SAM(torch.nn.Module):
+    def __init__(self, checkpoint="/data/sam_model/sam_vit_b_01ec64.pth", **kwargs):
+        super().__init__(**kwargs)
+        from segment_anything import sam_model_registry, SamPredictor
+        from segment_anything.modeling.sam import Sam
 
-        model = CLIPModel.from_pretrained("openai/clip-vit-base-patch16")
-        # processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch16")
-        self.model = model.eval().cuda()
-        
-        def new_forward(
-            self,
-            hidden_states: torch.Tensor,
-            attention_mask: torch.Tensor,
-            causal_attention_mask: torch.Tensor,
-            output_attentions: Optional[bool] = False,
-        ) -> Tuple[torch.FloatTensor]:
+        sam: Sam = sam_model_registry["vit_b"](checkpoint=checkpoint)
 
-            residual = hidden_states
+        from segment_anything.modeling.image_encoder import (
+            window_partition,
+            window_unpartition,
+        )
 
-            hidden_states = self.layer_norm1(hidden_states)
-            hidden_states, attn_weights = self.self_attn(
-                hidden_states=hidden_states,
-                attention_mask=attention_mask,
-                causal_attention_mask=causal_attention_mask,
-                output_attentions=output_attentions,
-            )
-            self.attn_output = hidden_states.clone()
-            hidden_states = residual + hidden_states
+        def new_block_forward(self, x: torch.Tensor) -> torch.Tensor:
+            shortcut = x
+            x = self.norm1(x)
+            # Window partition
+            if self.window_size > 0:
+                H, W = x.shape[1], x.shape[2]
+                x, pad_hw = window_partition(x, self.window_size)
 
-            residual = hidden_states
-            hidden_states = self.layer_norm2(hidden_states)
-            hidden_states = self.mlp(hidden_states)
-            self.mlp_output = hidden_states.clone()
-            
-            hidden_states = residual + hidden_states
+            x = self.attn(x)
+            # Reverse window partition
+            if self.window_size > 0:
+                x = window_unpartition(x, self.window_size, pad_hw, (H, W))
+            self.attn_output = x.clone()
 
-            outputs = (hidden_states,)
+            x = shortcut + x
+            mlp_outout = self.mlp(self.norm2(x))
+            self.mlp_output = mlp_outout.clone()
+            x = x + mlp_outout
+            self.block_output = x.clone()
 
-            if output_attentions:
-                outputs += (attn_weights,)
+            return x
 
-            self.block_output = hidden_states.clone()
-            return outputs
-        
-        setattr(self.model.vision_model.encoder.layers[0].__class__, "forward", new_forward)
+        setattr(sam.image_encoder.blocks[0].__class__, "forward", new_block_forward)
+
+        self.image_encoder = sam.image_encoder
+        self.image_encoder.eval()
+        self.image_encoder = self.image_encoder.cuda()
 
     @torch.no_grad()
-    def forward(self, x): 
-
-        out = self.model.vision_model(x)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        with torch.no_grad():
+            x = torch.nn.functional.interpolate(x, size=(1024, 1024), mode="bilinear")
+        out = self.image_encoder(x)
 
         attn_outputs, mlp_outputs, block_outputs = [], [], []
-        for i, blk in enumerate(self.model.vision_model.encoder.layers):
+        for i, blk in enumerate(self.image_encoder.blocks):
             attn_outputs.append(blk.attn_output)
             mlp_outputs.append(blk.mlp_output)
             block_outputs.append(blk.block_output)
-
+            # print(f"block {i} attn_output shape: {blk.attn_output.shape}")
+            # print(f"block {i} mlp_output shape: {blk.mlp_output.shape}")
+            # print(f"block {i} block_output shape: {blk.block_output.shape}")
         attn_outputs = torch.stack(attn_outputs)
         mlp_outputs = torch.stack(mlp_outputs)
         block_outputs = torch.stack(block_outputs)
         return attn_outputs, mlp_outputs, block_outputs
 
 
-def image_dino_feature(
-    images, resolution=(224, 224),
+def image_sam_feature(
+    images, resolution=(1024, 1024), checkpoint="/data/sam_model/sam_vit_b_01ec64.pth"
 ):
     if isinstance(images, list):
         assert isinstance(images[0], Image.Image), "Input must be a list of PIL images."
@@ -104,7 +100,7 @@ def image_dino_feature(
         ]
     )
 
-    feat_extractor = CLIP()
+    feat_extractor = SAM(checkpoint=checkpoint)
 
     attn_outputs, mlp_outputs, block_outputs = [], [], []
     for i, image in enumerate(images):
@@ -133,24 +129,17 @@ dataset = ImageFolder("/data/coco/")
 print("number of images in the dataset:", len(dataset))
 # %%
 images = [dataset[i][0] for i in range(20)]
-attn_outputs, mlp_outputs, block_outputs = image_dino_feature(images)
+attn_outputs, mlp_outputs, block_outputs = image_sam_feature(images)
 # %%
 print(attn_outputs.shape, mlp_outputs.shape, block_outputs.shape)
-# %%
-# remove 1 cls token
-def reshape_output(outputs):
-    from einops import rearrange
-    outputs = rearrange(outputs[:, :, 1:, :], "l b (h w) c -> l b h w c", h=14, w=14)
-    return outputs
-attn_outputs = reshape_output(attn_outputs)
-mlp_outputs = reshape_output(mlp_outputs)
-block_outputs = reshape_output(block_outputs)
 # %%
 num_nodes = np.prod(attn_outputs.shape[1:4])
 
 
 # %%
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
+
+i_layer = 9
 
 for i_layer in range(12):
 
@@ -185,13 +174,15 @@ for i_layer in range(12):
     axs[2, 0].set_title("MLP layer output", ha="left")
     axs[3, 0].set_title("sum of residual stream", ha="left")
 
-    plt.suptitle(f"CLIP layer {i_layer} NCUT spectral-tSNE", fontsize=16)
+    plt.suptitle(f"SAM layer {i_layer} NCUT spectral-tSNE", fontsize=16)
     # plt.show()
-    save_dir = "/workspace/output/gallery/clip"
+    save_dir = "/workspace/output/gallery/sam"
     import os
     os.makedirs(save_dir, exist_ok=True)
-    plt.savefig(f"{save_dir}/clip_layer_{i_layer}.jpg", bbox_inches="tight")
+    plt.savefig(f"{save_dir}/sam_layer_{i_layer}.jpg", bbox_inches="tight")
     plt.close()
+    
+exit(0)
 # %%
 
 ```
@@ -200,38 +191,38 @@ for i_layer in range(12):
 
 
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_0.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_0.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_1.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_1.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_2.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_2.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_3.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_3.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_4.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_4.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_5.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_5.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_6.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_6.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_7.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_7.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_8.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_8.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_9.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_9.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_10.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_10.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_clip/clip_layer_11.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_sam/sam_layer_11.jpg" style="width:100%;">
 </div>

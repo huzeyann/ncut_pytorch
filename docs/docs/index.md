@@ -1,7 +1,7 @@
 
 
 <div style="text-align: center;">
-  <img src="/images/index/Ncut.svg" alt="Ncut" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
+  <img src="images/index/Ncut.svg" alt="Ncut" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
 </div>
 
 
@@ -32,7 +32,7 @@
 </style>
 
 <div style="width: 60%; text-align: center; margin:0 auto;">
-    <pre><code class="language-shell">pip install Ncut-pytorch</code></pre>
+    <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
 </div>
 
 
@@ -46,10 +46,10 @@
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
-  <source src="/images/index/Ncut_video_sam_264_small.mp4" type="video/mp4">
+  <source src="images/index/Ncut_video_sam_264_small.mp4" type="video/mp4">
 </video>
 <p>Video: Ncut applied to image encoder features from Segment Anything Model. </br> RGB color is 3D spectral-tSNE embedding of Ncut eigenvectors.
-<a href="/gallery/gallery_sam_video/">code</a> **TODO: update this code**
+<a href="gallery/gallery_sam_video/">code</a> **TODO: update this code**
 </p>
 </div>
 
@@ -64,10 +64,10 @@
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
-  <source src="/images/demo_heatmap.mp4" type="video/mp4">
+  <source src="../images/index/demo_heatmap.mp4" type="video/mp4">
 </video>
 <p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pointer.
-<a href="/alignedcut_vs_Ncut/">details</a> TODO: change video to the new hierarchy segmentation method
+<a href="alignedcut_vs_Ncut/">details</a> TODO: change video to the new hierarchy segmentation method
 </p>
 </div>
 
@@ -83,7 +83,7 @@
 ></script>
 -->
 
-<gradio-app src="https://huzey-Ncut-pytorch.hf.space"></gradio-app>
+<!-- <gradio-app src="https://huzey-Ncut-pytorch.hf.space"></gradio-app>
 
 <script>
 	function handleLoadComplete() {
@@ -103,7 +103,7 @@
 	} else {
 		console.log("gradio-app element not found");
 	}
-</script>
+</script> -->
 
 <!-- <iframe
 	src="https://huzey-Ncut-pytorch.hf.space"
@@ -112,14 +112,14 @@
 	height="800"
 ></iframe> -->
 
-## Gallery
-Just plugin features extracted from any pre-trained model and ready to go. Ncut works for any input -- image, text, video, 3D, .... Planty examples code and plots in the [Gallery](/gallery/)
+<!-- ## Gallery
+Just plugin features extracted from any pre-trained model and ready to go. Ncut works for any input -- image, text, video, 3D, .... Planty examples code and plots in the [Gallery](gallery/)
 
 <div style="text-align: center;">
-<a href="/gallery/">
-<img src="/images/index/Ncut_gallery_cover.jpg" style="width:100%;">
+<a href="gallery/">
+<img src="images/index/Ncut_gallery_cover.jpg" style="width:100%;">
 </a>
-</div>
+</div> -->
 
 ---
 
@@ -132,24 +132,7 @@ Just plugin features extracted from any pre-trained model and ready to go. Ncut 
 
 ---
 
-## Quick Start: plain Ncut
-
-
-```py linenums="1"
-import torch
-from ncut_pytorch import Ncut
-
-features = torch.rand(1960, 768)
-eigvecs = Ncut(n_eig=20).fit_transform(features)
-  # (1960, 20)
-
-from ncut_pytorch import kway_ncut
-kway_eigvecs = kway_ncut(eigvecs)
-cluster_assignment = kway_eigvecs.argmax(1)
-cluster_centroids = kway_eigvecs.argmax(0)
-```
-
-## Quick Start: Ncut DINOv3 Predictor
+## Quick Start: Ncut with DINO Features
 
 ```py linenums="1"
 from ncut_pytorch.predictor import NcutDinov3Predictor
@@ -167,6 +150,23 @@ display(image)
 ```
 
 ![summary](https://github.com/user-attachments/assets/a5d8a966-990b-4f6d-be10-abb00291bee2)
+
+
+## Quick Start: Ncut with Your Features
+
+
+```py linenums="1"
+import torch
+from ncut_pytorch import Ncut
+
+your_features = torch.rand(1960, 768)
+eigvecs = Ncut(n_eig=20).fit_transform(your_features) # (1960, 20)
+
+from ncut_pytorch import kway_ncut
+kway_eigvecs = kway_ncut(eigvecs)
+cluster_assignment = kway_eigvecs.argmax(1)
+```
+
 
 ---
 

@@ -1,4 +1,4 @@
-# Tutorial 4 - Channel Tracing
+# Channel Tracing
 
 Identify which feature channels contribute most to a given segment produced by k-way Normalized Cuts. We adopt a simple, Grad-CAM–style gradient attribution over feature channels to rank their importance and visualize them.
 
@@ -34,15 +34,15 @@ The examples of the results of channel tracing:
   <label for="ct-ex3" class="ctbtn">Example 3</label>
 
 <div class="ct-img ct-img-ex1">
-  <img src="/images/tutorials_04_channel_tracing/grad_exmaple_1.png" alt="Channel tracing - Example 1" style="width:100%; height:auto; display:block; margin:0 auto;" />
+  <img src="../images/tutorials_04_channel_tracing/grad_exmaple_1.png" alt="Channel tracing - Example 1" style="width:100%; height:auto; display:block; margin:0 auto;" />
 </div>
 
 <div class="ct-img ct-img-ex2">
-  <img src="/images/tutorials_04_channel_tracing/grad_exmaple_2.png" alt="Channel tracing - Example 2" style="width:100%; height:auto; display:block; margin:0 auto;" />
+  <img src="../images/tutorials_04_channel_tracing/grad_exmaple_2.png" alt="Channel tracing - Example 2" style="width:100%; height:auto; display:block; margin:0 auto;" />
 </div>
 
 <div class="ct-img ct-img-ex3">
-  <img src="/images/tutorials_04_channel_tracing/grad_exmaple_3.png" alt="Channel tracing - Example 3" style="width:100%; height:auto; display:block; margin:0 auto;" />
+  <img src="../images/tutorials_04_channel_tracing/grad_exmaple_3.png" alt="Channel tracing - Example 3" style="width:100%; height:auto; display:block; margin:0 auto;" />
 </div>
 
 </div>

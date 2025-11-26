@@ -79,6 +79,6 @@ extra:
     provider: google
     property: G-8CPZDV5GR1
   generator: true
-  social: 
-  - icon: fontawesome/brands/x-twitter
-    link: https://twitter.com/HuzeYann
+  # social: 
+  # - icon: fontawesome/brands/x-twitter
+    # link: https://twitter.com/HuzeYann

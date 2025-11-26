@@ -1,4 +1,4 @@
-# Tutorial 6 - Custom Model
+# Custom Model
 
 Whenever you want to integrate your own model into Ncut package, simply define the `__init__` and `forward` function as shown below. Then you can use all functions in NCut.
 

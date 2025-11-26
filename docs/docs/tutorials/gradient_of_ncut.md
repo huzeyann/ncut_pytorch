@@ -1,4 +1,4 @@
-## Accessing the Gradient of NCUT with Functional API
+# Gradient of Ncut
 
 In our PyTorch implementation of NCUT, gradient is handled by [PyTorch autograd](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html).
 

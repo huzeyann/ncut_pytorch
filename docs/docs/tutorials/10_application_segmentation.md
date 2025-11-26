@@ -59,7 +59,7 @@ images_tsf = torch.stack([transform_image(img) for img in images])
 </details>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_10_application_segmentation/ego4d_fixing.jpg" alt="ego4d_fixing.jpg" style="width:80%;">
+<img src="../images/tutorials_10_application_segmentation/ego4d_fixing.jpg" alt="ego4d_fixing.jpg" style="width:80%;">
 </div>
 
 ### Compute NCUT
@@ -98,7 +98,7 @@ plt.show()
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_10_application_segmentation/ego4d_click.jpg" alt="ego4d_click.jpg" style="width:60%;">
+<img src="../images/tutorials_10_application_segmentation/ego4d_click.jpg" alt="ego4d_click.jpg" style="width:60%;">
 </div>
 
 ### Get Segmentation Mask (correspondence to the clicked point)
@@ -125,7 +125,7 @@ for i in range(4):
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_10_application_segmentation/ego4d_mask.jpg" alt="ego4d_mask.jpg" style="width:100%;">
+<img src="../images/tutorials_10_application_segmentation/ego4d_mask.jpg" alt="ego4d_mask.jpg" style="width:100%;">
 </div>
 
 ## Multiple Points Prompt
@@ -158,7 +158,7 @@ plt.show()
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_10_application_segmentation/ego4d_multi_click.jpg" alt="ego4d_multi_click.jpg" style="width:100%;">
+<img src="../images/tutorials_10_application_segmentation/ego4d_multi_click.jpg" alt="ego4d_multi_click.jpg" style="width:100%;">
 </div>
 
 ### How to combine multiple points
@@ -186,7 +186,7 @@ for i in range(4):
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_10_application_segmentation/ego4d_multi_mask.jpg" alt="ego4d_multi_mask.jpg" style="width:100%;">
+<img src="../images/tutorials_10_application_segmentation/ego4d_multi_mask.jpg" alt="ego4d_multi_mask.jpg" style="width:100%;">
 </div>
 
 
@@ -212,7 +212,7 @@ plt.show()
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_10_application_segmentation/ego4d_multi_click_neg.jpg" alt="ego4d_multi_click_neg.jpg" style="width:100%;">
+<img src="../images/tutorials_10_application_segmentation/ego4d_multi_click_neg.jpg" alt="ego4d_multi_click_neg.jpg" style="width:100%;">
 </div>
 
 
@@ -246,7 +246,7 @@ for i in range(4):
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_10_application_segmentation/ego4d_multi_mask_neg.jpg" alt="ego4d_multi_mask_neg.jpg" style="width:100%;">
+<img src="../images/tutorials_10_application_segmentation/ego4d_multi_mask_neg.jpg" alt="ego4d_multi_mask_neg.jpg" style="width:100%;">
 </div>
 
 <div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">

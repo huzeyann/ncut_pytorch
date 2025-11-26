@@ -6,7 +6,7 @@
 `fpsample` is a dependency for `ncut-pytorch`, if you running into the issue like this image, please try the following options.
 
 <div style="text-align: center;">
-<img src="/images/trouble_shooting/rust_error_fpsample.png" style="width:100%;">
+<img src="images/trouble_shooting/rust_error_fpsample.png" style="width:100%;">
 </div>
 
 Option A:

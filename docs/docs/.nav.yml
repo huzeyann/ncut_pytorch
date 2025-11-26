@@ -5,34 +5,34 @@ nav:
   - Overview: 
     - index.md
 
-  - What is Ncut?: placeholder.md
+  - What is Ncut?: what_is_ncut.md
 
-  - How Ncut Works:
-    - methods/*.md
+  - How Fast is Ncut?: how_fast_is_ncut.md
 
-  - Tutorials (basic): 
-    - tutorials/index.md
+  - Tutorials: 
     - tutorials/01_tutorials.md
     - tutorials/02_discrete_ncut.md
     - tutorials/03_hierarchy_ncut.md
+
+  - How Ncut Works:
+    - methods/*.md
   
   - Tutorials (advanced):
-    - Feature Alignment: tutorials/05_feature_alignment.md
-    - Custom Model: tutorials/06_own_model.md
-    # - tutorials/07_parameters.md
+    - Feature Alignment: tutorials/feature_alignment.md
+    - Custom Model: tutorials/custom_model.md
 
   - Tutorials (miscs):
-    - Gradient of NCUT: gradient_of_ncut.md
-    - Add Nodes: tutorials/08_add_nodes.md
-    - Mixing Resolutions: tutorials/09_mixing_data.md
-    - Channel Tracing: tutorials/04_channel_tracing.md
+    - tutorials/gradient_of_ncut.md
+    - tutorials/channel_tracing.md
+    - tutorials/inference_extrapolation.md
+    - tutorials/mixing_resolution.md
 
   - Usage Examples:
-    - Gallery - Model: gallery.md
-    - Gallery - Dataset: gallery/gallery_dataset.md
+    - Model Gallery: usage_examples/model_gallery.md
+    - Out-of-Distribution Adaptation: usage_examples/ood_adaptation.md
 
   - Blogs:
-    - Aligned NCUT: alignedcut_vs_ncut.md
+    - blogs/*.md
   
   - API References: api_reference.md
   

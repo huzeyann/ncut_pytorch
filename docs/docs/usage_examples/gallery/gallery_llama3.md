@@ -189,98 +189,98 @@ for i_layer in range(12):
 
 
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_0.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_0.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_1.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_1.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_2.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_2.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_3.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_3.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_4.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_4.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_5.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_5.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_6.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_6.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_7.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_7.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_8.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_8.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_9.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_9.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_10.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_10.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_11.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_11.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_12.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_12.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_13.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_13.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_14.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_14.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_15.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_15.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_16.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_16.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_17.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_17.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_18.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_18.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_19.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_19.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_20.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_20.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_21.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_21.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_22.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_22.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_23.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_23.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_24.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_24.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_25.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_25.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_26.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_26.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_27.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_27.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_28.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_28.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_29.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_29.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_30.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_30.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_llama3/llama3_layer_31.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_llama3/llama3_layer_31.jpg" style="width:100%;">
 </div>

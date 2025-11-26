@@ -207,38 +207,38 @@ for i_layer in range(12):
 
 
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_0.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_0.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_1.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_1.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_2.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_2.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_3.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_3.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_4.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_4.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_5.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_5.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_6.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_6.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_7.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_7.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_8.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_8.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_9.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_9.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_10.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_10.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_gpt2/gpt2_layer_11.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_gpt2/gpt2_layer_11.jpg" style="width:100%;">
 </div>

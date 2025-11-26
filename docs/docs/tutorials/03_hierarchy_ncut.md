@@ -25,26 +25,26 @@ image.save("summary.jpg")
 
 The video below demonstrates interactive hierarchical NCut segmentation. It shows how the relationships between different regions in different K, and how user interactions can select coherent regions at different hierarchy levels.
 
-<video src="/images/tutorials_03_hierarchy_ncut/hierarchy_ncut.mp4" controls playsinline muted loop style="width:100%; max-width:960px; height:auto; display:block; margin:0 auto;"></video>
+<video src="../images/tutorials_03_hierarchy_ncut/hierarchy_ncut.mp4" controls playsinline muted loop style="width:100%; max-width:960px; height:auto; display:block; margin:0 auto;"></video>
 
-If the video does not render in your browser, you can download it directly: [Download hierarchy_ncut.mp4](/images/tutorials_03_hierarchy_ncut/hierarchy_ncut.mp4)
+If the video does not render in your browser, you can download it directly: [Download hierarchy_ncut.mp4](../images/tutorials_03_hierarchy_ncut/hierarchy_ncut.mp4)
 
 ## DINO Features Hierarchical Segmentation
 
-![DINO Features K-Way Segmentation](/images/tutorials_03_hierarchy_ncut/dino_feature.png)
+![DINO Features K-Way Segmentation](../images/tutorials_03_hierarchy_ncut/dino_feature.png)
 
 
 **Key Observation**: DINO features excel at semantic segmentation, maintaining object coherence even at fine granularities. The segmentation respects semantic boundaries rather than just visual edges.
 
 ## SAM Features Hierarchical Segmentation
 
-![SAM Features K-Way Segmentation](/images/tutorials_03_hierarchy_ncut/sam_feature.png)
+![SAM Features K-Way Segmentation](../images/tutorials_03_hierarchy_ncut/sam_feature.png)
 
 **Key Observation**: SAM features excel at boundary detection and part-level segmentation. The hierarchy moves from parts to sub-parts to surface details, making it ideal for applications requiring precise spatial localization.
 
 ## NCut Hierarchy vs Attention Maps
 
-![NCut vs Attention Comparison](/images/tutorials_03_hierarchy_ncut/ncut_attention.png)
+![NCut vs Attention Comparison](../images/tutorials_03_hierarchy_ncut/ncut_attention.png)
 
 The comparison above reveals a fundamental difference between NCut hierarchical segmentation and traditional attention map visualization.
 

@@ -31,13 +31,13 @@ Our tutorials are designed to take you from basic usage to advanced applications
 Before starting the tutorials, make sure you have:
 - Python 3.7+ installed
 - PyTorch installed
-- NCut PyTorch package installed (see [Installation Guide](/index.md))
+- NCut PyTorch package installed (see [Installation Guide](../../index.md))
 
 ## Need Help?
 
 If you encounter any issues while following the tutorials:
-- Check the [Troubleshooting Guide](/trouble_shooting.md)
-- Review the [API Reference](/api_reference.md)
+- Check the [Troubleshooting Guide](../../trouble_shooting.md)
+- Review the [API Reference](../../api_reference.md)
 - Visit our [GitHub repository](https://github.com/huzeyann/ncut_pytorch) for support
 
 Let's get started with your NCut journey!

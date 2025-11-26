@@ -6,7 +6,7 @@
 Click to expand full code
 
 ``` py
-class DiNOv2(torch.nn.Module):
+class SAM(torch.nn.Module):
 ```
 
 </summary>
@@ -23,61 +23,15 @@ import numpy as np
 
 N_FRAMES = 600
 
-# %%
-class DiNOv2(torch.nn.Module):
-    def __init__(self, ver="dinov2_vitb14_reg"):
-        super().__init__()
-        self.dinov2 = torch.hub.load("facebookresearch/dinov2", ver)
-        self.dinov2.requires_grad_(False)
-        self.dinov2.eval()
-        self.dinov2 = self.dinov2.cuda()
-        
-        def new_block_forward(self, x: torch.Tensor) -> torch.Tensor:
-            def attn_residual_func(x):
-                return self.ls1(self.attn(self.norm1(x)))
 
-            def ffn_residual_func(x):
-                return self.ls2(self.mlp(self.norm2(x)))
-
-            attn_output = attn_residual_func(x)
-            self.attn_output = attn_output.clone()
-            x = x + attn_output
-            mlp_output = ffn_residual_func(x)
-            self.mlp_output = mlp_output.clone()
-            x = x + mlp_output
-            block_output = x
-            self.block_output = block_output.clone()
-            return x
-        
-        setattr(self.dinov2.blocks[0].__class__, "forward", new_block_forward)
-
-    @torch.no_grad()
-    def forward(self, x): 
-
-        out = self.dinov2(x)
-
-        attn_outputs, mlp_outputs, block_outputs = [], [], []
-        for i, blk in enumerate(self.dinov2.blocks):
-            attn_outputs.append(blk.attn_output)
-            mlp_outputs.append(blk.mlp_output)
-            block_outputs.append(blk.block_output)
-
-        attn_outputs = torch.stack(attn_outputs)
-        mlp_outputs = torch.stack(mlp_outputs)
-        block_outputs = torch.stack(block_outputs)
-        # return attn_outputs, mlp_outputs, block_outputs
-        return block_outputs
-
-
-
-def transform_images(frames, size=(896, 896)):
+def transform_images(frames, size=(1024, 1024)):
     resized = []
     length = len(frames)
     for i in range(length):
         frame = frames[i]
         # image = Image.fromarray((frame * 255).astype(np.uint8))
         image = Image.fromarray(frame)
-        image = image.resize(size, Image.ANTIALIAS)
+        image = image.resize(size, Image.Resampling.LANCZOS)
         image = np.array(image) / 255.0
         resized.append(np.array(image))
     frames = np.stack(resized, axis=0)
@@ -108,18 +62,21 @@ def read_video(video_path: str) -> torch.Tensor:
             frames = np.append(frames, last_frame.reshape(1, *last_frame.shape), axis=0)
     return frames
 
+from ncut_pytorch.backbone import load_model
+
 
 @torch.no_grad()
-def video_sam_feature(video_path, checkpoint="/data/sam_model/sam_vit_b_01ec64.pth"):
+def video_sam_feature(video_path):
     frames = read_video(video_path)
 
-    feat_extractor = DiNOv2()
+    feat_extractor = load_model('SAM(sam_vit_b)')
+    feat_extractor = feat_extractor.eval().cuda()
 
-    attn_outputs, mlp_outputs, block_outputs = [], [], []
+    block_outputs = []
     for i in range(frames.shape[0]):
         frame = frames[i]
         frame = transform_images([frame])
-        block_output = feat_extractor(frame.cuda())
+        block_output = feat_extractor(frame.cuda())['block']
         block_outputs.append(block_output[-1].cpu())
     block_outputs = torch.stack(block_outputs)
     return block_outputs
@@ -138,8 +95,8 @@ for video_path in video_paths:
 features = torch.cat(features, dim=0)
 # %%
 print(features.shape)
-# remove reg tokens
-features = features[:, :, 5:].reshape(-1, 64, 64, 768)
+# %%
+features = features.squeeze(1)
 # %%
 num_nodes = np.prod(features.shape[:-1])
 print("Number of nodes:", num_nodes)
@@ -148,14 +105,14 @@ print("Number of nodes:", num_nodes)
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
 
 eigvectors, eigenvalues = NCUT(
-    num_eig=100, num_sample=30000, device="cuda:0"
+    num_eig=100, num_sample=10000, device="cuda:0"
 ).fit_transform(features.reshape(-1, features.shape[-1]))
 # %%
-_, rgb = rgb_from_tsne_3d(eigvectors, num_sample=50000, perplexity=500, knn=10, device="cuda:0")
+_, rgb = rgb_from_tsne_3d(eigvectors, num_sample=1000, perplexity=500, knn=10, device="cuda:0")
 
 
 # %%
-image_rgb = rgb.reshape(*features.shape[:-1], 3)
+image_rgb = rgb.reshape(*features.shape[:-1], 3).squeeze(1)
 
 import matplotlib.pyplot as plt
 
@@ -164,7 +121,7 @@ frames1 = read_video(video_paths[0])
 frames2 = read_video(video_paths[1])
 frames3 = read_video(video_paths[2])
 
-save_dir = "/tmp/ncut_video_dinov2/"
+save_dir = "/tmp/ncut_video_sam/"
 import shutil
 shutil.rmtree(save_dir, ignore_errors=True)
 import os
@@ -196,7 +153,7 @@ for i_frame in range(0, N_FRAMES):
 
 # %%
 # make video
-save_dir = "/tmp/ncut_video_dinov2/"
+save_dir = "/tmp/ncut_video_sam/"
 
 def make_video_from_images(image_dir, video_path):
     import cv2
@@ -214,7 +171,7 @@ def make_video_from_images(image_dir, video_path):
     cv2.destroyAllWindows()
     video.release()
     
-make_video_from_images(save_dir, "/workspace/output/ncut_video_dinov2.mp4")
+make_video_from_images(save_dir, "/workspace/output/ncut_video_sam.mp4")
 # %%
 
 
@@ -222,14 +179,21 @@ make_video_from_images(save_dir, "/workspace/output/ncut_video_dinov2.mp4")
 
 </details>
 
-This video example use image model without temporal dimension
+This video example use features from Segment Anything Model:
 
-1. extract image feature for every frame, independently
+1. for every frame, extract image features, shape `[B, T, H, W, C]`
 
-2. concatenate all the image features and compute NCUT
+2. concatenate all the frames and pixels, shape `[B*T*H*W, C]`
+
+3. compute 100 NCUT eigenvectors, shape `[B*T*H*W, 100]`
+
+4. use spectral-tSNE to reduce 100 eigenvectors to 3D, shape `[B*T*H*W, 3]`
+
+5. plot the 3D as RGB
+
 
 <div  style="text-align: center;">
 <video width="100%" controls muted autoplay loop>
-  <source src="/images/gallery_gallery_dinov2_video/ncut_video_dinov2_264.mp4" type="video/mp4">
+  <source src="../images/gallery_gallery_sam_video/ncut_video_sam_264.mp4" type="video/mp4">
 </video>
 </div>

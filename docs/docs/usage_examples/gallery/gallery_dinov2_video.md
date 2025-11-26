@@ -6,7 +6,7 @@
 Click to expand full code
 
 ``` py
-class SAM2(torch.nn.Module):
+class DiNOv2(torch.nn.Module):
 ```
 
 </summary>
@@ -14,59 +14,70 @@ class SAM2(torch.nn.Module):
 ```py linenums="1"
 
 # %%
-import os
-from einops import repeat, rearrange
-import numpy as np
-import torch
-from PIL import Image
-import requests
+from einops import rearrange
 import torch
 from PIL import Image
 import torchvision.transforms as transforms
 from torch import nn
-
+import numpy as np
 
 N_FRAMES = 600
 
-
-class SAM2(nn.Module):
-
-    def __init__(self):
-        super().__init__()
-    
-        from sam2.build_sam import build_sam2
-        from sam2.sam2_image_predictor import SAM2ImagePredictor
-
-        sam2_checkpoint = "/data/sam_model/sam2_hiera_large.pt"
-        # model_cfg = "/data/sam_model/sam2_hiera_b+.yaml"
-        model_cfg = "sam2_hiera_l"
-
-        device = 'cuda:0'
-        sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
-
-        image_encoder = sam2_model.image_encoder
-        image_encoder.eval()
-        
-        self.image_encoder = image_encoder
-        
-    @torch.no_grad()
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        output = self.image_encoder(x)
-        features = output['vision_features']
-        features = rearrange(features, 'b c h w -> b h w c')
-        return features
-        
 # %%
+class DiNOv2(torch.nn.Module):
+    def __init__(self, ver="dinov2_vitb14_reg"):
+        super().__init__()
+        self.dinov2 = torch.hub.load("facebookresearch/dinov2", ver)
+        self.dinov2.requires_grad_(False)
+        self.dinov2.eval()
+        self.dinov2 = self.dinov2.cuda()
+        
+        def new_block_forward(self, x: torch.Tensor) -> torch.Tensor:
+            def attn_residual_func(x):
+                return self.ls1(self.attn(self.norm1(x)))
+
+            def ffn_residual_func(x):
+                return self.ls2(self.mlp(self.norm2(x)))
+
+            attn_output = attn_residual_func(x)
+            self.attn_output = attn_output.clone()
+            x = x + attn_output
+            mlp_output = ffn_residual_func(x)
+            self.mlp_output = mlp_output.clone()
+            x = x + mlp_output
+            block_output = x
+            self.block_output = block_output.clone()
+            return x
+        
+        setattr(self.dinov2.blocks[0].__class__, "forward", new_block_forward)
+
+    @torch.no_grad()
+    def forward(self, x): 
+
+        out = self.dinov2(x)
+
+        attn_outputs, mlp_outputs, block_outputs = [], [], []
+        for i, blk in enumerate(self.dinov2.blocks):
+            attn_outputs.append(blk.attn_output)
+            mlp_outputs.append(blk.mlp_output)
+            block_outputs.append(blk.block_output)
+
+        attn_outputs = torch.stack(attn_outputs)
+        mlp_outputs = torch.stack(mlp_outputs)
+        block_outputs = torch.stack(block_outputs)
+        # return attn_outputs, mlp_outputs, block_outputs
+        return block_outputs
 
 
-def transform_images(frames, size=(1024, 1024)):
+
+def transform_images(frames, size=(896, 896)):
     resized = []
     length = len(frames)
     for i in range(length):
         frame = frames[i]
         # image = Image.fromarray((frame * 255).astype(np.uint8))
         image = Image.fromarray(frame)
-        image = image.resize(size, Image.LANCZOS)
+        image = image.resize(size, Image.ANTIALIAS)
         image = np.array(image) / 255.0
         resized.append(np.array(image))
     frames = np.stack(resized, axis=0)
@@ -102,17 +113,16 @@ def read_video(video_path: str) -> torch.Tensor:
 def video_sam_feature(video_path, checkpoint="/data/sam_model/sam_vit_b_01ec64.pth"):
     frames = read_video(video_path)
 
-    feat_extractor = SAM2()
+    feat_extractor = DiNOv2()
 
-    features = []
+    attn_outputs, mlp_outputs, block_outputs = [], [], []
     for i in range(frames.shape[0]):
         frame = frames[i]
         frame = transform_images([frame])
-        feature = feat_extractor(frame.cuda())
-        feature = torch.nn.functional.normalize(feature, dim=-1)
-        features.append(feature.cpu())
-    features = torch.cat(features, dim=0)
-    return features
+        block_output = feat_extractor(frame.cuda())
+        block_outputs.append(block_output[-1].cpu())
+    block_outputs = torch.stack(block_outputs)
+    return block_outputs
 
 
 # %%
@@ -128,6 +138,8 @@ for video_path in video_paths:
 features = torch.cat(features, dim=0)
 # %%
 print(features.shape)
+# remove reg tokens
+features = features[:, :, 5:].reshape(-1, 64, 64, 768)
 # %%
 num_nodes = np.prod(features.shape[:-1])
 print("Number of nodes:", num_nodes)
@@ -136,7 +148,7 @@ print("Number of nodes:", num_nodes)
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
 
 eigvectors, eigenvalues = NCUT(
-    num_eig=100, num_sample=30000, device="cuda:0", normalize_features=False,
+    num_eig=100, num_sample=30000, device="cuda:0"
 ).fit_transform(features.reshape(-1, features.shape[-1]))
 # %%
 _, rgb = rgb_from_tsne_3d(eigvectors, num_sample=50000, perplexity=500, knn=10, device="cuda:0")
@@ -152,7 +164,7 @@ frames1 = read_video(video_paths[0])
 frames2 = read_video(video_paths[1])
 frames3 = read_video(video_paths[2])
 
-save_dir = "/tmp/ncut_video_sam2/"
+save_dir = "/tmp/ncut_video_dinov2/"
 import shutil
 shutil.rmtree(save_dir, ignore_errors=True)
 import os
@@ -160,7 +172,7 @@ os.makedirs(save_dir, exist_ok=True)
 
 def resize_image(image, size=(540, 540)):
     image = Image.fromarray(image)
-    image = image.resize(size, Image.LANCZOS)
+    image = image.resize(size, Image.ANTIALIAS)
     image = np.array(image)
     return image
 
@@ -184,7 +196,7 @@ for i_frame in range(0, N_FRAMES):
 
 # %%
 # make video
-save_dir = "/nfscc/tmp/ncut_video_sam2/"
+save_dir = "/tmp/ncut_video_dinov2/"
 
 def make_video_from_images(image_dir, video_path):
     import cv2
@@ -202,14 +214,13 @@ def make_video_from_images(image_dir, video_path):
     cv2.destroyAllWindows()
     video.release()
     
-make_video_from_images(save_dir, "/workspace/output/ncut_video_sam2.mp4")
+make_video_from_images(save_dir, "/workspace/output/ncut_video_dinov2.mp4")
 # %%
 
 
 ```
 
 </details>
-
 
 This video example use image model without temporal dimension
 
@@ -219,6 +230,6 @@ This video example use image model without temporal dimension
 
 <div  style="text-align: center;">
 <video width="100%" controls muted autoplay loop>
-  <source src="/images/gallery_gallery_sam2_video/ncut_video_sam2_264.mp4" type="video/mp4">
+  <source src="../images/gallery_gallery_dinov2_video/ncut_video_dinov2_264.mp4" type="video/mp4">
 </video>
 </div>

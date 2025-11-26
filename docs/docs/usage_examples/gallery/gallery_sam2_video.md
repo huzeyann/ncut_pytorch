@@ -6,7 +6,7 @@
 Click to expand full code
 
 ``` py
-class SAM(torch.nn.Module):
+class SAM2(torch.nn.Module):
 ```
 
 </summary>
@@ -14,14 +14,49 @@ class SAM(torch.nn.Module):
 ```py linenums="1"
 
 # %%
-from einops import rearrange
+import os
+from einops import repeat, rearrange
+import numpy as np
+import torch
+from PIL import Image
+import requests
 import torch
 from PIL import Image
 import torchvision.transforms as transforms
 from torch import nn
-import numpy as np
+
 
 N_FRAMES = 600
+
+
+class SAM2(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+    
+        from sam2.build_sam import build_sam2
+        from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+        sam2_checkpoint = "/data/sam_model/sam2_hiera_large.pt"
+        # model_cfg = "/data/sam_model/sam2_hiera_b+.yaml"
+        model_cfg = "sam2_hiera_l"
+
+        device = 'cuda:0'
+        sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
+
+        image_encoder = sam2_model.image_encoder
+        image_encoder.eval()
+        
+        self.image_encoder = image_encoder
+        
+    @torch.no_grad()
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        output = self.image_encoder(x)
+        features = output['vision_features']
+        features = rearrange(features, 'b c h w -> b h w c')
+        return features
+        
+# %%
 
 
 def transform_images(frames, size=(1024, 1024)):
@@ -31,7 +66,7 @@ def transform_images(frames, size=(1024, 1024)):
         frame = frames[i]
         # image = Image.fromarray((frame * 255).astype(np.uint8))
         image = Image.fromarray(frame)
-        image = image.resize(size, Image.Resampling.LANCZOS)
+        image = image.resize(size, Image.LANCZOS)
         image = np.array(image) / 255.0
         resized.append(np.array(image))
     frames = np.stack(resized, axis=0)
@@ -62,24 +97,22 @@ def read_video(video_path: str) -> torch.Tensor:
             frames = np.append(frames, last_frame.reshape(1, *last_frame.shape), axis=0)
     return frames
 
-from ncut_pytorch.backbone import load_model
-
 
 @torch.no_grad()
-def video_sam_feature(video_path):
+def video_sam_feature(video_path, checkpoint="/data/sam_model/sam_vit_b_01ec64.pth"):
     frames = read_video(video_path)
 
-    feat_extractor = load_model('SAM(sam_vit_b)')
-    feat_extractor = feat_extractor.eval().cuda()
+    feat_extractor = SAM2()
 
-    block_outputs = []
+    features = []
     for i in range(frames.shape[0]):
         frame = frames[i]
         frame = transform_images([frame])
-        block_output = feat_extractor(frame.cuda())['block']
-        block_outputs.append(block_output[-1].cpu())
-    block_outputs = torch.stack(block_outputs)
-    return block_outputs
+        feature = feat_extractor(frame.cuda())
+        feature = torch.nn.functional.normalize(feature, dim=-1)
+        features.append(feature.cpu())
+    features = torch.cat(features, dim=0)
+    return features
 
 
 # %%
@@ -96,8 +129,6 @@ features = torch.cat(features, dim=0)
 # %%
 print(features.shape)
 # %%
-features = features.squeeze(1)
-# %%
 num_nodes = np.prod(features.shape[:-1])
 print("Number of nodes:", num_nodes)
 
@@ -105,14 +136,14 @@ print("Number of nodes:", num_nodes)
 from ncut_pytorch import NCUT, rgb_from_tsne_3d
 
 eigvectors, eigenvalues = NCUT(
-    num_eig=100, num_sample=10000, device="cuda:0"
+    num_eig=100, num_sample=30000, device="cuda:0", normalize_features=False,
 ).fit_transform(features.reshape(-1, features.shape[-1]))
 # %%
-_, rgb = rgb_from_tsne_3d(eigvectors, num_sample=1000, perplexity=500, knn=10, device="cuda:0")
+_, rgb = rgb_from_tsne_3d(eigvectors, num_sample=50000, perplexity=500, knn=10, device="cuda:0")
 
 
 # %%
-image_rgb = rgb.reshape(*features.shape[:-1], 3).squeeze(1)
+image_rgb = rgb.reshape(*features.shape[:-1], 3)
 
 import matplotlib.pyplot as plt
 
@@ -121,7 +152,7 @@ frames1 = read_video(video_paths[0])
 frames2 = read_video(video_paths[1])
 frames3 = read_video(video_paths[2])
 
-save_dir = "/tmp/ncut_video_sam/"
+save_dir = "/tmp/ncut_video_sam2/"
 import shutil
 shutil.rmtree(save_dir, ignore_errors=True)
 import os
@@ -129,7 +160,7 @@ os.makedirs(save_dir, exist_ok=True)
 
 def resize_image(image, size=(540, 540)):
     image = Image.fromarray(image)
-    image = image.resize(size, Image.ANTIALIAS)
+    image = image.resize(size, Image.LANCZOS)
     image = np.array(image)
     return image
 
@@ -153,7 +184,7 @@ for i_frame in range(0, N_FRAMES):
 
 # %%
 # make video
-save_dir = "/tmp/ncut_video_sam/"
+save_dir = "/nfscc/tmp/ncut_video_sam2/"
 
 def make_video_from_images(image_dir, video_path):
     import cv2
@@ -171,7 +202,7 @@ def make_video_from_images(image_dir, video_path):
     cv2.destroyAllWindows()
     video.release()
     
-make_video_from_images(save_dir, "/workspace/output/ncut_video_sam.mp4")
+make_video_from_images(save_dir, "/workspace/output/ncut_video_sam2.mp4")
 # %%
 
 
@@ -179,21 +210,15 @@ make_video_from_images(save_dir, "/workspace/output/ncut_video_sam.mp4")
 
 </details>
 
-This video example use features from Segment Anything Model:
 
-1. for every frame, extract image features, shape `[B, T, H, W, C]`
+This video example use image model without temporal dimension
 
-2. concatenate all the frames and pixels, shape `[B*T*H*W, C]`
+1. extract image feature for every frame, independently
 
-3. compute 100 NCUT eigenvectors, shape `[B*T*H*W, 100]`
-
-4. use spectral-tSNE to reduce 100 eigenvectors to 3D, shape `[B*T*H*W, 3]`
-
-5. plot the 3D as RGB
-
+2. concatenate all the image features and compute NCUT
 
 <div  style="text-align: center;">
 <video width="100%" controls muted autoplay loop>
-  <source src="/images/gallery_gallery_sam_video/ncut_video_sam_264.mp4" type="video/mp4">
+  <source src="../images/gallery_gallery_sam2_video/ncut_video_sam2_264.mp4" type="video/mp4">
 </video>
 </div>

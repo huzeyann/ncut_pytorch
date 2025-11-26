@@ -186,38 +186,38 @@ exit(0)
 
 
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_0.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_0.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_1.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_1.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_2.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_2.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_3.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_3.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_4.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_4.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_5.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_5.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_6.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_6.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_7.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_7.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_8.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_8.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_9.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_9.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_10.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_10.jpg" style="width:100%;">
 </div>
 <div style="text-align: center;">
-    <img src="/images/gallery_gallery_mae/mae_layer_11.jpg" style="width:100%;">
+    <img src="../images/gallery_gallery_mae/mae_layer_11.jpg" style="width:100%;">
 </div>

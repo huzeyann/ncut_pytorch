@@ -22,11 +22,11 @@ In NCUT, by math design (see [How NCUT Works](how_ncut_works.md)), i-th eigenvec
 To answer the ultimate question ``How many eigenvectors should one use?'', one need to consider the complexity of the graph (how many images, what's the backbone model), and the goal (e.g., whole body vs body parts). Here's an example grid search of how many eigenvectors to include:
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/n_eig_raw.jpg" style="width:100%;">
+<img src="../images/tutorials_07_parameters/n_eig_raw.jpg" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/n_eig_tsne.jpg" style="width:100%;">
+<img src="../images/tutorials_07_parameters/n_eig_tsne.jpg" style="width:100%;">
 </div>
 
 
@@ -37,19 +37,19 @@ propagation smoothness: higher knn means smoother propagation, higher knn value 
 In Nystrom NCUT, KNN is used to propagate nystrom sampled nodes to not-sampled nodes, each not-sampled nodes only take the top K nearest neighbor to propagate eigenvectors.
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/knn=1.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/knn=1.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/knn=3.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/knn=3.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/knn=10.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/knn=10.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/knn=100.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/knn=100.png" style="width:100%;">
 </div>
 
 ## affinity_focal_gamma
@@ -67,43 +67,43 @@ This transform is inspired by [focal loss](https://paperswithcode.com/method/foc
 
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.1.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.1.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.2.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.2.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.3.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.3.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.4.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.4.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.5.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.5.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.6.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.6.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.7.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.7.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.8.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.8.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=0.9.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=0.9.png" style="width:100%;">
 </div>
 
 <div style="text-align: center;">
-<img src="/images/tutorials_07_parameters/t=1.0.png" style="width:100%;">
+<img src="../images/tutorials_07_parameters/t=1.0.png" style="width:100%;">
 </div>
 
 ## num_samples

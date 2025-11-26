@@ -1,4 +1,4 @@
-# Tutorial 8 - Add Nodes
+# Inference Extrapolation
 
 Once NCUT is computed, it is possible to add nodes to the existing graph. New nodes are assigned with eigenvectors/color by KNN Propagation, in other words, the new nodes are treated as they were not sampled in the nystrom approximation, they only join the propagation step. This is a good approach when the original sampled nodes have good cover of the newly added nodes.
 
@@ -105,7 +105,7 @@ plot_images(images, image_rgb, "NCUT, original images, spectral-tSNE 20 eigenvec
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_08_add_nodes/add_nodes_original.png" style="width:100%;">
+<img src="../images/tutorials_08_add_nodes/add_nodes_original.png" style="width:100%;">
 </div>
 
 ### Feature Extraction for New Images
@@ -134,7 +134,7 @@ plot_images(
 
 
 <div style="text-align: center;">
-<img src="/images/tutorials_08_add_nodes/add_nodes_propagate.png" style="width:100%;">
+<img src="../images/tutorials_08_add_nodes/add_nodes_propagate.png" style="width:100%;">
 </div>
 
 
@@ -162,7 +162,7 @@ plot_images(
 
 
 <div style="text-align: center;">
-<img src="/images/tutorials_08_add_nodes/add_nodes_recompute.png" style="width:100%;">
+<img src="../images/tutorials_08_add_nodes/add_nodes_recompute.png" style="width:100%;">
 </div>
 
 <div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">

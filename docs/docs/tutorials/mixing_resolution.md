@@ -1,5 +1,5 @@
 
-# Tutorial 9 - Mixing Data
+# Mixing Resolution
 
 ## Mixing Images of Different Resolution
 
@@ -147,7 +147,7 @@ plt.show()
 ```
 
 <div style="text-align: center;">
-<img src="/images/tutorials_09_mixing_data/mix_resolution_image.png" style="width:100%;">
+<img src="../images/tutorials_09_mixing_data/mix_resolution_image.png" style="width:100%;">
 </div>
 
 <div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">

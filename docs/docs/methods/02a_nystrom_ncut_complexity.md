@@ -23,7 +23,7 @@ The approach involves three main steps: (1) sub-sampling a subset of nodes, (2) 
 
 
 <div style="text-align: center;">
-<img src="/images/methods_02a_nystrom_ncut_complexity/subsample.png" style="width:80%;">
+<img src="../images/methods_02a_nystrom_ncut_complexity/subsample.png" style="width:80%;">
 </div>
 
 The affinity matrix \( W \) is partitioned as follows:
@@ -51,7 +51,7 @@ Farthest Point Sampling (FPS) is used to select nodes that are evenly distribute
 we use [fpsample](https://github.com/leonardodalinky/fpsample).
 
 <div style="text-align: center;">
-<img src="/images/methods_02a_nystrom_ncut_complexity/knn_propagate.png" style="width:80%;">
+<img src="../images/methods_02a_nystrom_ncut_complexity/knn_propagate.png" style="width:80%;">
 </div>
 
 After computing the eigenvectors \( \mathbf{X}' \in \mathbb{R}^{n \times C} \) on the sub-sampled graph \( S = A + \left({D_{\text{r}}}^{-1} B'\right) \left(B' {D_{\text{c}}}^{-1}\right)^\top \in \mathbb{R}^{n \times n} \) using the Ncut formulation, the next step is to propagate these eigenvectors to the full graph. Let \( \mathbf{\tilde{X}} \in \mathbb{R}^{N \times C} \) be the approximated eigenvectors for the full graph, where \( N \) is the total number of nodes. The eigenvector approximation \( \mathbf{\tilde{X}}_i \) for each node \( i \leq N \) in the full graph is obtained by averaging the eigenvectors \( \mathbf{X}'_k \) of the top K-nearest neighbors from the subgraph:
@@ -71,14 +71,14 @@ Here, \( \text{KNN}(\mathbf{A}_{*i}; n, K) \) denotes the set of K-nearest neigh
 
 
 <div style="display: flex; justify-content: space-between; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-  <a href="/methods/01_basic_ncut" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; transition: all 0.2s;">
+  <a href="../01_basic_ncut" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; transition: all 0.2s;">
     <span style="font-size: 12px; color: #666; margin-bottom: 5px;">Previous</span>
     <span style="font-size: 16px; font-weight: bold; color: #007bff;">← Basic Ncut</span>
   </a>
-  <a href="/methods" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.2s;">
+  <a href="../" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.2s;">
     <span style="font-size: 16px; font-weight: bold; color: #007bff;">Back to Overview</span>
   </a>
-  <a href="/methods/02b_nystrom_ncut_quality" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: flex-end; text-align: right; transition: all 0.2s;">
+  <a href="../02b_nystrom_ncut_quality" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: flex-end; text-align: right; transition: all 0.2s;">
     <span style="font-size: 12px; color: #666; margin-bottom: 5px;">Next</span>
     <span style="font-size: 16px; font-weight: bold; color: #007bff;">Nyström Ncut (Quality) →</span>
   </a>

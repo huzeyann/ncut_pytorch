@@ -49,25 +49,25 @@ The following images are calculated by the features of dinov3_vith16plus. The se
   <label for="k11" class="kbtn">k=60</label>
 
 <div class="kway-img k-img-5">
-  <img src="/images/tutorials_02_discrete_ncut/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/tutorials_02_discrete_ncut/k_8.png" alt="Discrete NCut result for k=8" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-6">
-  <img src="/images/tutorials_02_discrete_ncut/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/tutorials_02_discrete_ncut/k_9.png" alt="Discrete NCut result for k=9" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-7">
-  <img src="/images/tutorials_02_discrete_ncut/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/tutorials_02_discrete_ncut/k_10.png" alt="Discrete NCut result for k=10" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-8">
-  <img src="/images/tutorials_02_discrete_ncut/k_11.png" alt="Discrete NCut result for k=11" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/tutorials_02_discrete_ncut/k_11.png" alt="Discrete NCut result for k=11" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-9">
-  <img src="/images/tutorials_02_discrete_ncut/k_12.png" alt="Discrete NCut result for k=12" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/tutorials_02_discrete_ncut/k_12.png" alt="Discrete NCut result for k=12" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-10">
-  <img src="/images/tutorials_02_discrete_ncut/k_13.png" alt="Discrete NCut result for k=13" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/tutorials_02_discrete_ncut/k_13.png" alt="Discrete NCut result for k=13" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 <div class="kway-img k-img-11">
-  <img src="/images/tutorials_02_discrete_ncut/k_60.png" alt="Discrete NCut result for k=60" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
+  <img src="../images/tutorials_02_discrete_ncut/k_60.png" alt="Discrete NCut result for k=60" style="width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(15% 0 0 0);" />
 </div>
 </div>
 <style>
@@ -207,7 +207,7 @@ The visualization results below panels labeled “Before K-way” and “After K
 <p><strong>Before k-way (NCut eigenvectors)</strong></p>
 <p>The first row is theoretically near-constant; deeper rows have higher frequency information.</p>
 <div style="text-align:center;">
-<img src="/images/tutorials_02_discrete_ncut/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="../images/tutorials_02_discrete_ncut/ncut_batch_eigenvectors.png" alt="NCut eigenvectors (before k-way)" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(15% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
 </div>
 
@@ -215,7 +215,7 @@ The visualization results below panels labeled “Before K-way” and “After K
 <p><strong>After k-way (K-way projection channels, k=11)</strong></p>
 <p>These are the 11 channel responses before one-hot; after alignment, channels become more axis-aligned (unimodal).</p>
 <div style="text-align:center;">
-<img src="/images/tutorials_02_discrete_ncut/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
+<img src="../images/tutorials_02_discrete_ncut/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
 </div>
 </div>

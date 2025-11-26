@@ -13,7 +13,7 @@
 Spectral clustering, or Normalized Cuts, clusters data based on the eigenvectors (spectrum) of a similarity matrix derived from the data. The Normalized Cuts algorithm aims to partition a graph into subgraphs while minimizing the graph cut value.
 
 <div style="text-align: center;">
-<img src="/images/methods_01_basic_ncut/graph_cut.png" style="width:100%;">
+<img src="../images/methods_01_basic_ncut/graph_cut.png" style="width:100%;">
 </div>
 Image taken from [Spectral Clustering: Step-by-step derivation of the spectral clustering algorithm including an implementation in Python](https://medium.com/@roiyeho/spectral-clustering-50aee862d300)
 
@@ -24,7 +24,7 @@ Image taken from [Spectral Clustering: Step-by-step derivation of the spectral c
 Spectral clustering works by embedding the data points $F \in \mathbb{R}^{N \times 768}$ into a lower-dimensional space using the eigenvectors of a Laplacian matrix derived from the data's similarity graph $W \in \mathbb{R}^{N \times N}$. The data is then clustered in this new space embedded by $k$ eigenvectors $\mathbf{x} \in \mathbb{R}^{N \times k}$.
 
 <div style="text-align: center;">
-<img src="/images/methods_01_basic_ncut/spectral_tsne_how.png" style="width:80%;">
+<img src="../images/methods_01_basic_ncut/spectral_tsne_how.png" style="width:80%;">
 </div>
 
 ### The Graph Laplacian
@@ -36,7 +36,7 @@ Take cosine distance for example, let $F \in \mathbb{R}^{N \times 768}$ be the i
 $$W_{ij} = \text{cosine}(f_i, f_j) = \frac{f_i \cdot f_j}{|f_i| |f_j|}$$
 
 <div style="text-align: center;">
-    <img src="/images/methods_01_basic_ncut/affinity_patch.jpg" style="width:75%;">
+    <img src="../images/methods_01_basic_ncut/affinity_patch.jpg" style="width:75%;">
 </div>
 
 where $|f|$ denotes the Euclidean norm of a vector $f$.
@@ -80,7 +80,7 @@ L_{\text{rw}} = D^{-1} L = I - D^{-1} W
 Normalized Cuts (Ncut) is a method for partitioning a graph into disjoint subsets, aiming to minimize the total edge weight between the subsets relative to the total edge weight within each subset. The Ncut criterion is particularly useful for ensuring balanced partitioning, which prevents trivial solutions where one cluster might be significantly smaller than the other.
 
 <div style="text-align: center;">
-<img src="/images/graph_cut.png" style="width:100%;">
+<img src="../../images/graph_cut.png" style="width:100%;">
 </div>
 
 The normalized cut criterion is defined as:
@@ -210,7 +210,7 @@ Each subsequent eigenvector can be used to further partition the graph into subc
 
 <!-- <div  style="text-align: center;">
 <video width="80%" controls muted autoplay loop>
-  <source src="/images/methods_01_basic_ncut/n_eigvecs.mp4" type="video/mp4">
+  <source src="../images/methods_01_basic_ncut/n_eigvecs.mp4" type="video/mp4">
 </video>
 <p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pixel (blue point).</br>
 Reduce `n_eig` hierarchical grow the object heatmap</br>
@@ -275,7 +275,7 @@ plt.show()
 ```
 
 <div style="text-align: center;">
-<img src="/images/methods_01_basic_ncut/dots_eig.jpg.png" style="width:100%;">
+<img src="../images/methods_01_basic_ncut/dots_eig.jpg.png" style="width:100%;">
 </div>
 
 - The 1-st eigenvector generally corresponds to the global structure (often related to the connected components of the graph).
@@ -286,7 +286,7 @@ plt.show()
 
 
 <div style="text-align: center;">
-<img src="/images/methods_01_basic_ncut/dots_kmeans.png" style="width:60%;">
+<img src="../images/methods_01_basic_ncut/dots_kmeans.png" style="width:60%;">
 </div>
 
 **A Good Eigenvector Solver**
@@ -304,14 +304,14 @@ The Normalized Cuts algorithm aims to partition a graph into subgraphs while min
 ---
 
 <div style="display: flex; justify-content: space-between; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-  <a href="/methods" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; transition: all 0.2s;">
+  <a href="../" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; transition: all 0.2s;">
     <span style="font-size: 12px; color: #666; margin-bottom: 5px;">Previous</span>
     <span style="font-size: 16px; font-weight: bold; color: #007bff;">← Methods Overview</span>
   </a>
-  <a href="/methods" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.2s;">
+  <a href="../" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.2s;">
     <span style="font-size: 16px; font-weight: bold; color: #007bff;">Back to Overview</span>
   </a>
-  <a href="/methods/02a_nystrom_ncut_complexity" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: flex-end; text-align: right; transition: all 0.2s;">
+  <a href="../02a_nystrom_ncut_complexity" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: flex-end; text-align: right; transition: all 0.2s;">
     <span style="font-size: 12px; color: #666; margin-bottom: 5px;">Next</span>
     <span style="font-size: 16px; font-weight: bold; color: #007bff;">Nyström NCut (Complexity) →</span>
   </a>
