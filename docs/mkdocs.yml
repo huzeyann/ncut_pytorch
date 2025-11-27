@@ -32,7 +32,7 @@ theme:
     # - toc.integrate
   icon:
     repo: fontawesome/brands/github
-  logo: images/index/ncut.svg
+  logo: images/index/Ncut.svg
 
 plugins:
 - search
