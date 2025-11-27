@@ -1,40 +1,34 @@
-# Gradient of Ncut
+# Gradient Computation
 
-In our PyTorch implementation of NCUT, gradient is handled by [PyTorch autograd](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html).
+In our PyTorch implementation of Normalized Cut (NCUT), gradient computation is handled seamlessly by [PyTorch autograd](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html). By setting `track_grad=True` in `Ncut` or `ncut_fn`, you can backpropagate gradients from the eigenvectors to the input features, enabling applications such as feature optimization and saliency detection.
 
 ---
 
-This example use NCUT **with** Nystrom approximation, and access gradient of eigenvectors.
+## With Nyström Approximation
 
-```py linenums="1"
-from ncut_pytorch import NCUT
+This example demonstrates how to compute gradients when using the Nyström approximation.
+
+```python
+from ncut_pytorch import Ncut
 import torch
 
+# Initialize features with gradient tracking
 features = torch.randn(10000, 768)
 features.requires_grad = True
-eigvectors, eigvalues = NCUT(num_eig=50, num_sample=1000).fit_transform(features)
-loss = eigvectors.sum()
+
+# Compute NCUT with Nyström approximation
+# Note: Gradients flow through the Nyström approximation steps.
+# IMPORTANT: You must set track_grad=True to enable gradient computation.
+eigenvectors, eigenvalues = Ncut(n_eig=50, track_grad=True).fit_transform(features)
+
+# Define a loss function (e.g., sum of eigenvectors)
+loss = eigenvectors.sum()
+
+# Backpropagate
 loss.backward()
+
+# Access gradients
 grad = features.grad
-print(grad.shape)
-# torch.Size([10000, 768])
-```
-
----
-
-This example use NCUT **without** Nystrom approximation, and access gradient of eigenvectors.
-
-```py linenums="1"
-from ncut_pytorch import ncut, affinity_from_features  # use functional API
-import torch
-
-features = torch.randn(100, 768)
-features.requires_grad = True
-affinity = affinity_from_features(features)
-eigvectors, eigvalues = ncut(affinity, num_eig=50)
-loss = eigvectors.sum()
-loss.backward()
-grad = features.grad
-print(grad.shape)
-# torch.Size([100, 768])
+print(f"Gradient shape: {grad.shape}")
+# Output: torch.Size([10000, 768])
 ```

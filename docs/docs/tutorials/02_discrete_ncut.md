@@ -1,36 +1,48 @@
-# Tutorial 2 - Discrete NCUT
+# Tutorial 2: Discrete NCut
 
-We used the K-Way Ncut algorithm to discretize the clustering results. The discrete Ncut approach means that, instead of relying solely on the continuous partitioning obtained from the standard Ncut formulation, we explicitly assign each pixel feature to a specific category. In other words, it converts the continuous eigenvector representations into discrete cluster labels. 
+This tutorial explores the **Discrete Normalized Cut (NCut)** approach using the [K-Way NCut algorithm](../methods/03_kway_ncut.md). Unlike standard NCut, which provides continuous eigenvector representations, Discrete NCut explicitly partitions data into distinct categories. By converting continuous eigenvectors into discrete cluster labels, this method facilitates the segmentation of images into semantically meaningful regions.
 
+## Quick Start
 
-## How to use it in a few lines
-``` py
+The following example demonstrates how to perform discrete segmentation using the `NcutDinov3Predictor`.
 
+```python
 from ncut_pytorch.predictor import NcutDinov3Predictor
 from PIL import Image
 
+# Initialize the predictor with a specific model configuration
 predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
 predictor = predictor.to('cuda')
 
-predictor.predictor.color_method = 'tsne' #can choose mspace
-
+# Load an input image
+# Note: You can also provide a list of images: 
+# images = [Image.open("view_0.jpg"), Image.open("view_1.jpg")]
 images = [Image.open("example.jpg")]
-#can replace with a list of images images = [Image.open("/images/view_0.jpg"), Image.open("/images/view_1.jpg")]
 
 predictor.set_images(images)
-segments = predictor.generate(n_segment=20)
-color = predictor.color_discrete(segments, draw_border=True)
-color = color[0]
 
-# save the color image
-color.save("color.jpg")
+# Generate segmentation masks with a specified number of segments
+segments = predictor.generate(n_segment=20)
+
+# Create a colored visualization of the segmentation (with borders)
+color = predictor.color_discrete(segments, draw_border=True)
+output_image = color[0]
+
+# Save the result
+output_image.save("segments.jpg")
 ```
 
+## Understanding K-way NCut Segmentation
 
-Example: compute K-way NCut from features
+The visualizations below illustrate the results of applying K-way NCut to features extracted from a **DINOv3 (ViT-H/16+)** model. The layout presents the original image, the discrete NCut assignments, and the clustering centroids.
 
-The following images are calculated by the features of dinov3_vith16plus. The second line is the discrete NCUT assignments results and the third line is the clustering centroid. As we switch between different K, we can see the clustering results become different. The larger the K, the more detailed clustering restuls will appear but will also introduce some noise. As you can see the background is divided into different colors, this is because the effect of positional encoding of DINO structure.
+The choice of $K$ (the number of clusters) significantly impacts the segmentation granularity:
 
+*   **Larger $K$**: Results in finer segmentation, capturing more detail but potentially introducing noise or over-segmenting coherent objects.
+*   **Smaller $K$**: Produces coarser segmentation, merging distinct areas into broader regions.
+*   **Positional Encoding**: You may observe background segmentation patterns; these are often artifacts of the DINO architecture's positional encoding.
+
+Use the tabs below to observe how the segmentation evolves with different values of $K$.
 
 <div class="kway-tabs" style="text-align:center;">
   <input type="radio" id="k5" name="k" checked>
@@ -93,50 +105,49 @@ The following images are calculated by the features of dinov3_vith16plus. The se
 .kway-toggle-bar .md-button:active{transform: translateY(1px);} 
 </style>
 
-From the visual results, it is evident that the choice of 
- k-the number of clusters—plays a crucial role in determining the segmentation granularity. When K is too large, the algorithm over-segments the image, splitting it into many small, fine-grained regions that may correspond to texture variations rather than meaningful semantic parts. Conversely, when K is too small, the segmentation becomes overly coarse, merging distinct areas into broad abstract regions that fail to capture local structure. Therefore, selecting an appropriate K balances detail and interpretability, leading to segmentation maps that align more closely with perceptually coherent regions or objects in the image.
+### The Role of K
 
+As demonstrated above, selecting an appropriate $K$ is a trade-off between detail and interpretability. An optimal $K$ yields segmentation maps that align closely with perceptually coherent regions or objects, avoiding both the over-segmentation of textures and the under-segmentation of distinct structural elements.
 
-If we want to see the intermediate outputs
+## Intermediate Outputs and Implementation Details
+
+For a deeper understanding of the process, we can examine the intermediate outputs, specifically the transition from continuous eigenvectors to discrete clusters.
+
 <details>
+<summary><strong>Click to expand full implementation code</strong></summary>
 
-<summary>
-Click to expand full code
-
-``` py
+```python
 import torch
 from ncut_pytorch import Ncut, kway_ncut
 
-# features: shape (n, d)
+# 1. Example features: shape (n, d)
 features = torch.rand(1960, 768)
 
-# continuous eigenvectors from NCut, shape (n, k)
+# 2. Compute continuous eigenvectors from NCut, shape (n, k)
+# These vectors represent the continuous partitioning of the graph
 eigvecs = Ncut(n_eig=20).fit_transform(features)  # (1960, 20)
 
-# align for discretization-friendly basis
+# 3. Align for discretization-friendly basis
+# K-way NCut rotates/transforms the eigenvectors to be more axis-aligned
 kway_eigvecs = kway_ncut(eigvecs)
 
-# cluster assignment and (axis-wise) centroids
+# 4. Cluster assignment and (axis-wise) centroids
+# Assign each node to the cluster corresponding to the max value in the aligned vector
 cluster_assignment = kway_eigvecs.argmax(1)
 cluster_centroids = kway_eigvecs.argmax(0) 
 ```
 
-</summary>
-
-``` py linenums="1"
-
+```python linenums="1"
 import torch
 from PIL import Image
 import torchvision.transforms as transforms
 from ncut_pytorch import Ncut, kway_ncut
 
-
-
 # DINO v3 model weights URL
 DINOV3_URL = "https://huggingface.co/huzey/mydv3/resolve/master/dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth"
 
-# Load and preprocess image
 def preprocess_image(image_path, resolution=(448, 448)):
+    """Load and normalize image for model input."""
     image = Image.open(image_path).convert('RGB')
     transform = transforms.Compose([
         transforms.Resize(resolution),
@@ -145,9 +156,8 @@ def preprocess_image(image_path, resolution=(448, 448)):
     ])
     return transform(image).unsqueeze(0)  # Add batch dimension
 
-# Extract DINO v3 features
 def extract_dinov3_features(image_path, layer=11):
-    # Setup device
+    """Extract features from a specific layer of DINO v3."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
@@ -168,34 +178,36 @@ def extract_dinov3_features(image_path, layer=11):
     # Convert format: (1, D, H, W) -> (H, W, D)
     features = features.squeeze(0).permute(1, 2, 0).cpu()
 
-    print(f"Feature shape: {features.shape}")  # (H, W, D)
+    print(f"Feature shape: {features.shape}")
     return features
-
-
 
 # Usage example
 if __name__ == "__main__":
+    # 1. Extract Features
     features = extract_dinov3_features("example.jpg", layer=11)
     h, w, d = features.shape
     flattened = features.reshape(h * w, d)
+    
+    # 2. Compute Continuous Eigenvectors
     eigvecs = Ncut(n_eig=20).fit_transform(flattened)
-    # align for discretization-friendly basis
+    
+    # 3. Align Basis for Discretization (K-way NCut)
     kway_eigvecs = kway_ncut(eigvecs)
-    # cluster assignment and (axis-wise) centroids
+    
+    # 4. Generate Cluster Assignments
     cluster_assignment = kway_eigvecs.argmax(dim=1).reshape(h, w)
     cluster_centroids = kway_eigvecs.argmax(dim=0)
-
 ```
 
 </details>
 
 
-The visualization results below panels labeled “Before K-way” and “After K-way” highlight the difference between the raw eigenvectors produced by the standard NCut algorithm and the axis-aligned eigenvectors obtained after applying the K-way alignment.
+### Visualization: Before vs. After K-way Alignment
 
+The panels below compare the raw eigenvectors from the standard NCut algorithm with the axis-aligned projection channels obtained after K-way alignment.
 
-(1) Before K-way: The eigenvectors exhibit smooth, continuous variations across the image. The eigenvectors of the first line are often nearly constant or represent low-frequency global structures, while deeper eigenvectors capture higher frequency information.
-
-(2) After K-way: Once the K-way alignment is applied, each projection channel becomes more axis-aligned and unimodal, meaning that each cluster now has a dominant direction. This makes the clustering results clearer and easier to discretize. The improved separation between channels directly contributes to more stable and meaningful segmentation outcomes. You can see in the pictures that some channels are segmenting the human faces and some are segmenting the background.
+1.  **Before K-way (NCut Eigenvectors)**: The eigenvectors show smooth, continuous variations. Early eigenvectors typically capture low-frequency global structures (often nearly constant), while later ones capture higher-frequency details.
+2.  **After K-way (Aligned Channels)**: Applying K-way alignment transforms these vectors into more axis-aligned, unimodal representations. Each channel tends to highlight a specific cluster (e.g., a face or a background region), making the results significantly sharper and easier to discretize.
 
 <div id="kway-toggle" style="text-align:center;">
   <input type="radio" id="view-before" name="kview" checked>
@@ -213,7 +225,7 @@ The visualization results below panels labeled “Before K-way” and “After K
 
 <div id="kway-after" class="kview-panel">
 <p><strong>After k-way (K-way projection channels, k=11)</strong></p>
-<p>These are the 11 channel responses before one-hot; after alignment, channels become more axis-aligned (unimodal).</p>
+<p>These are the 11 eigvec responses before one-hot; after alignment, eigvec become more axis-aligned (unimodal).</p>
 <div style="text-align:center;">
 <img src="../images/tutorials_02_discrete_ncut/ncut_kway_all_dimensions.png" alt="K-way eigenvectors channels (k=10), before argmax" style="max-width:100%; height:auto; display:block; margin:0 auto; clip-path: inset(10% 0 0 0); -webkit-clip-path: inset(10% 0 0 0);" />
 </div>
@@ -228,5 +240,3 @@ The visualization results below panels labeled “Before K-way” and “After K
 #view-before:checked ~ #kway-before{display:block;}
 #view-after:checked ~ #kway-after{display:block;}
 </style>
-
-

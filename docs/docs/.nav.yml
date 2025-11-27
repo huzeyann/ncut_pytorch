@@ -20,11 +20,11 @@ nav:
   - Tutorials (advanced):
     - Feature Alignment: tutorials/feature_alignment.md
     - Custom Model: tutorials/custom_model.md
+    - tutorials/inference_extrapolation.md
 
   - Tutorials (miscs):
     - tutorials/gradient_of_ncut.md
     - tutorials/channel_tracing.md
-    - tutorials/inference_extrapolation.md
     - tutorials/mixing_resolution.md
 
   - Usage Examples:

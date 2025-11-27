@@ -1,29 +1,46 @@
-# Channel Tracing
+# Channel Tracing and Attribution
 
-Identify which feature channels contribute most to a given segment produced by k-way Normalized Cuts. We adopt a simple, Grad-CAM–style gradient attribution over feature channels to rank their importance and visualize them.
+This tutorial demonstrates how to identify which feature channels contribute most to a specific segment produced by k-way Normalized Cuts (NCUT). We adopt a gradient-based attribution method (similar to Grad-CAM) to rank the importance of feature channels.
 
-# How to use it in a few lines
+## Quick Start
 
-```py
+Here is a minimal example showing how to compute gradients of the eigenvectors with respect to the input features.
+
+```python
 from ncut_pytorch import Ncut
 import torch
 
-features = torch.randn(100, 100, 300)  # features: (H, W, feature_dimenstion)
-features.requires_grad = True  # features: (H, W, feature_dimenstion)
-features_2d = features.view(-1, features.shape[-1])  # features_2d: (H*W, feature_dimenstion)
-n_eig = 20  # n_eig: int
-eigvecs = Ncut(n_eig=n_eig, track_grad=True, device='cuda').fit_transform(features_2d)  # eigvecs: (H*W, n_eig)
-loss = eigvecs.sum()  # loss: ()
-loss.backward()
-grad = features.grad  # grad: (H, W, feature_dimenstion)
-k = 10  # k: int
-topk_vals, topk_idx = grad.abs().mean(dim=(0, 1)).topk(k)  # topk_vals: (k,), topk_idx: (k,)
-print("Top-k feature indices:", topk_idx)
+# 1. Prepare features with gradient tracking
+# features: (H, W, feature_dimension)
+features = torch.randn(100, 100, 300)
+features.requires_grad = True
 
+features_2d = features.view(-1, features.shape[-1])  # (H*W, feature_dimension)
+
+# 2. Compute NCUT with gradient tracking enabled
+n_eig = 20
+# Note: track_grad=True is essential for backpropagation
+eigvecs = Ncut(n_eig=n_eig, track_grad=True, device='cuda').fit_transform(features_2d)
+
+# 3. Define a loss and backpropagate
+# Here we simply use the sum of eigenvectors as a dummy loss
+loss = eigvecs.sum()
+loss.backward()
+
+# 4. Access gradients
+grad = features.grad  # (H, W, feature_dimension)
+
+# 5. Identify top-k influential channels
+k = 10
+# Rank channels by mean absolute gradient magnitude
+topk_vals, topk_idx = grad.abs().mean(dim=(0, 1)).topk(k)
+
+print("Top-k feature indices:", topk_idx)
 ```
 
+## Examples
 
-The examples of the results of channel tracing:
+Below are examples of channel tracing results visualized.
 
 <div class="ct-tabs" style="text-align:center;">
   <input type="radio" id="ct-ex1" name="ct" checked>
@@ -57,22 +74,23 @@ The examples of the results of channel tracing:
 .ct-img img{max-width:100%; height:auto; display:block; margin:8px auto;}
 </style>
 
+## Methodology
 
-## Brief Explanations
+To trace which feature channels are most responsible for a specific cluster, we follow these steps:
 
-Assume you already have differentiable soft cluster scores for every pixel (or patch) from k-way N-cut. To trace which feature channels are most responsible for a target cluster:
+1. **Cluster Assignment**: Perform k-way NCUT to obtain soft cluster scores and assign each pixel to a cluster (hard assignment).
+2. **Objective Definition**: Define a scalar objective for a target cluster. A common choice is the average absolute cluster score for pixels assigned to that cluster.
+3. **Backpropagation**: Backpropagate this objective to the input features. This yields a gradient map indicating how each channel at each pixel affects the confidence of the target cluster.
+4. **Aggregation**: Aggregate the gradients within the target cluster's region (e.g., by averaging) to obtain a single importance score per channel.
+5. **Ranking**: Rank channels by their importance scores to identify the most influential ones.
 
-1. Pick a target cluster and build a hard region mask by assigning each pixel to the cluster with the highest soft score. 
-2. Define a single scalar objective that becomes larger when those masked pixels are scored more confidently as the target cluster; a simple choice is the average absolute cluster score over the masked pixels. 
-3. Backpropagate this objective to the input features so that every pixel-channel gets a gradient indicating how increasing that channel would increase the cluster confidence on its own region. 
-4. Aggregate the gradients within the masked region by averaging across pixels, resulting in one value per channel. 
-5. Rank channels by the magnitude of these aggregated gradients. The largest values indicate channels that most strongly support the target cluster on its region. Select the top-1 (or top-k) as the most influential. 
+**Note**: Ensure that your feature tensor requires gradients (`requires_grad=True`) and that `Ncut` is initialized with `track_grad=True`.
 
-Practical notes: ensure the feature tensor requires gradients and that the N-cut pipeline is configured to propagate gradients. Clear feature gradients between clusters, and retain the computation graph if you need to compute attributions for multiple clusters from the same forward pass.
+## Implementation Details
 
-## Minimal Setup
+### Setup and Feature Extraction
 
-Below is an end-to-end minimal flow. Bring your own image feature extractor (e.g., DINO). The only requirements are: a feature tensor with shape `(num_pixels, num_channels)` and enabling gradients on it.
+First, we set up the environment and define helpers for feature extraction.
 
 ```python
 from einops import rearrange
@@ -80,7 +98,7 @@ import torch
 from PIL import Image
 from ncut_pytorch import Ncut, kway_ncut
 
-# Example helpers (adapt to your own feature extractor)
+# Helper to load images
 def load_images_helper(pil_images_or_paths):
     if isinstance(pil_images_or_paths[0], str):
         pil_images = [Image.open(p) for p in pil_images_or_paths]
@@ -89,52 +107,73 @@ def load_images_helper(pil_images_or_paths):
     pil_images = [im.convert("RGB") for im in pil_images]
     return pil_images
 
-# Suppose you have: dino_img_transform(image) -> tensor, and extract_dino_image_embeds(batch) -> [B, L+1, C]
-# Feel free to swap with your own extractor.
+# Helper to prepare features (example using DINO)
+# dino_img_transform(image) -> tensor
+# extract_dino_image_embeds(batch) -> [B, L+1, C]
 def prepare_grid_features(images, dino_img_transform, extract_dino_image_embeds):
     images_tensor = torch.stack([dino_img_transform(im) for im in images])
-    dino_embeds = extract_dino_image_embeds(images_tensor)[:, 1:, :]  # drop cls token -> [B, L, C]
+    dino_embeds = extract_dino_image_embeds(images_tensor)[:, 1:, :]  # Drop CLS token -> [B, L, C]
     b, l, c = dino_embeds.shape
     h = w = int(l ** 0.5)
     features = rearrange(dino_embeds, 'b l c -> (b l) c')  # [(B*H*W), C]
     return features, b, h, w
 ```
 
-## Differentiable k-way N-cut
+### Differentiable k-way NCUT
 
-Make the feature tensor require gradients. Then run differentiable N-cut to get eigenvectors and their k-way discretization.
+Next, we run the differentiable NCUT to obtain the eigenvectors and k-way discretization.
 
 ```python
 def differentiable_kway_ncut(features, n_segment):
     assert features.requires_grad is True
+    # Compute eigenvectors with gradient tracking
     eigvec = Ncut(n_eig=n_segment, track_grad=True).fit_transform(features)
+    # Discretize eigenvectors to get soft cluster assignments
     kway_eigvec = kway_ncut(eigvec)  # shape: [(B*H*W), K]
     return eigvec, kway_eigvec
 
+# Usage
 features = features.clone().requires_grad_(True)
 eigvec, kway_eigvec = differentiable_kway_ncut(features, n_segment=4)
 ```
 
-## Channel attribution per cluster
+### Channel Attribution per Cluster
 
-We define a cluster-specific objective by selecting the pixels belonging to that cluster (via argmax) and maximizing the average absolute cluster score. Then we backprop to features and aggregate gradients over pixels to obtain a per-channel importance score.
+We calculate the gradient of the cluster score with respect to the input features.
 
 ```python
 def channel_gradient_from_cluster(features, cluster_mask, kway_eigvec, cluster_idx):
-    """Return a length-C tensor: average gradient per channel for a given cluster."""
+    """
+    Computes the average gradient per channel for a given cluster.
+    
+    Args:
+        features (torch.Tensor): Input features with requires_grad=True.
+        cluster_mask (torch.Tensor): Boolean mask for the target cluster.
+        kway_eigvec (torch.Tensor): Soft cluster assignments.
+        cluster_idx (int): Index of the target cluster.
+        
+    Returns:
+        torch.Tensor: Gradient magnitude per channel (shape [C]).
+    """
     assert features.requires_grad is True
     if features.grad is not None:
         features.grad.zero_()
 
-    # Encourage larger magnitude of the selected cluster score
+    # Define loss: Negative average absolute score of the cluster
+    # We want to maximize the score, so we minimize the negative
     loss = - kway_eigvec[cluster_mask, cluster_idx].abs().mean()
+    
+    # Backpropagate
     loss.backward(retain_graph=True)
 
+    # Aggregate gradients over the cluster region
     grad = features.grad[cluster_mask].mean(0)  # [C]
-    return grad  # higher magnitude => more influential channel
+    return grad
 ```
 
-Typical usage pattern:
+### Execution and Ranking
+
+Finally, we iterate over clusters to compute channel importance.
 
 ```python
 # Derive hard assignments
@@ -143,31 +182,29 @@ cluster_assign = kway_eigvec.argmax(1)  # [(B*H*W)]
 all_cluster_grads = []
 for k in range(kway_eigvec.shape[1]):
     mask_k = (cluster_assign == k).detach().cpu()
+    if mask_k.sum() == 0:
+        continue
     grad_k = channel_gradient_from_cluster(features, mask_k, kway_eigvec, k)
     all_cluster_grads.append(grad_k)
 ```
 
-You can rank channels for cluster `k` by sorting `grad_k` by magnitude or by signed value depending on your interpretation.
-
-## Visualization snippets
-
-Below are lightweight helpers to visualize top channels per cluster. Adapt plotting to your needs.
+### Visualization Helpers
 
 ```python
 import numpy as np
 
 def rank_channels(grad, descending=True):
-    # By default, rank by signed value. Use grad.abs() if you prefer magnitude.
+    """Rank channels by value."""
     return torch.argsort(grad, descending=descending)
 
 def reshape_for_view(features, b, h, w):
-    # -> [B, H, W, C] without gradients
+    """Reshape flattened features back to (B, H, W, C)."""
     return features.detach().reshape(b, h, w, -1).cpu().numpy()
 
 def extract_topk_maps(feature_grid, channel_indices, image_index=0, topk=5):
+    """Extract feature maps for the top-k channels."""
     # feature_grid: [B, H, W, C] ndarray
     chs = channel_indices[:topk].tolist()
     maps = [feature_grid[image_index, :, :, ch] for ch in chs]
     return chs, maps
 ```
-

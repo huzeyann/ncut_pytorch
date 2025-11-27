@@ -86,15 +86,15 @@ print(feat.shape)
 ```
 
 
-### Compute NCUT
+### Compute Ncut
 
 
 ``` py linenums="1"
-from ncut_pytorch import NCUT
+from ncut_pytorch import Ncut
 
 h, w, c = feat.shape  # (32, 32, 768)
-model = NCUT(num_eig=20)
-eigenvectors, eigenvalues = model.fit_transform(feat.flatten(0, 1))
+ncut = Ncut(n_eig=20)
+eigenvectors = ncut.fit_transform(feat.flatten(0, 1))
 print("Eigenvectors shape:", eigenvectors.shape)
 # Eigenvectors shape: torch.Size([1024, 20])
 ```
@@ -127,7 +127,7 @@ for i_row in range(3):
     for i_col in range(1, 4):
         ax = axs[i_row, i_col]
         ax.imshow(eigenvectors[:, i_eig].reshape(h, w), cmap="coolwarm", vmin=-0.1, vmax=0.1)
-        ax.set_title(f"lambda_{i_eig} = {eigenvalues[i_eig]:.3f}")
+        ax.set_title(f"lambda_{i_eig} = {ncut.eigval[i_eig].item():.3f}")
         ax.axis("off")
         i_eig += 1
 for i_row in range(3):
@@ -201,41 +201,14 @@ def plot_3d(X_3d, rgb, title):
 
 
 ``` py linenums="1"
-from ncut_pytorch import rgb_from_tsne_3d
+from ncut_pytorch.color import mspace_color
 
-X_3d, rgb = rgb_from_tsne_3d(eigenvectors[:, :10], device="cpu", perplexity=100)
-plot_3d(X_3d, rgb, "spectral-tSNE of top 10 Ncut eigenvectors")
+rgb = mspace_color(eigenvectors[:, :10])
+plot_3d(rgb, rgb)
 ```
 
 <div style="text-align: center;">
 <img src="../images/tutorials_01_tutorials/tsne_single.png" alt="tsne_single.png" style="width:100%;">
-</div>
-
-``` py linenums="1"
-from ncut_pytorch import rgb_from_umap_sphere
-
-X_3d, rgb = rgb_from_umap_sphere(eigenvectors[:, :10], device="cpu", n_neighbors=100, min_dist=0.1)
-plot_3d(X_3d, rgb, "spectral-UMAP of top 10 Ncut eigenvectors")
-```
-
-<div style="text-align: center;">
-<img src="../images/tutorials_01_tutorials/umap_single.png" alt="umap_single.png" style="width:100%;">
-</div>
-
-
-<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
-        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
-            <div>
-                <h2 style="margin: 0;">The complete code for this tutorial</h2>
-                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
-            </div>
-        </div>
-        <div style="padding: 15px; background-color: #fff;">
-            <p style="margin: 0; color: #333;"></p>
-        </div>
-    </a>
 </div>
 
 
@@ -292,15 +265,13 @@ print("Number of nodes for 100 images:", num_nodes)
 
 </details>
 
-**Compute NCUT**
+**Compute Ncut**
 
 ``` py linenums="1"
-from ncut_pytorch import NCUT
+from ncut_pytorch import Ncut
 
 input_feats = feats.flatten(0, 2)
-eigenvectors, eigenvalues = NCUT(
-    num_eig=50, num_sample=30000, knn=10, affinity_focal_gamma=0.3, device='cpu'
-).fit_transform(input_feats)
+eigenvectors = Ncut(n_eig=50).fit_transform(input_feats)
 ```
 
 **Plotting**
@@ -339,15 +310,11 @@ def plot_images(images, rgb, title):
 </details>
 
 ``` py linenums="1"
-from ncut_pytorch import rgb_from_tsne_3d, rgb_from_umap_sphere
+from ncut_pytorch.color import mspace_color
 
-X_3d, rgb = rgb_from_tsne_3d(eigenvectors[:, :50], perplexity=100)
+rgb = mspace_color(eigenvectors[:, :50])
 image_rgb = rgb.reshape(feats.shape[:3] + (3,))
-plot_images(images, image_rgb, "NCUT top 50 eigenvectors, t-SNE color, DiNOv2 layer9")
-
-X_3d, rgb = rgb_from_umap_sphere(eigenvectors[:, :50], n_neighbors=100, min_dist=0.1)
-image_rgb = rgb.reshape(feats.shape[:3] + (3,))
-plot_images(images, image_rgb, "NCUT top 50 eigenvectors, UMAP color, DiNOv2 layer9")
+plot_images(images, image_rgb, "Ncut top 50 eigenvectors, DiNOv2 layer9")
 
 ```
 
@@ -355,25 +322,6 @@ plot_images(images, image_rgb, "NCUT top 50 eigenvectors, UMAP color, DiNOv2 lay
 <img src="../images/tutorials_01_tutorials/multiple_images_tsne.png" alt="multiple_images_tsne.png" style="width:100%;">
 </div>
 
-<div style="text-align: center;">
-<img src="../images/tutorials_01_tutorials/multiple_images_umap.png" alt="multiple_images_umap.png" style="width:100%;">
-</div>
-
-
-<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
-        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
-            <div>
-                <h2 style="margin: 0;">The complete code for this tutorial</h2>
-                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
-            </div>
-        </div>
-        <div style="padding: 15px; background-color: #fff;">
-            <p style="margin: 0; color: #333;"></p>
-        </div>
-    </a>
-</div>
 
 ## Tutorial: Video
 
@@ -487,13 +435,13 @@ print("Features shape:", features.shape)
 # Features shape: torch.Size([100, 1568, 768])
 ```
 
-**Compute NCUT**
+**Compute Ncut**
 
 ```py linenums="1"
-from ncut_pytorch import NCUT
+from ncut_pytorch import Ncut
 
-model = NCUT(num_eig=20)
-eigenvectors, eigenvalues = model.fit_transform(features.flatten(0, 1))
+ncut = Ncut(n_eig=20)
+eigenvectors = ncut.fit_transform(features.flatten(0, 1))
 print("Eigenvectors shape:", eigenvectors.shape)
 # Eigenvectors shape: torch.Size([156800, 20])
 ```
@@ -501,9 +449,9 @@ print("Eigenvectors shape:", eigenvectors.shape)
 **Plotting**
 
 ```py linenums="1"
-from ncut_pytorch import rgb_from_tsne_3d
+from ncut_pytorch.color import mspace_color
 
-X_3d, rgb = rgb_from_tsne_3d(eigenvectors, perplexity=100)
+rgb = mspace_color(eigenvectors)
 ```
 
 <details><summary>
@@ -561,21 +509,6 @@ for i in range(100, 1600, 200):
     </video>
 </div>
 
-<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
-        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
-            <div>
-                <h2 style="margin: 0;">The complete code for this tutorial</h2>
-                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
-            </div>
-        </div>
-        <div style="padding: 15px; background-color: #fff;">
-            <p style="margin: 0; color: #333;"></p>
-        </div>
-    </a>
-</div>
-
 ## Tutorial: Language Model
 
 
@@ -595,13 +528,14 @@ print(features.shape, len(token_texts))
 ```
 
 
-**Compute NCUT**
+**Compute Ncut**
 
 ```py linenums="1"
-from ncut_pytorch import NCUT, rgb_from_tsne_3d
+from ncut_pytorch import Ncut
+from ncut_pytorch.color import mspace_color
 
-eigenvectors, eigenvalues = NCUT(num_eig=10).fit_transform(features)
-X_3d, rgb = rgb_from_tsne_3d(eigenvectors, perplexity=30)
+eigenvectors = Ncut(n_eig=10).fit_transform(features)
+rgb = mspace_color(eigenvectors)
 rgb = rgb.numpy()
 print("rgb shape:", rgb.shape)  #  (66, 3)
 ```
@@ -672,19 +606,4 @@ plt.show()
 
 <div style="text-align: center;">
 <img src="../images/tutorials_01_tutorials/gpt2_text.png" alt="gpt2_text.png" style="width:100%;">
-</div>
-
-<div style="max-width: 600px; margin: 50px auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-    <a href="https://github.com/huzeyann/ncut_pytorch/tree/master/tutorials" target="_blank" style="text-decoration: none; color: inherit;">
-        <div style="display: flex; align-items: center; padding: 15px; background-color: #f6f8fa;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Logo" style="width: 50px; height: 50px; margin-right: 15px;">
-            <div>
-                <h2 style="margin: 0;">The complete code for this tutorial</h2>
-                <p style="margin: 5px 0 0; color: #586069;">huzeyann/ncut_pytorch</p>
-            </div>
-        </div>
-        <div style="padding: 15px; background-color: #fff;">
-            <p style="margin: 0; color: #333;"></p>
-        </div>
-    </a>
 </div>
