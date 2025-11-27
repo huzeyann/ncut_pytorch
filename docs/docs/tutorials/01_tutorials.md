@@ -1,4 +1,4 @@
-# Tutorial 1 - Quick Start
+# Tutorial 1: Quick Start
 
 ## Tutorial: Single Image
 
