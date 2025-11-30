@@ -64,7 +64,7 @@
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
-  <source src="../images/index/demo_heatmap.mp4" type="video/mp4">
+  <source src="images/index/demo_heatmap.mp4" type="video/mp4">
 </video>
 <p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pointer.
 <a href="alignedcut_vs_Ncut/">details</a> TODO: change video to the new hierarchy segmentation method
