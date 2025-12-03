@@ -581,16 +581,16 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
 
 def try_train_mspace(*args, **kwargs):
     # TODO: msapce training sometimes fails into nan, why?
-    for i in range(3):
+    success = False
+    while not success:
         try:
             model, trainer = train_mspace_model(*args, **kwargs)
             return model, trainer
         except Exception as e:
             warnings.warn(f"Error in training mspace model: {e}\nTrying again...")
+            torch.cuda.empty_cache()
             continue
     raise Exception("Failed to train mspace model after 3 times")
-    # model, trainer = train_mspace_model(*args, **kwargs)
-    # return model, trainer
 
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()
