@@ -594,7 +594,7 @@ def try_train_mspace(*args, **kwargs):
 
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()
-    model, trainer = train_mspace_model(X, X, return_trainer=True, **kwargs)
+    model, trainer = try_train_mspace(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)
     test_loader = torch.utils.data.DataLoader(TensorDataset(X), batch_size=batch_size, shuffle=False, num_workers=0)
