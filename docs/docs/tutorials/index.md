@@ -4,14 +4,14 @@ Welcome to the NCut PyTorch tutorials! This section provides step-by-step guides
 
 ## Getting Started
 
-If you're new to NCut, we recommend starting with **Tutorial 1 - Quick Start** to get familiar with the basic concepts and usage.
+If you're new to NCut, we recommend starting with **Tutorial 1 - Color Visualization** to get familiar with the basic concepts and usage.
 
 ## Tutorial Overview
 
 Our tutorials are designed to take you from basic usage to advanced applications:
 
 ### Fundamentals
-- **Tutorial 1 - Quick Start**: Learn the basics of using NCut PyTorch
+- **Tutorial 1 - Color Visualization**: Learn the basics of using NCut PyTorch for color visualization
 - **Tutorial 2 - Discrete NCUT**: Understanding discrete normalized cuts
 - **Tutorial 3 - Hierarchy in NCUT**: Working with hierarchical structures
 

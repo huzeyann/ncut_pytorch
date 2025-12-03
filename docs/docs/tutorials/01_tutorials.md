@@ -1,4 +1,4 @@
-# Tutorial 1: Quick Start
+# Tutorial 1: Color Visualization
 
 ## Tutorial: Single Image
 
