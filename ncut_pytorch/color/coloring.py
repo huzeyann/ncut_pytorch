@@ -39,7 +39,7 @@ def mspace_color(
         training_steps=training_steps,
         progress_bar=progress_bar,
         eigvec_loss=1.0,
-        recon_loss=0.0,
+        recon_loss=1.0,
         decoder_training_steps=0,
         boundary_loss=0.0,
         zero_center_loss=0.001,

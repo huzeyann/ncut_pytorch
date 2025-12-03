@@ -1,7 +1,7 @@
 
 
 <div style="text-align: center;">
-  <img src="./images/ncut.svg" alt="NCUT" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
+  <img src="images/index/Ncut.svg" alt="Ncut" style="width: 80%; filter: brightness(60%) grayscale(100%);"/>
 </div>
 
 
@@ -11,7 +11,7 @@
     <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" style="width: 24px; height: 24px; vertical-align: middle;"/> GitHub
   </a>
 
-  <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 2%; margin-bottom: 10px;">
+  <a href="https://huggingface.co/spaces/huzey/Ncut-pytorch" target="_blank" style="width: 30%; text-align: center; background-color: #FF5733; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 2%; margin-bottom: 10px;">
     🤗 Demo
   </a>
 
@@ -38,55 +38,42 @@
 
 
 
-# NCUT: Nyström Normalized Cut
+# Ncut: Nyström Normalized Cut
 
-**Normalized Cut**, aka. spectral clustering, is a graphical method to analyze data grouping in the affinity eigenvector space. It has been widely used for unsupervised segmentation in the 2000s.
+**Normalized Cut**, a.k.a. spectral clustering, is a graphical method to analyze data grouping in the affinity eigenvector space. It has been widely used for unsupervised segmentation in the 2000s.
 
-**Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts,  a large-graph of million nodes can be processed in under 10s (cpu) or 2s (gpu).  
+**Nyström Normalized Cut**, is a new approximation algorithm developed for large-scale graph cuts, $O(n)$ time complexity, $O(1)$ space complexity. Solve million-scale graph in milliseconds.
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
-  <source src="./images/ncut_video_sam_264_small.mp4" type="video/mp4">
+  <source src="images/index/Ncut_video_sam_264_small.mp4" type="video/mp4">
 </video>
-<p>Video: NCUT applied to image encoder features from Segment Anything Model. </br> RGB color is 3D spectral-tSNE embedding of NCUT eigenvectors.
-<a href="./gallery_sam_video">code</a>
+<p>Video: Ncut applied to image encoder features from Segment Anything Model. </br> RGB color is 3D spectral-tSNE embedding of Ncut eigenvectors.
+<a href="gallery/gallery_sam_video/">code</a> **TODO: update this code**
 </p>
 </div>
 
-<div style="text-align: center;">
-<img src="./images/ncut_hierarchy_vs_sam.png" style="width:100%;">
-<p>NCUT (DiNO features as input) produce segmentation at various granularity. </br> NCUT segments coloring is aligned across images, SAM color is arbitrary.
+<!-- <div style="text-align: center;">
+<img src="https://github.com/user-attachments/assets/a5d8a966-990b-4f6d-be10-abb00291bee2" style="width:100%;">
+<p>Ncut (DINO features as input) produce segmentation at various granularity.
 </p>
-</div>
-
-<div class="warning" style='padding:0.1em; background-color:#E9D8FD; color:#69337A'>
-<span>
-<p style='margin-top:1em; text-align:center'>
-<b>PROCEDURE <a href="./how_ncut_works">How NCUT Works</a></b></p>
-<p style='margin-left:1em;'>
-1. <b>Feature Extraction</b>: extract feature from pre-trained model.</br>
-2. <b>NCUT</b>: compute 100 NCUT eigenvectors, input feature is from deep models. </br>
-</p>
-</p></span>
-</div>
+</div> -->
 
 
-
-**Demo Application**: Point-Prompting Segmentation tool for pseudo-labeling across multiple images. Try it in <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace</a> (Switch to the Tab "Application"). More Examples in [Gallery](gallery_application.md).
 
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
-  <source src="./images/demo_heatmap.mp4" type="video/mp4">
+  <source src="images/index/demo_heatmap.mp4" type="video/mp4">
 </video>
 <p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pointer.
-<a href="./alignedcut_vs_ncut">details</a>
+<a href="alignedcut_vs_Ncut/">details</a> TODO: change video to the new hierarchy segmentation method
 </p>
 </div>
 
 <!-- ## Demo -->
 
-<!-- Please visit the <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around datasets and models. -->
+<!-- Please visit the <a href="https://huggingface.co/spaces/huzey/Ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around datasets and models. -->
 
 
 <!--
@@ -96,7 +83,7 @@
 ></script>
 -->
 
-<gradio-app src="https://huzey-ncut-pytorch.hf.space"></gradio-app>
+<!-- <gradio-app src="https://huzey-Ncut-pytorch.hf.space"></gradio-app>
 
 <script>
 	function handleLoadComplete() {
@@ -116,190 +103,91 @@
 	} else {
 		console.log("gradio-app element not found");
 	}
-</script>
+</script> -->
 
 <!-- <iframe
-	src="https://huzey-ncut-pytorch.hf.space"
+	src="https://huzey-Ncut-pytorch.hf.space"
 	frameborder="0"
 	width="100%"
 	height="800"
 ></iframe> -->
 
-## Gallery
-Just plugin features extracted from any pre-trained model and ready to go. NCUT works for any input -- image, text, video, 3D, .... Planty examples code and plots in the [Gallery](gallery.md)
+<!-- ## Gallery
+Just plugin features extracted from any pre-trained model and ready to go. Ncut works for any input -- image, text, video, 3D, .... Planty examples code and plots in the [Gallery](gallery/)
 
 <div style="text-align: center;">
-<a href="./gallery/">
-<img src="./images/ncut_gallery_cover.jpg" style="width:100%;">
+<a href="gallery/">
+<img src="images/index/Ncut_gallery_cover.jpg" style="width:100%;">
 </a>
-</div>
+</div> -->
 
 ---
 
 ## Installation
 
-#### 1. Install PyTorch
-
 <div style="text-align:">
-<pre><code class="language-shell">conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-</code></pre>
-</div>
-
-#### 2. Install `ncut-pytorch`
-
-<div style="text-align:">
-    <pre><code class="language-shell">pip install ncut-pytorch</code></pre>
-</div>
-
-
-#### Installation Trouble Shooting
-
-In case of `pip` install <a style="color: red;">error</a>, please try install the build dependencies.
-
-Option A:
-<div style="text-align:">
-    <pre style="display: inline;"><code class="language-shell">sudo apt-get update && sudo apt-get install build-essential cargo rustc -y</code></pre>
-</div>
-
-Option B:
-<div style="text-align:">
-    <pre><code class="language-shell">conda install rust -c conda-forge</code></pre>
-</div>
-
-Option C:
-<div style="text-align:">
-    <pre><code class="language-shell">curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && . "$HOME/.cargo/env"</code></pre>
+    <pre><code class="language-shell">pip install -U ncut-pytorch</code></pre>
 </div>
 
 
 ---
 
-## Quick Start
+## Quick Start: Ncut with DINO Features
 
-Minimal example on how to run NCUT, more examples in [Tutorial](tutorials.md) and [Gallery](gallery.md).
+```py linenums="1"
+from ncut_pytorch.predictor import NcutDinov3Predictor
+from PIL import Image
 
-<div style="text-align:left;">
-    <pre><code>
-<span style="color: #008000;"><b>import</b></span> torch
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d
+predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
+predictor = predictor.to('cuda')
 
-model_features = torch.rand(20, 64, 64, 768)  <span style="color: #008080;"># (B, H, W, C)</span>
+images = [Image.open(f"images/view_{i}.jpg") for i in range(4)]
+predictor.set_images(images)
 
-inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768)  <span style="color: #008080;"># flatten</span>
-eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #ab38f2;">'cuda:0'</span>).fit_transform(inp)
-tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #ab38f2;">'cuda:0'</span>)
+image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
+display(image)
 
-eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100)  <span style="color: #008080;"># (B, H, W, num_eig)</span>
-tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3)  <span style="color: #008080;"># (B, H, W, 3)</span>
-    </code></pre>
-</div>
+```
 
-#### Load Feature Extractor Model
-
-Any backbone model works as plug-in feature extractor. 
-We have implemented some backbone models, here is a list of available models:
-
-<div style="text-align:left;"> <pre><code> 
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> list_models 
-<span style="color: #008080;">print</span>(list_models()) 
-<span style="color: #808080;">[
-  'SAM2(sam2_hiera_t)', 'SAM2(sam2_hiera_s)', 'SAM2(sam2_hiera_b+)', 'SAM2(sam2_hiera_l)', 
-  'SAM(sam_vit_b)', 'SAM(sam_vit_l)', 'SAM(sam_vit_h)', 'MobileSAM(TinyViT)', 
-  'DiNOv2reg(dinov2_vits14_reg)', 'DiNOv2reg(dinov2_vitb14_reg)', 'DiNOv2reg(dinov2_vitl14_reg)', 'DiNOv2reg(dinov2_vitg14_reg)', 
-  'DiNOv2(dinov2_vits14)', 'DiNOv2(dinov2_vitb14)', 'DiNOv2(dinov2_vitl14)', 'DiNOv2(dinov2_vitg14)', 
-  'DiNO(dino_vits8_896)', 'DiNO(dino_vitb8_896)', 'DiNO(dino_vits8_672)', 'DiNO(dino_vitb8_672)', 'DiNO(dino_vits8_448)', 'DiNO(dino_vitb8_448)', 'DiNO(dino_vits16_448)', 'DiNO(dino_vitb16_448)',
-  'Diffusion(stabilityai/stable-diffusion-2)', 'Diffusion(CompVis/stable-diffusion-v1-4)', 'Diffusion(stabilityai/stable-diffusion-3-medium-diffusers)',
-  'CLIP(ViT-B-16/openai)', 'CLIP(ViT-L-14/openai)', 'CLIP(ViT-H-14/openai)', 'CLIP(ViT-B-16/laion2b_s34b_b88k)', 
-  'CLIP(convnext_base_w_320/laion_aesthetic_s13b_b82k)', 'CLIP(convnext_large_d_320/laion2b_s29b_b131k_ft_soup)', 'CLIP(convnext_xxlarge/laion2b_s34b_b82k_augreg_soup)', 
-  'CLIP(eva02_base_patch14_448/mim_in22k_ft_in1k)', "CLIP(eva02_large_patch14_448/mim_m38m_ft_in22k_in1k)",
-  'MAE(vit_base)', 'MAE(vit_large)', 'MAE(vit_huge)', 
-  'ImageNet(vit_base)'
-]</span>
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone_text <span style="color: #008000;"><b>import</b></span> list_models 
-<span style="color: #008080;">print</span>(list_models()) 
-<span style="color: #808080;">["meta-llama/Meta-Llama-3.1-8B", "meta-llama/Meta-Llama-3-8B", "gpt2"]</span>
-</span> </code></pre> </div>
-
-#### Image model example:
-
-<div style="text-align:left;"> <pre><code> <span style="color: #008000;">
-<b>import</b></span> torch <span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d 
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone <span style="color: #008000;"><b>import</b></span> load_model, extract_features
-
-model = load_model(model_name=<span style="color: #ab38f2;">"SAM(sam_vit_b)"</span>) 
-images = torch.rand(20, 3, 1024, 1024) 
-model_features = extract_features(images, model, node_type=<span style="color: #ab38f2;">'attn'</span>, layer=<span style="color: #008080;">6</span>) <span style="color: #008080;">
-# model_features = model(images)['attn'][6]  # this also works</span>
-
-inp = model_features.<span style="color: #008080;">reshape</span>(-1, 768) <span style="color: #008080;"># flatten</span>
-eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=100, device=<span style="color: #ab38f2;">'cuda:0'</span>).fit_transform(inp) 
-tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #ab38f2;">'cuda:0'</span>)
-
-eigvectors = eigvectors.<span style="color: #008080;">reshape</span>(20, 64, 64, 100) <span style="color: #008080;"># (B, H, W, num_eig)</span> 
-tsne_rgb = tsne_rgb.<span style="color: #008080;">reshape</span>(20, 64, 64, 3) <span style="color: #008080;"># (B, H, W, 3)</span> </code></pre>
-</div>
-
-#### Text model example:
+![summary](https://github.com/user-attachments/assets/a5d8a966-990b-4f6d-be10-abb00291bee2)
 
 
-<details>
-<summary>
+## Quick Start: Ncut with Your Features
 
-This example use your access token and download Llama from HuggingFace. How to set up Llama access token from HuggingFace (click to expand):
+### Default Workflow: Color Visualization
 
-</summary>
+```py linenums="1"
+import torch
+from ncut_pytorch import Ncut
+from ncut_pytorch.color import umap_color, tsne_color, mspace_color
 
-<p>Step 1: Request access for Llama from <a ref="https://huggingface.co/meta-llama/Meta-Llama-3.1-8B" target="_blank">https://huggingface.co/meta-llama/Meta-Llama-3.1-8B</a>
+your_features = torch.rand(1960, 768)
+eigvecs = Ncut(n_eig=20).fit_transform(your_features)  # (1960, 20)
 
-<p>Step 2: Find your access token at <a ref="https://huggingface.co/settings/tokens" target="_blank">https://huggingface.co/settings/tokens</a> </p>
+# Color visualizations (default workflow)
+rgb_umap = umap_color(eigvecs)      # UMAP-based RGB
+rgb_tsne = tsne_color(eigvecs)      # t-SNE-based RGB  
+rgb_mspace = mspace_color(eigvecs)  # M-space RGB
+```
 
-</details>
+### Alternative Workflow: Discrete Segmentation
 
-<div style="text-align:left;">
-    <pre><code>
-<span style="color: #008000;"><b>import</b></span> os
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch <span style="color: #008000;"><b>import</b></span> <span style="color: #FF6D00;">NCUT</span>, rgb_from_tsne_3d
-<span style="color: #008000;"><b>from</b></span> ncut_pytorch.backbone_text <span style="color: #008000;"><b>import</b></span> load_text_model
+```py linenums="1"
+import torch
+from ncut_pytorch import Ncut, kway_ncut
 
-<span>os.environ['HF_ACCESS_TOKEN'] = </span><span style="color: #008080;">"your_huggingface_token"</span>
-llama = load_text_model(<span style="color: #ab38f2;">"meta-llama/Meta-Llama-3.1-8B"</span>).cuda()
-output_dict = llama(<span style="color: #808080;">"The quick white fox jumps over the lazy cat."</span>)
+your_features = torch.rand(1960, 768)
+eigvecs = Ncut(n_eig=20).fit_transform(your_features)  # (1960, 20)
 
-model_features = output_dict[<span style="color: #ab38f2;">'block'</span>][<span style="color: #008080;">31</span>].squeeze(<span style="color: #008080;">0</span>)  <span style="color: #008080;"># 32nd block output</span>
-token_texts = output_dict[<span style="color: #ab38f2;">'token_texts'</span>]
-eigvectors, eigvalues = <span style="color: #FF6D00;">NCUT</span>(num_eig=<span style="color: #008080;">5</span>, device=<span style="color: #ab38f2;">'cuda:0'</span>).fit_transform(model_features)
-tsne_x3d, tsne_rgb = rgb_from_tsne_3d(eigvectors, device=<span style="color: #ab38f2;">'cuda:0'</span>)
-<span style="color: #008080;"># eigvectors.shape[0] == tsne_rgb.shape[0] == len(token_texts)</span>
-    </code></pre>
-</div>
-
+# Discrete segmentation (alternative workflow)
+kway_eigvecs = kway_ncut(eigvecs)
+cluster_assignment = kway_eigvecs.argmax(1)
+```
 
 
 ---
 
-## Why NCUT
-
-Normalized cut offers two advantages:
-
-1. soft-cluster assignments as eigenvectors
-
-2. hierarchical clustering by varying the number of eigenvectors
-
-<div  style="text-align: center;">
-<video width="80%" controls muted autoplay loop>
-  <source src="./images/n_eigvecs.mp4" type="video/mp4">
-</video>
-<p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pixel (blue point).</br>
-Reduce `n_eig` hierarchical grow the object heatmap</br>
-try it at <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a> (switch to tab "PlayGround")
-</div>
-
-Please see [NCUT and t-SNE/UMAP](compare.md) for a comparison over common PCA, t-SNE, UMAP.
-
-
----
-
-> paper in prep, Yang 2024
+> paper in prep, Yang 2025
 >
 > AlignedCut: Visual Concepts Discovery on Brain-Guided Universal Feature Space, Huzheng Yang, James Gee\*, Jianbo Shi\*,2024
 > 
