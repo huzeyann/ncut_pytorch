@@ -201,9 +201,9 @@ def plot_3d(X_3d, rgb, title):
 
 
 ``` py linenums="1"
-from ncut_pytorch.color import mspace_color
+from ncut_pytorch.color import umap_color
 
-rgb = mspace_color(eigenvectors[:, :10])
+rgb = umap_color(eigenvectors[:, :10])
 plot_3d(rgb, rgb)
 ```
 
@@ -310,9 +310,9 @@ def plot_images(images, rgb, title):
 </details>
 
 ``` py linenums="1"
-from ncut_pytorch.color import mspace_color
+from ncut_pytorch.color import umap_color
 
-rgb = mspace_color(eigenvectors[:, :50])
+rgb = umap_color(eigenvectors[:, :50])
 image_rgb = rgb.reshape(feats.shape[:3] + (3,))
 plot_images(images, image_rgb, "Ncut top 50 eigenvectors, DiNOv2 layer9")
 
@@ -449,9 +449,9 @@ print("Eigenvectors shape:", eigenvectors.shape)
 **Plotting**
 
 ```py linenums="1"
-from ncut_pytorch.color import mspace_color
+from ncut_pytorch.color import umap_color
 
-rgb = mspace_color(eigenvectors)
+rgb = umap_color(eigenvectors)
 ```
 
 <details><summary>
@@ -532,10 +532,10 @@ print(features.shape, len(token_texts))
 
 ```py linenums="1"
 from ncut_pytorch import Ncut
-from ncut_pytorch.color import mspace_color
+from ncut_pytorch.color import umap_color
 
 eigenvectors = Ncut(n_eig=10).fit_transform(features)
-rgb = mspace_color(eigenvectors)
+rgb = umap_color(eigenvectors)
 rgb = rgb.numpy()
 print("rgb shape:", rgb.shape)  #  (66, 3)
 ```

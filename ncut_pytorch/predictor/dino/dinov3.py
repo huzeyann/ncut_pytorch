@@ -10,6 +10,7 @@ URLS = {
 
 import torch
 from torch import nn
+from types import MethodType
 
 
 class Dinov3Backbone(nn.Module):
@@ -19,6 +20,7 @@ class Dinov3Backbone(nn.Module):
             config = "dinov3_vitl16"
         dinov3 = torch.hub.load("facebookresearch/dinov3", config, weights=URLS[config])
         self.model = dinov3
+        # self.apply_attention_mask(attention_mask_ratio=0.99)
         
         self.keep_idx = None
 
@@ -36,3 +38,28 @@ class Dinov3Backbone(nn.Module):
         var_sorted_idx = torch.argsort(var, descending=True)
         keep_idx = var_sorted_idx[n_remove:]
         return keep_idx
+    
+    def apply_attention_mask(self, attention_mask_ratio: float = 0.1):
+        def my_compute_attention(self, qkv: torch.Tensor, attn_bias=None, rope=None) -> torch.Tensor:
+            assert attn_bias is None
+            B, N, _ = qkv.shape
+            C = self.qkv.in_features
+
+            qkv = qkv.reshape(B, N, 3, self.num_heads, C // self.num_heads)
+            q, k, v = torch.unbind(qkv, 2)
+            q, k, v = [t.transpose(1, 2) for t in [q, k, v]]
+            if rope is not None:
+                q, k = self.apply_rope(q, k, rope)
+            if attention_mask_ratio > 0 and attention_mask_ratio < 1:
+                num_keys = int(N * attention_mask_ratio)
+                mask_indices = torch.randperm(N-5)[:num_keys] + 5  # add the 5 register tokens
+                masked_k = k[:, :, mask_indices, :]
+                masked_v = v[:, :, mask_indices, :]
+                x = torch.nn.functional.scaled_dot_product_attention(q, masked_k, masked_v)
+            else:
+                x = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+            x = x.transpose(1, 2)
+            return x.reshape([B, N, C])
+        
+        for blk in self.model.blocks:
+            blk.attn.compute_attention = MethodType(my_compute_attention, blk.attn)
