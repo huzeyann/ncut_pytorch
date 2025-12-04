@@ -1,10 +1,13 @@
 # %%
 
 from ncut_pytorch.predictor.jafar_predictor import NcutJafarPredictor
+from ncut_pytorch.predictor.dino_predictor import NcutDinov3Predictor
 from PIL import Image
 
-predictor = NcutJafarPredictor(model_name="dinov3_l", batch_size=1)
+# predictor = NcutJafarPredictor(model_name="siglip2_b", batch_size=1, input_resolution=(384, 384), output_resolution=(384, 384))
+predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
 predictor = predictor.to('cuda')
+predictor.predictor.color_method = 'mspace'
 
 images = [Image.open(f"images/view_{i}.jpg") for i in range(4)]
 predictor.set_images(images)

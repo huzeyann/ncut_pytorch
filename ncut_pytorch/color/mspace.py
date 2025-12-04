@@ -66,7 +66,7 @@ def filter_closeby_eigval(eigvec, eigval, threshold=1e-3):
     return eigvec[:, keep_idx], eigval[keep_idx]
 
 def ncut_wrapper(features, n_eig, gamma=1.0):
-    A = rbf_affinity(features, gamma=gamma)
+    A = rbf_affinity(features, gamma=gamma) 
     eigvec, eigval = _plain_ncut(A, n_eig)
     eigvec, eigval = filter_closeby_eigval(eigvec, eigval)
     return eigvec, eigval
@@ -545,16 +545,34 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
 
 def try_train_mspace(*args, **kwargs):
     # TODO: msapce training sometimes fails into nan, why?
-    while True:
+    max_retries = 10
+    retry_count = 0
+    original_n_eig = kwargs.get('n_eig', 8)
+    
+    while retry_count < max_retries:
         try:
             model, trainer = train_mspace_model(*args, **kwargs)
             return model, trainer
         except Exception as e:
-            n_eig = int(kwargs.get('n_eig', 8) // 2)
-            warnings.warn(f"Error in training mspace model: {e}. Trying with n_eig={n_eig}... Retrying...")
+            retry_count += 1
+            current_n_eig = kwargs.get('n_eig', original_n_eig)
+            n_eig = int(current_n_eig // 2)
+            
+            # If n_eig becomes too small, disable eigvec_loss and use minimum value
             if n_eig < 2:
-                kwargs['eigvec_loss'] = 0
-            kwargs['n_eig'] = n_eig
+                kwargs['eigvec_loss'] = 0.0
+                kwargs['recon_loss'] = 1.0
+                kwargs['n_eig'] = 2  # Ensure n_eig is at least 2
+                warnings.warn(f"Error in training mspace model: {e}. Disabling eigvec_loss and using n_eig=1. Retrying ({retry_count}/{max_retries})...")
+            else:
+                kwargs['n_eig'] = n_eig
+                warnings.warn(f"Error in training mspace model: {e}. Trying with n_eig={n_eig}... Retrying ({retry_count}/{max_retries})...")
+            
+            # If we've exhausted all retries, raise the exception
+            if retry_count >= max_retries:
+                raise Exception(f"Failed to train mspace model after {max_retries} retries. Last error: {e}")
+            
+            torch.cuda.empty_cache()
 
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()

@@ -29,33 +29,21 @@ https://github.com/user-attachments/assets/cdf53e33-bb34-4a84-b1f4-679b66da1d48
 
 ## Quick Start: plain Ncut
 
-### Default Workflow: Color Visualization
-
-```py linenums="1"
-import torch
-from ncut_pytorch import Ncut
-from ncut_pytorch.color import umap_color, tsne_color, mspace_color
-
-features = torch.rand(1960, 768)
-eigvecs = Ncut(n_eig=20).fit_transform(features)  # (1960, 20)
-
-# Color visualizations (default workflow)
-rgb_umap = umap_color(eigvecs)      # UMAP-based RGB
-rgb_tsne = tsne_color(eigvecs)       # t-SNE-based RGB  
-rgb_mspace = mspace_color(eigvecs)  # M-space RGB
-```
-
-### Alternative Workflow: Discrete Segmentation
-
 ```py linenums="1"
 import torch
 from ncut_pytorch import Ncut, kway_ncut
+from ncut_pytorch.color import umap_color, mspace_color
 
 features = torch.rand(1960, 768)
-eigvecs = Ncut(n_eig=20).fit_transform(features)  # (1960, 20)
+eigvecs = Ncut(n_eig=100).fit_transform(features)  # (1960, 20)
 
-# Discrete segmentation (alternative workflow)
-kway_eigvecs = kway_ncut(eigvecs)
+# Color visualizations
+rgb_umap = umap_color(eigvecs[:, :20])      # UMAP-based RGB
+rgb_mspace = mspace_color(features, n_eig=20)  # M-space RGB
+
+# Discrete segmentation
+n_cluster = 10
+kway_eigvecs = kway_ncut(eigvecs[:, :n_cluster])
 cluster_assignment = kway_eigvecs.argmax(1)
 cluster_centroids = kway_eigvecs.argmax(0)
 ```

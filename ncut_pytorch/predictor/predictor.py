@@ -21,8 +21,9 @@ class NotInitializedError(Exception):
 class NcutPredictor:
     _initialized: bool = False
     device: str = 'cpu'
-    color_method: str = 'umap'
-    ncut_fn: Callable = partial(ncut_fn, affinity_fn=cosine_affinity)
+    color_method: str = 'mspace'
+    ncut_fn: Callable = partial(ncut_fn, affinity_fn=cosine_affinity, gamma=0.4, repulsion_gamma=0.3)
+    # ncut_fn: Callable = partial(ncut_fn)
 
     def __init__(self):
         self._features: torch.Tensor
@@ -147,7 +148,7 @@ class NcutPredictor:
     def refresh_color_palette(self, n_eig: int = 50) -> None:
         self.__check_initialized()
         if self.color_method == 'mspace':
-            self._color_palette = mspace_color(self._eigvecs[:, :n_eig])
+            self._color_palette = mspace_color(self._features[:, :])
         elif self.color_method == 'tsne':
             self._color_palette = tsne_color(self._eigvecs[:, :n_eig])
         elif self.color_method == 'umap':

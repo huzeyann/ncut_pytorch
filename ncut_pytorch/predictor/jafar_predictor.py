@@ -10,7 +10,7 @@ class NcutJafarPredictor(NcutVisionPredictor):
                  model_name: str = "dinov3_l",
                  input_resolution: Tuple[int, int] = (512, 512),
                  output_resolution: Tuple[int, int] = (512, 512),
-                 batch_size: int = 4):
+                 batch_size: int = 1):
         if model_name not in AVAILABLE_MODELS:
             raise ValueError(f"Model {model_name} not found in AVAILABLE_MODELS")
         model = torch.hub.load("huzeyann/JAFAR", model_name, output_resolution=output_resolution, force_reload=True)
