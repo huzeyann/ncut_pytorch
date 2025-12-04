@@ -25,14 +25,14 @@ logging.getLogger('pytorch_lightning.utilities.rank_zero').addFilter(IgnorePLFil
 logging.getLogger('pytorch_lightning.accelerators.cuda').addFilter(IgnorePLFilter())
 
 
-from ncut_pytorch.utils.math import rbf_affinity
+from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut
 from ncut_pytorch.ncuts.ncut_kway import kway_ncut
 from ncut_pytorch.utils.gamma import find_gamma_by_degree_after_fps
 from ncut_pytorch.utils.math import compute_riemann_curvature_loss, compute_boundary_loss, compute_repulsion_loss, compute_axis_align_loss, compute_attraction_loss, find_elbow
 
 
-def _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight):
+def _flag_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight):
     _eigvec_gt = eigvec_gt[:, :n_eig]
     _eigvec_hat = eigvec_hat[:, :n_eig]
     left = _eigvec_gt @ _eigvec_gt.T
@@ -53,19 +53,19 @@ def flag_space_loss(eigvec_gt, eigvec_hat, n_eig, start=2, step_mult=2, weight=N
     n_eig = start // step_mult
     while True:
         n_eig *= step_mult
-        loss += _kway_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight)
+        loss += _flag_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight)
         if n_eig > eigvec_gt.shape[1] or n_eig > eigvec_hat.shape[1]:
             break
     return loss
 
-def filter_closeby_eigval(eigvec, eigval, threshold=1e-10):
+def filter_closeby_eigval(eigvec, eigval, threshold=1e-3):
     # filter out eigvals that are too close to each other
     # so the gradient is more stable
     eigval_diff = torch.diff(eigval).abs()
     keep_idx = torch.where(eigval_diff > threshold)[0]
     return eigvec[:, keep_idx], eigval[keep_idx]
 
-def ncut_wrapper(features, n_eig, gamma=0.5):
+def ncut_wrapper(features, n_eig, gamma=1.0):
     A = rbf_affinity(features, gamma=gamma)
     eigvec, eigval = _plain_ncut(A, n_eig)
     eigvec, eigval = filter_closeby_eigval(eigvec, eigval)
@@ -245,10 +245,11 @@ class TrainDecoder(pl.LightningModule):
                     total_loss = total_loss + zcenter_loss
 
             
-            self.optimizers().zero_grad()
+            optimizer = self.optimizers()
+            optimizer.zero_grad()
             self.manual_backward(total_loss)
-            self.clip_gradients(self.optimizers(), gradient_clip_val=0.1)
-            self.optimizers().step()
+            self.clip_gradients(optimizer, gradient_clip_val=0.1)
+            optimizer.step()
         
         return total_loss
 
@@ -262,14 +263,13 @@ class TrainDecoder(pl.LightningModule):
 class TrainEncoder(pl.LightningModule):
     N_ITER_PER_STEP = 10
     
-    def __init__(self, in_dim, out_dim, mood_dim=2, n_eig=None, n_elbow=3,
+    def __init__(self, in_dim, out_dim, mood_dim=2, n_eig=8, n_elbow=3,
                  n_layer=4, latent_dim=256, 
                  eigvec_loss=100, recon_loss=0, 
                  riemann_curvature_loss=0., axis_align_loss=0, 
                  repulsion_loss=0.1, attraction_loss=0., 
                  boundary_loss=0., zero_center_loss=0.01,
                  lr=0.001, progress_bar=True, training_steps=500,
-                 degree=['auto'], kway_weight_gamma=5.0,
                  encoder_activation='gelu', decoder_activation='gelu', 
                  final_activation='identity',
                  log_grad_norm=False, 
@@ -289,11 +289,8 @@ class TrainEncoder(pl.LightningModule):
         self.boundary_loss = boundary_loss
         self.zero_center_loss = zero_center_loss
         self.lr = lr
-        self.degree = degree if isinstance(degree, list) else [degree]
-        self.gamma = [None] * len(self.degree)
-        self.n_eig = n_eig if isinstance(n_eig, list) else [n_eig] * len(degree)
+        self.n_eig = n_eig
         self.n_elbow = n_elbow
-        self.kway_weight_gamma = kway_weight_gamma
 
         self.progress_bar = progress_bar
         self.training_steps = training_steps
@@ -328,17 +325,6 @@ class TrainEncoder(pl.LightningModule):
     def training_step(self, batch):
         if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step != 0:
             self.progress_bar.update(10)
-            # Update progress bar description with average eigvec loss
-            if hasattr(self, 'loss_history'):
-                # Calculate average eigvec loss from all degree values
-                eigvec_losses = []
-                for i, degree in enumerate(self.degree):
-                    loss_key = f"loss/eigvec_d{degree}"
-                    if loss_key in self.loss_history and self.loss_history[loss_key]:
-                        eigvec_losses.append(self.loss_history[loss_key][-1])
-                if eigvec_losses:
-                    avg_eigvec_loss = sum(eigvec_losses) / len(eigvec_losses)
-                    self.progress_bar.set_description(f"[M-space encoder] eigvec loss: {avg_eigvec_loss:.2e}")
         if self.progress_bar and self.trainer.global_step % 10 == 0 and self.trainer.global_step >= self.training_steps - 10:
             self.progress_bar.update(10)
             self.progress_bar.close()
@@ -349,21 +335,8 @@ class TrainEncoder(pl.LightningModule):
         with torch.no_grad():
             # Compute eigvec_gt only once for each set of iterations
             if self.eigvec_loss != 0:
-                    
-                for i, degree, gamma, n_eig in zip(range(len(self.degree)), 
-                                                self.degree, self.gamma, self.n_eig):
-                    if gamma is None:
-                        gamma = find_gamma_by_degree_after_fps(input_feats, degree)
-                        self.gamma[i] = gamma
-                    if n_eig is None:
-                        eigvec_gt, eigval_gt = ncut_wrapper(input_feats, input_feats.shape[0]//2, gamma=gamma)
-                        n_eig = find_elbow(eigval_gt, n_elbows=self.n_elbow)[-1]
-                        self.n_eig[i] = n_eig
-                    
-                    # Compute and store eigvec_gt
-                    key = f"{i}_{degree}_{gamma}_{n_eig}"
-                    eigvec_gt, eigval_gt = ncut_wrapper(input_feats, n_eig, gamma=gamma)
-                    stored_eigvec_gt[key] = eigvec_gt
+                eigvec_gt, eigval_gt = ncut_wrapper(input_feats, self.n_eig)
+                stored_eigvec_gt = eigvec_gt
 
         
         # Run the same batch 10 times, updating parameters after each iteration
@@ -375,21 +348,11 @@ class TrainEncoder(pl.LightningModule):
             
             total_loss = 0
             if self.eigvec_loss != 0:
-                for i, degree, gamma, n_eig in zip(range(len(self.degree)), 
-                                                  self.degree, self.gamma, self.n_eig):
-                    # Reuse the stored eigvec_gt
-                    key = f"{i}_{degree}_{gamma}_{n_eig}"
-                    eigvec_gt = stored_eigvec_gt[key]
-
-                    # Compute eigvec_hat for each iteration
-                    eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, n_eig, gamma=gamma)
-                    eigvec_loss = flag_space_loss(eigvec_gt, eigvec_hat, n_eig=n_eig, weight=None)
-                    eigvec_loss = eigvec_loss * self.eigvec_loss
-                    total_loss += eigvec_loss
-
-                    _log_grad_norm = log_grad_norm and i == 0
-                    self._log_loss(eigvec_loss, f"eigvec_d{self.degree[i]}", log_grad_norm=_log_grad_norm)
-
+                eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, self.n_eig)
+                eigvec_loss = flag_space_loss(stored_eigvec_gt, eigvec_hat, n_eig=self.n_eig, weight=None)
+                eigvec_loss = eigvec_loss * self.eigvec_loss
+                total_loss += eigvec_loss
+                self._log_loss(eigvec_loss, "eigvec", log_grad_norm=log_grad_norm)
 
             if self.recon_loss > 0:
                 feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
@@ -441,10 +404,11 @@ class TrainEncoder(pl.LightningModule):
                 self.logger.log_metrics({'loss/total': total_loss.item()}, step=self.global_step)
             self.loss_history['loss/total'].append(total_loss.item())
             
+            optimizer = self.optimizers()
+            optimizer.zero_grad()
             self.manual_backward(total_loss)
-            self.clip_gradients(self.optimizers(), gradient_clip_val=0.1)
-            self.optimizers().step()
-            self.optimizers().zero_grad()
+            self.clip_gradients(optimizer, gradient_clip_val=0.1)
+            optimizer.step()
 
         return total_loss
     
@@ -581,16 +545,16 @@ def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, dec
 
 def try_train_mspace(*args, **kwargs):
     # TODO: msapce training sometimes fails into nan, why?
-    success = False
-    while not success:
+    while True:
         try:
             model, trainer = train_mspace_model(*args, **kwargs)
             return model, trainer
         except Exception as e:
-            warnings.warn(f"Error in training mspace model: {e}\nTrying again...")
-            torch.cuda.empty_cache()
-            continue
-    raise Exception("Failed to train mspace model after 3 times")
+            n_eig = int(kwargs.get('n_eig', 8) // 2)
+            warnings.warn(f"Error in training mspace model: {e}. Trying with n_eig={n_eig}... Retrying...")
+            if n_eig < 2:
+                kwargs['eigvec_loss'] = 0
+            kwargs['n_eig'] = n_eig
 
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()

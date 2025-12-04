@@ -20,7 +20,7 @@ def _identity(X: torch.Tensor) -> torch.Tensor:
 def mspace_color(
         X: torch.Tensor,
         q: float = 0.95,
-        n_eig: Optional[int] = 8,
+        n_eig: Optional[int] = 32,
         n_dim: int = 3,
         training_steps: int = 1000,
         progress_bar: bool = False,
@@ -37,16 +37,12 @@ def mspace_color(
         n_eig=n_eig,
         mood_dim=n_dim,
         training_steps=training_steps,
+        decoder_training_steps=0,
         progress_bar=progress_bar,
         eigvec_loss=1.0,
         recon_loss=1.0,
-        decoder_training_steps=0,
-        boundary_loss=0.0,
         zero_center_loss=0.001,
         repulsion_loss=0.01,
-        attraction_loss=0,
-        axis_align_loss=0.0,
-        degree=['auto'],
         **kwargs)
 
     rgb = rgb_from_nd_colormap(low_dim_embedding, q=q)
