@@ -49,7 +49,6 @@
   <source src="images/index/Ncut_video_sam_264_small.mp4" type="video/mp4">
 </video>
 <p>Video: Ncut applied to image encoder features from Segment Anything Model. </br> RGB color is 3D spectral-tSNE embedding of Ncut eigenvectors.
-<a href="gallery/gallery_sam_video/">code</a> **TODO: update this code**
 </p>
 </div>
 
@@ -67,7 +66,7 @@
   <source src="images/index/demo_heatmap.mp4" type="video/mp4">
 </video>
 <p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pointer.
-<a href="alignedcut_vs_Ncut/">details</a> TODO: change video to the new hierarchy segmentation method
+<a href="alignedcut_vs_Ncut/">details</a>
 </p>
 </div>
 
