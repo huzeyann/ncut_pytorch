@@ -18,7 +18,7 @@ def find_gamma_by_degree(X, d_gamma='auto', affinity_fn=rbf_affinity, X2=None, i
         current_degrees = affinity_fn(X, X2=X2, gamma=scale_inv_gamma).mean(1)
         current_degree = current_degrees.mean().item()
         mask = current_degrees < current_degree
-        d_gamma = bin_and_find_mode(current_degrees[mask])
+        d_gamma = current_degrees[mask].mean().item()
     
     # find gamma, binary search
     current_degree = affinity_fn(X, X2=X2, gamma=gamma).mean().item()
