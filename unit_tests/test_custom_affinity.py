@@ -43,7 +43,7 @@ class TestCustomAffinity:
     def test_default_affinity_behavior(self, small_feature_matrix):
         """Test that default behavior still works (affinity_fn=None)."""
         n_eig = 5
-        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, affinity_fn=rbf_affinity, d_sigma='auto')
+        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, affinity_fn=rbf_affinity, quantile_sigma='auto')
 
         # Check shapes
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)

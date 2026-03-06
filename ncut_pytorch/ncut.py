@@ -14,28 +14,30 @@ class Ncut:
     def __init__(
             self,
             n_eig: int = 100,
-            track_grad: bool = False,
-            d_sigma: float = None,
-            sigma: float = None,
-            repulsion_sigma: float = None,
-            repulsion_weight: float = 0.2,
-            extrapolation_factor: float = 1.0,
-            device: str = None,
+            quantile_sigma: float = 0.25,
+            quantile_sigma_repulsion: float = 0.20,
+            sigma: float | None = None,
+            repulsion_sigma: float | None = None,
+            repulsion_weight: float | None = None,
             affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
+            extrapolation_factor: float = 1.0,
+            exact_gradient: bool = False,
+            device: str | None = None,
             **kwargs,
     ):
         """
         
         Args:       
             n_eig (int): number of eigenvectors
-            track_grad (bool): keep track of pytorch gradients
-            d_sigma (float): affinity sigma parameter, lower d_sigma results in a sharper eigenvectors
+            n_eig (int): number of eigenvectors
+            quantile_sigma (float): quantile of affinity sigma parameter, lower quantile_sigma results in sharper eigenvectors
+            quantile_sigma_repulsion (float): quantile of repulsion sigma parameter, lower quantile_sigma_repulsion results in sharper eigenvectors
             sigma (float): affinity parameter, override d_sigma if provided
             repulsion_sigma (float): (if use repulsion) repulsion sigma parameter, default None (no repulsion)
             repulsion_weight (float): (if use repulsion) repulsion weight, default 0.2
-            extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
-            device (str): device, default 'auto' (auto detect GPU)
             affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, sigma=float) and return affinity matrix
+            extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
+            exact_gradient (bool): use full spectrum and exact gradient, can be slower and unstable, default False            device (str): device, default 'auto' (auto detect GPU)
             
         Examples:
             >>> from ncut_pytorch import Ncut
@@ -52,13 +54,14 @@ class Ncut:
             >>> print(new_eigvec.shape)  # (500, 20)
         """
         self.n_eig = n_eig
-        self.d_sigma = d_sigma
+        self.quantile_sigma = quantile_sigma
+        self.quantile_sigma_repulsion = quantile_sigma_repulsion
         self.sigma = sigma
         self.repulsion_sigma = repulsion_sigma
         self.repulsion_weight = repulsion_weight
         self.extrapolation_factor = extrapolation_factor
+        self.exact_gradient = exact_gradient
         self.device = device
-        self.track_grad = track_grad
         self.affinity_fn = affinity_fn
         self.kwargs = kwargs
 
@@ -83,12 +86,13 @@ class Ncut:
             ncut_fn(
                 X,
                 n_eig=self.n_eig,
-                d_sigma=self.d_sigma,
+                quantile_sigma=self.quantile_sigma,
+                quantile_sigma_repulsion=self.quantile_sigma_repulsion,
                 sigma=self.sigma,
                 repulsion_sigma=self.repulsion_sigma,
                 repulsion_weight=self.repulsion_weight,
                 device=self.device,
-                track_grad=self.track_grad,
+                exact_gradient=self.exact_gradient,
                 no_propagation=True,
                 affinity_fn=self.affinity_fn,
                 **self.kwargs
@@ -121,7 +125,6 @@ class Ncut:
             self._nystrom_x,
             extrapolation_factor=self.extrapolation_factor,
             device=self.device,
-            track_grad=self.track_grad,
             **self.kwargs
         )
         return eigvec
@@ -136,16 +139,6 @@ class Ncut:
             eigvec (torch.Tensor): eigenvectors, shape (N, n_eig)
         """
         return self.fit(X).transform(X)
-
-    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_sigma: float = None,
-                device: str = None, affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity, 
-                **kwargs) -> Union["Ncut", torch.Tensor]:
-        if X is not None:
-            # function-like behavior
-            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_sigma=d_sigma, device=device, affinity_fn=affinity_fn, **kwargs)
-            return eigvec
-        # normal class instantiation
-        return super().__new__(cls)
 
     def __call__(self, X: torch.Tensor) -> torch.Tensor:
         return self.fit_transform(X)

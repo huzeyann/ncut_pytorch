@@ -97,7 +97,7 @@ class TestNystromNcut:
         
         # Test with different d_sigma
         d_sigma = 0.5
-        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, d_sigma=d_sigma)
+        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, quantile_sigma=d_sigma)
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
         assert eigval.shape == (n_eig,)
         

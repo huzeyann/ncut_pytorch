@@ -17,11 +17,11 @@ class TestEdgeCases:
         
         # Check that ncut_fn raises an error with negative sigma
         with pytest.raises(Exception):
-            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, d_sigma=-0.1)
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, quantile_sigma=-0.1)
         
         # Check that ncut_fn raises an error with zero sigma
         with pytest.raises(Exception):
-            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, d_sigma=0.0)
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, quantile_sigma=0.0)
 
     def test_invalid_device(self, small_feature_matrix):
         """Test with invalid device."""
