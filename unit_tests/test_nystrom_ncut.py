@@ -25,7 +25,7 @@ class TestNystromNcut:
     def test_ncut_fn_with_no_propagation(self, small_feature_matrix):
         """Test the ncut_fn function with no_propagation=True."""
         n_eig = 5
-        eigvec, eigval, indices, gamma = ncut_fn(
+        eigvec, eigval, indices, sigma = ncut_fn(
             small_feature_matrix, 
             n_eig=n_eig, 
             no_propagation=True
@@ -35,7 +35,7 @@ class TestNystromNcut:
         assert eigvec.shape[1] == n_eig
         assert eigval.shape == (n_eig,)
         assert indices.shape[0] <= small_feature_matrix.shape[0]  # Number of sampled points
-        assert isinstance(gamma, float)
+        assert isinstance(sigma, float)
         
         # Check that eigenvalues are sorted in descending order
         assert torch.all(eigval[:-1] >= eigval[1:])
@@ -95,15 +95,15 @@ class TestNystromNcut:
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
         assert eigval.shape == (n_eig,)
         
-        # Test with different d_gamma
-        d_gamma = 0.5
-        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, d_gamma=d_gamma)
+        # Test with different d_sigma
+        d_sigma = 0.5
+        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, d_sigma=d_sigma)
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
         assert eigval.shape == (n_eig,)
         
-        # Test with explicit gamma
-        gamma = 0.1
-        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, gamma=gamma)
+        # Test with explicit sigma
+        sigma = 0.1
+        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, sigma=sigma)
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
         assert eigval.shape == (n_eig,)
         

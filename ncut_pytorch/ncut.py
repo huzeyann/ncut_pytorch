@@ -15,9 +15,9 @@ class Ncut:
             self,
             n_eig: int = 100,
             track_grad: bool = False,
-            d_gamma: float = None,
-            gamma: float = None,
-            repulsion_gamma: float = None,
+            d_sigma: float = None,
+            sigma: float = None,
+            repulsion_sigma: float = None,
             repulsion_weight: float = 0.2,
             extrapolation_factor: float = 1.0,
             device: str = None,
@@ -29,13 +29,13 @@ class Ncut:
         Args:       
             n_eig (int): number of eigenvectors
             track_grad (bool): keep track of pytorch gradients
-            d_gamma (float): affinity gamma parameter, lower d_gamma results in a sharper eigenvectors
-            gamma (float): affinity parameter, override d_gamma if provided
-            repulsion_gamma (float): (if use repulsion) repulsion gamma parameter, default None (no repulsion)
+            d_sigma (float): affinity sigma parameter, lower d_sigma results in a sharper eigenvectors
+            sigma (float): affinity parameter, override d_sigma if provided
+            repulsion_sigma (float): (if use repulsion) repulsion sigma parameter, default None (no repulsion)
             repulsion_weight (float): (if use repulsion) repulsion weight, default 0.2
             extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
             device (str): device, default 'auto' (auto detect GPU)
-            affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
+            affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, sigma=float) and return affinity matrix
             
         Examples:
             >>> from ncut_pytorch import Ncut
@@ -52,9 +52,9 @@ class Ncut:
             >>> print(new_eigvec.shape)  # (500, 20)
         """
         self.n_eig = n_eig
-        self.d_gamma = d_gamma
-        self.gamma = gamma
-        self.repulsion_gamma = repulsion_gamma
+        self.d_sigma = d_sigma
+        self.sigma = sigma
+        self.repulsion_sigma = repulsion_sigma
         self.repulsion_weight = repulsion_weight
         self.extrapolation_factor = extrapolation_factor
         self.device = device
@@ -79,13 +79,13 @@ class Ncut:
         Returns:
             ncut (Ncut): Ncut instance
         """
-        eigvec, eigval, indices, gamma = \
+        eigvec, eigval, indices, sigma = \
             ncut_fn(
                 X,
                 n_eig=self.n_eig,
-                d_gamma=self.d_gamma,
-                gamma=self.gamma,
-                repulsion_gamma=self.repulsion_gamma,
+                d_sigma=self.d_sigma,
+                sigma=self.sigma,
+                repulsion_sigma=self.repulsion_sigma,
                 repulsion_weight=self.repulsion_weight,
                 device=self.device,
                 track_grad=self.track_grad,
@@ -97,7 +97,7 @@ class Ncut:
         self._nystrom_x = X[indices]
         self._nystrom_eigvec = eigvec
         self._eigval = eigval
-        self.gamma = gamma
+        self.sigma = sigma
         return self
 
     def transform(self, X: torch.Tensor) -> torch.Tensor:
@@ -137,12 +137,12 @@ class Ncut:
         """
         return self.fit(X).transform(X)
 
-    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_gamma: float = None,
+    def __new__(cls, X: torch.Tensor = None, n_eig: int = 100, track_grad: bool = False, d_sigma: float = None,
                 device: str = None, affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity, 
                 **kwargs) -> Union["Ncut", torch.Tensor]:
         if X is not None:
             # function-like behavior
-            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_gamma=d_gamma, device=device, affinity_fn=affinity_fn, **kwargs)
+            eigvec, eigval = ncut_fn(X, n_eig=n_eig, track_grad=track_grad, d_sigma=d_sigma, device=device, affinity_fn=affinity_fn, **kwargs)
             return eigvec
         # normal class instantiation
         return super().__new__(cls)

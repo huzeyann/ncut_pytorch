@@ -10,7 +10,7 @@ class TestNcut:
         """Test that the Ncut class initializes correctly."""
         ncut = Ncut(**ncut_params)
         assert ncut.n_eig == ncut_params['n_eig']
-        assert ncut.d_gamma == ncut_params['d_gamma']
+        assert ncut.d_sigma == ncut_params['d_sigma']
         assert ncut.device == ncut_params['device']
         assert ncut.track_grad == ncut_params['track_grad']
         assert ncut._nystrom_x is None
@@ -29,7 +29,7 @@ class TestNcut:
         assert ncut._nystrom_x is not None
         assert ncut._nystrom_eigvec is not None
         assert ncut._eigval is not None
-        assert ncut.gamma is not None
+        assert ncut.sigma is not None
         
         # Check shapes
         assert ncut._eigval.shape == (ncut_params['n_eig'],)
@@ -64,7 +64,7 @@ class TestNcut:
         assert ncut._nystrom_x is not None
         assert ncut._nystrom_eigvec is not None
         assert ncut._eigval is not None
-        assert ncut.gamma is not None
+        assert ncut.sigma is not None
 
     def test_call(self, small_feature_matrix, ncut_params):
         """Test the __call__ method."""
@@ -78,7 +78,23 @@ class TestNcut:
         assert ncut._nystrom_x is not None
         assert ncut._nystrom_eigvec is not None
         assert ncut._eigval is not None
-        assert ncut.gamma is not None
+        assert ncut.sigma is not None
+
+    def test_call_fp16(self, small_feature_matrix):
+        """Test the __call__ method with fp16."""
+        ncut = Ncut(n_eig=5)
+        eigvec = ncut(small_feature_matrix.half())
+        assert eigvec.shape == (small_feature_matrix.shape[0], 5)
+        assert eigvec.dtype == torch.float16
+
+    def test_cuda_fp16(self, small_feature_matrix):
+        """Test the __call__ method with fp16 on CUDA."""
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA is not available")
+        ncut = Ncut(n_eig=5)
+        eigvec = ncut(small_feature_matrix.half().cuda())
+        assert eigvec.shape == (small_feature_matrix.shape[0], 5)
+        assert eigvec.dtype == torch.float16
 
     def test_function_like_behavior(self, small_feature_matrix, ncut_params):
         """Test the function-like behavior of Ncut."""

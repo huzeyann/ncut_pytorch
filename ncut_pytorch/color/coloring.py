@@ -7,7 +7,6 @@ from numba.core.types import none
 import numpy as np
 import torch
 
-from .mspace import mspace_viz_transform
 from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
 from ncut_pytorch.utils.math import quantile_normalize
 from ncut_pytorch.utils.sample import farthest_point_sampling
@@ -20,7 +19,7 @@ def _identity(X: torch.Tensor) -> torch.Tensor:
 def mspace_color(
         X: torch.Tensor,
         q: float = 0.95,
-        n_eig: Optional[int] = 16,
+        n_eig: Optional[int] = 8,
         n_dim: int = 3,
         training_steps: int = 1000,
         progress_bar: bool = False,
@@ -31,6 +30,7 @@ def mspace_color(
         (torch.Tensor): Embedding in 2D, shape (n_samples, 2)
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
+    from .mspace import mspace_viz_transform
 
     low_dim_embedding = mspace_viz_transform(
         X=X,

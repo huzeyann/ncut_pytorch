@@ -8,20 +8,20 @@ from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
-    def test_invalid_gamma(self, small_feature_matrix):
-        """Test with invalid gamma values."""
-        # Check that Ncut raises an error with negative gamma
+    def test_invalid_sigma(self, small_feature_matrix):
+        """Test with invalid sigma values."""
+        # Check that Ncut raises an error with negative sigma
         with pytest.raises(Exception):
-            ncut = Ncut(n_eig=5, d_gamma=-0.1)
+            ncut = Ncut(n_eig=5, d_sigma=-0.1)
             ncut.fit(small_feature_matrix)
         
-        # Check that ncut_fn raises an error with negative gamma
+        # Check that ncut_fn raises an error with negative sigma
         with pytest.raises(Exception):
-            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, d_gamma=-0.1)
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, d_sigma=-0.1)
         
-        # Check that ncut_fn raises an error with zero gamma
+        # Check that ncut_fn raises an error with zero sigma
         with pytest.raises(Exception):
-            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, d_gamma=0.0)
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, d_sigma=0.0)
 
     def test_invalid_device(self, small_feature_matrix):
         """Test with invalid device."""
@@ -75,12 +75,12 @@ class TestEdgeCases:
 
     def test_edge_case_parameters(self, small_feature_matrix):
         """Test with edge case parameters."""
-        # Test with very small d_gamma
-        ncut = Ncut(n_eig=5, d_gamma=1e-10)
+        # Test with very small d_sigma
+        ncut = Ncut(n_eig=5, d_sigma=1e-10)
         ncut.fit(small_feature_matrix)
         
-        # Test with very large d_gamma
-        ncut = Ncut(n_eig=5, d_gamma=1e10)
+        # Test with very large d_sigma
+        ncut = Ncut(n_eig=5, d_sigma=1e10)
         ncut.fit(small_feature_matrix)
         
         # Test with n_eig=1

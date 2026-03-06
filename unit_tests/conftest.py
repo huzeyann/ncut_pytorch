@@ -36,6 +36,6 @@ def ncut_params():
     return {
         'n_eig': 10,
         'track_grad': False,
-        'd_gamma': None,
+        'd_sigma': None,
         'device': 'cpu',
     }

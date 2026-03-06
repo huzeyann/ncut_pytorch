@@ -1,3 +1,5 @@
+__all__ = ["auto_device"]
+
 import torch
 
 

@@ -15,3 +15,6 @@ build/
 pyrightconfig.json
 experiments/
 docs/site/
+.cursor/
+*.py
+update3dev.md

@@ -75,11 +75,11 @@ class TestNcutDeterministic:
         # Test with different n_eig
         torch.manual_seed(seed)
         np.random.seed(seed)
-        eigvec1, eigval1 = ncut_fn(large_feature_matrix, n_eig=5, d_gamma=0.2, n_sample=50)
+        eigvec1, eigval1 = ncut_fn(large_feature_matrix, n_eig=5, d_sigma=0.2, n_sample=50)
         
         torch.manual_seed(seed)
         np.random.seed(seed)
-        eigvec2, eigval2 = ncut_fn(large_feature_matrix, n_eig=5, d_gamma=0.2, n_sample=50)
+        eigvec2, eigval2 = ncut_fn(large_feature_matrix, n_eig=5, d_sigma=0.2, n_sample=50)
         
         assert torch.allclose(eigvec1, eigvec2, atol=1e-6)
         assert torch.allclose(eigval1, eigval2, atol=1e-6)

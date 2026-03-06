@@ -65,7 +65,7 @@ class NcutVisionPredictor:
             all_features.append(features)
         return torch.cat(all_features, dim=0)
 
-    def generate(self, n_segment: int) -> torch.Tensor:
+    def generate(self, n_segment: int, n_eig: int = 10) -> torch.Tensor:
         """
         generate the cluster assignment for the images.
         
@@ -76,7 +76,7 @@ class NcutVisionPredictor:
             torch.Tensor: Cluster assignment for the images. (b, h, w)
         """
         self.__check_initialized()
-        cluster_assignment = self.predictor.get_n_segments(n_segment)
+        cluster_assignment = self.predictor.get_n_segments(n_segment, n_eig)
         b, h, w = len(self._images), self._feat_hws[0], self._feat_hws[1]
         cluster_assignment = cluster_assignment.reshape(b, h, w)
         return cluster_assignment
@@ -108,6 +108,7 @@ class NcutVisionPredictor:
 
     def summary(self,
                 n_segments: List[int] = (5, 25, 50, 100, 250),
+                n_eig: int = 10,
                 draw_border: bool = True,
                 ) -> List[torch.Tensor]:
         """
@@ -122,7 +123,7 @@ class NcutVisionPredictor:
         colors = []
         colors.append(self._images)
         for n_segment in n_segments:
-            cluster_assignment = self.generate(n_segment)
+            cluster_assignment = self.generate(n_segment, n_eig=n_eig)
             color = self.color_discrete(cluster_assignment, draw_border=draw_border)
             colors.append(color)
         color = self.color_continues()

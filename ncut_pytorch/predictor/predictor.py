@@ -6,12 +6,13 @@ import torch
 
 from ncut_pytorch import kway_ncut, ncut_fn
 from ncut_pytorch.utils.math import cosine_affinity
-from ncut_pytorch import mspace_color, tsne_color, umap_color
+from ncut_pytorch.color.coloring import mspace_color, tsne_color, umap_color
 from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
-from ncut_pytorch.ncuts.ncut_kway import axis_align
+from ncut_pytorch.ncuts.ncut_kway import axis_align, quick_kway
 from ncut_pytorch.ncuts.ncut_nystrom import nystrom_propagate
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.math import chunked_matmul
+import warnings
 
 
 class NotInitializedError(Exception):
@@ -21,9 +22,9 @@ class NotInitializedError(Exception):
 class NcutPredictor:
     _initialized: bool = False
     device: str = 'cpu'
-    color_method: str = 'mspace'
-    ncut_fn: Callable = partial(ncut_fn, affinity_fn=cosine_affinity, gamma=0.4, repulsion_gamma=0.3)
-    # ncut_fn: Callable = partial(ncut_fn)
+    color_method: str = 'umap'
+    # ncut_fn: Callable = partial(ncut_fn, affinity_fn=cosine_affinity, sigma=0.4, repulsion_sigma=0.3)
+    ncut_fn: Callable = partial(ncut_fn)
 
     def __init__(self):
         self._features: torch.Tensor
@@ -33,7 +34,7 @@ class NcutPredictor:
 
         # inference states
         self._nystrom_indices: torch.Tensor
-        self._gamma: float
+        self._sigma: float
         self._click_eigvecs: torch.Tensor
         self._R: torch.Tensor
         self._fg_idx: int
@@ -71,10 +72,11 @@ class NcutPredictor:
             hierarchy_assign.append(self.get_n_segments(n_eig))
         self._hierarchy_assign = hierarchy_assign
 
-    def get_n_segments(self, n_cluster: int) -> torch.Tensor:
+    def get_n_segments(self, n_cluster: int, n_eig: int = 10) -> torch.Tensor:
         self.__check_initialized()
-        eigvecs = self.get_n_eigvecs(n_cluster)
-        kway_eigvec = kway_ncut(eigvecs, device=self.device, sample_idx=self._kway_sample_idx)
+        eigvecs = self.get_n_eigvecs(n_eig)
+        # kway_eigvec = kway_ncut(eigvecs, device=self.device, sample_idx=self._kway_sample_idx)
+        kway_eigvec = quick_kway(eigvecs, n_eig=n_eig, n_clusters=n_cluster, device=self.device)
         cluster_assignment = kway_eigvec.argmax(dim=1).cpu()
         return cluster_assignment
 
@@ -94,11 +96,11 @@ class NcutPredictor:
                        **kwargs
                        ) -> Tuple[torch.Tensor, torch.Tensor]:
         self.__check_initialized()
-        eigvecs, eigval, nystrom_indices, gamma = ncut_click_prompt(
+        eigvecs, eigval, nystrom_indices, sigma = ncut_click_prompt(
             self._features,
             fg_indices,
             bg_indices,
-            return_indices_and_gamma=True,
+            return_indices_and_sigma=True,
             click_weight=click_weight,
             **kwargs,
         )
@@ -118,7 +120,7 @@ class NcutPredictor:
 
         # save for inference use
         self._nystrom_indices = nystrom_indices
-        self._gamma = gamma
+        self._sigma = sigma
         self._click_eigvecs = eigvecs
         self._R = R
         self._fg_idx = fg_idx
@@ -148,7 +150,12 @@ class NcutPredictor:
     def refresh_color_palette(self, n_eig: int = 50) -> None:
         self.__check_initialized()
         if self.color_method == 'mspace':
-            self._color_palette = mspace_color(self._features[:, :])
+            try:
+                self._color_palette = mspace_color(self._features[:, :])
+                assert not torch.isnan(self._color_palette).any()
+            except Exception as e:
+                warnings.warn(f"Error in mspace_color: {e}, using umap instead")
+                self._color_palette = umap_color(self._eigvecs[:, :n_eig])
         elif self.color_method == 'tsne':
             self._color_palette = tsne_color(self._eigvecs[:, :n_eig])
         elif self.color_method == 'umap':

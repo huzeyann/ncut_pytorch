@@ -1,4 +1,4 @@
-from tkinter import N
+
 import pytest
 import torch
 from ncut_pytorch.ncuts.ncut_click import ncut_click_prompt
@@ -66,7 +66,7 @@ class TestBiasedNcut:
             fg_idx,
             n_eig=3,
             click_weight=0.5,
-            d_gamma=0.5
+            d_sigma=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 3)
         assert eigvals.shape == (3,)
@@ -77,7 +77,7 @@ class TestBiasedNcut:
             fg_idx,
             n_eig=5,
             click_weight=0.8,
-            d_gamma=0.5
+            d_sigma=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)
         
@@ -87,6 +87,6 @@ class TestBiasedNcut:
             fg_idx,
             n_eig=5,
             click_weight=0.5,
-            d_gamma=0.2
+            d_sigma=0.2
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)

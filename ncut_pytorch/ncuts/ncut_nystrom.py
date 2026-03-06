@@ -3,13 +3,13 @@ __all__ = ['ncut_fn', 'nystrom_propagate']
 from typing import Callable, Union
 
 import torch
-
-from ncut_pytorch.utils.gamma import find_gamma_by_degree, find_gamma_by_degree_after_fps
+import numpy as np
+from ncut_pytorch.utils.sigma import find_sigma_by_degree
 from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
-from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, svd_lowrank, correct_rotation, keep_topk_per_row
+from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, grad_safe_eig_solve, correct_rotation, keep_topk_per_row
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
-from ncut_pytorch.utils.grad import set_grad_enabled
+from ncut_pytorch.utils.grad import grad_manager
 
 
 class NystromConfig:
@@ -17,13 +17,13 @@ class NystromConfig:
     Internal configuration for nystrom approximation, can be overridden by kwargs
     Values are optimized based on empirical experiments, no need to change the values
     """
-    n_sample = 10240  # number of samples for nystrom approximation, 10240 is large enough for most cases
-    n_sample_max_ratio = 1/4  # max ratio of n_sample to n_data, not full sample ensures balanced sampling
-    n_sample2 = 1024  # number of samples for eigenvector propagation, 1024 is large enough for most cases
-    n_neighbors = 32  # number of neighbors for eigenvector propagation, 10 is large enough for most cases
-    n_neighbors_max_ratio = 1/32  # max ratio of n_neighbors to n_sample2, to avoid over smoothing
-    matmul_chunk_size = 65536  # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
-    move_output_to_cpu = True  # if True, will move output to cpu, saves VRAM
+    n_sample = 10240                # number of samples for nystrom approximation, 10240 is large enough for most cases
+    n_sample_max_ratio = 1/4        # max ratio of n_sample to n_data, not full sample ensures balanced sampling
+    n_sample2 = 1024                # number of samples for eigenvector propagation, 1024 is large enough for most cases
+    n_neighbors = 32                # number of neighbors for eigenvector propagation, 10 is large enough for most cases
+    n_neighbors_max_ratio = 1/32    # max ratio of n_neighbors to n_sample2, to avoid over smoothing
+    matmul_chunk_size = 65536       # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
+    move_output_to_cpu = True       # if True, will move output to cpu, saves VRAM
     
     def update(self, kwargs: dict):
         for key, value in kwargs.items():
@@ -37,10 +37,10 @@ def ncut_fn(
         X: torch.Tensor,
         n_eig: int = 100,
         track_grad: bool = False,
-        d_gamma: float = None,
+        d_sigma: float = None,
         device: str = None,
-        gamma: float = None,
-        repulsion_gamma: float = None,
+        sigma: float = None,
+        repulsion_sigma: float = None,
         repulsion_weight: float = 0.2,
         extrapolation_factor: float = 1.0,
         make_orthogonal: bool = False,
@@ -54,14 +54,14 @@ def ncut_fn(
         X (torch.Tensor): input features, shape (N, D)
         n_eig (int): number of eigenvectors
         track_grad (bool): keep track of pytorch gradients
-        d_gamma (float): affinity gamma parameter, lower d_gamma results in sharper eigenvectors
+        d_sigma (float): affinity sigma parameter, lower d_sigma results in sharper eigenvectors
         device (str): device, default 'auto' (auto detect GPU)
-        gamma (float): affinity parameter, override d_gamma if provided
-        repulsion_gamma (float): (if use repulsion) repulsion gamma parameter, default None (no repulsion)
+        sigma (float): affinity parameter, override d_sigma if provided
+        repulsion_sigma (float): (if use repulsion) repulsion sigma parameter, default None (no repulsion)
         repulsion_weight (float): (if use repulsion) repulsion weight, default 0.2
         extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         make_orthogonal (bool): make eigenvectors orthogonal
-        affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
+        affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, sigma=float) and return affinity matrix
         
     Returns:
         eigenvectors (torch.Tensor): shape (N, n_eig)
@@ -80,27 +80,35 @@ def ncut_fn(
     # use GPU if available
     device = auto_device(X.device, device)
 
-    with set_grad_enabled(track_grad):
+    # check if enough data for nystrom approximation
+    is_enough_data = X.shape[0] > config.n_sample
+
+    with grad_manager(track_grad):
         # subsample for nystrom approximation
         n_sample = min(config.n_sample, int(X.shape[0]*config.n_sample_max_ratio))
-        nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device)
+        nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device) if is_enough_data else np.arange(X.shape[0])
         nystrom_X = X[nystrom_indices].to(device)
 
-        # find optimal gamma for affinity matrix
-        if gamma is None:
+        # find optimal sigma for affinity matrix
+        if sigma is None:
             if affinity_fn == rbf_affinity:
-                gamma = find_gamma_by_degree_after_fps(nystrom_X, d_gamma, affinity_fn)
+                sigma = find_sigma_by_degree(nystrom_X, d_sigma, affinity_fn)
+            elif affinity_fn == cosine_affinity:
+                sigma = 0.5
             else:
-                gamma = 0.5
+                raise ValueError(f"`sigma` needs to be provided for affinity function {affinity_fn}, (sigma=0.5)")
                 
-        if repulsion_gamma is not None:
-            nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, gamma_attraction=gamma, gamma_repulsion=repulsion_gamma, repulsion_weight=repulsion_weight, affinity_fn=affinity_fn)
+        if repulsion_sigma is not None:
+            nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, sigma_attraction=sigma, sigma_repulsion=repulsion_sigma, repulsion_weight=repulsion_weight, affinity_fn=affinity_fn)
         else:
-            A = affinity_fn(nystrom_X, gamma=gamma)
+            A = affinity_fn(nystrom_X, sigma=sigma)
             nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
 
         if no_propagation:
-            return nystrom_eigvec, eigval, nystrom_indices, gamma
+            return nystrom_eigvec, eigval, nystrom_indices, sigma
+
+        if not is_enough_data:
+            return nystrom_eigvec, eigval
 
         # propagate eigenvectors from subgraph to full graph
         eigvec = nystrom_propagate(
@@ -126,21 +134,21 @@ def ncut_fn(
 def ncut_with_repulsion(
     X: torch.Tensor,
     n_eig: int = 100,
-    gamma_attraction: float = None,
-    gamma_repulsion: float = None,
+    sigma_attraction: float = None,
+    sigma_repulsion: float = None,
     repulsion_weight: float = 0.2,
     affinity_fn: Union["rbf_affinity", "cosine_affinity"] = cosine_affinity,
     eps: float = 1e-8,
 ):
-    A = affinity_fn(X, gamma=gamma_attraction)
-    R = affinity_fn(X, gamma=gamma_repulsion, repulse=True)
+    A = affinity_fn(X, sigma=sigma_attraction)
+    R = affinity_fn(X, sigma=sigma_repulsion, repulse=True)
     R = R * repulsion_weight
     D_A = A.sum(1) + eps
     D_R = R.sum(1) + eps
     D = D_A + D_R
     W = A - R + torch.diag(D_R)
     W = W / D[:, None]
-    eigvec, eigval, _ = svd_lowrank(W, n_eig)
+    eigvec, eigval, _ = grad_safe_eig_solve(W, n_eig)
     eigvec = correct_rotation(eigvec)
     return eigvec, eigval
 
@@ -149,13 +157,11 @@ def _plain_ncut(
         A: torch.Tensor,
         n_eig: int = 100,
 ):
-    # normalization; A = D^(-1/2) A D^(-1/2)
     A = normalize_affinity(A)
-
-    eigvec, eigval, _ = svd_lowrank(A, n_eig)
-
+    eigvec, eigval, _ = grad_safe_eig_solve(A, n_eig)
+    eigvec = eigvec[:, :n_eig]
+    eigval = eigval[:n_eig]
     eigvec = correct_rotation(eigvec)
-
     return eigvec, eigval
 
 
@@ -179,7 +185,7 @@ def nystrom_propagate(
         extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         track_grad (bool): keep track of pytorch gradients, default False
         device (str): device to use for computation, if 'auto', will detect GPU automatically
-        affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, gamma=float) and return affinity matrix
+        affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, sigma=float) and return affinity matrix
 
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
@@ -188,16 +194,16 @@ def nystrom_propagate(
     config = NystromConfig()
     config.update(kwargs)
 
-    with set_grad_enabled(track_grad):
+    with grad_manager(track_grad):
         device = auto_device(nystrom_out.device, device)
         indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
         nystrom_out = nystrom_out[indices].to(device)
         nystrom_X = nystrom_X[indices].to(device)
         
-        gamma = find_gamma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
-        gamma = gamma * extrapolation_factor
+        sigma = find_sigma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
+        sigma = sigma * extrapolation_factor
         
-        D = rbf_affinity(nystrom_X, gamma=gamma).mean(1)
+        D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
 
         all_outs = []
         n_chunk = config.matmul_chunk_size
@@ -206,7 +212,7 @@ def nystrom_propagate(
         for i in range(0, X.shape[0], n_chunk):
             end = min(i + n_chunk, X.shape[0])
 
-            _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, gamma=gamma)
+            _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, sigma=sigma)
             _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
             _Di = D[_indices].sum(1)
             _Ai = _Ai / _Di[:, None]

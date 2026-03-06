@@ -1,7 +1,7 @@
 import pytest
 import torch
 import numpy as np
-from ncut_pytorch import (
+from ncut_pytorch.color.coloring import (
     mspace_color,
     tsne_color,
     umap_color,
@@ -20,9 +20,10 @@ class TestVisualizeUtils:
         rgb = mspace_color(
             small_feature_matrix,
             q=0.95,
-            n_eig=10,
+            n_eig=50,
             n_dim=3,
             training_steps=5,
+            # lr=1e-5,
             progress_bar=False
         )
         
