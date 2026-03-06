@@ -218,7 +218,6 @@ def _nystrom_dimension_reduction(
         X[subgraph_indices],
         n_neighbors=knn,
         device=device,
-        move_output_to_cpu=True,
     ))
     rgb = rgb_func(X_nd, q)
     return X_nd, rgb

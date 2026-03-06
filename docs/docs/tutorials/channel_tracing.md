@@ -19,8 +19,7 @@ features_2d = features.view(-1, features.shape[-1])  # (H*W, feature_dimension)
 
 # 2. Compute NCUT with gradient tracking enabled
 n_eig = 20
-# Note: track_grad=True is essential for backpropagation
-eigvecs = Ncut(n_eig=n_eig, track_grad=True, device='cuda').fit_transform(features_2d)
+eigvecs = Ncut(n_eig=n_eig, device='cuda').fit_transform(features_2d)
 
 # 3. Define a loss and backpropagate
 # Here we simply use the sum of eigenvectors as a dummy loss
@@ -84,8 +83,6 @@ To trace which feature channels are most responsible for a specific cluster, we 
 4. **Aggregation**: Aggregate the gradients within the target cluster's region (e.g., by averaging) to obtain a single importance score per channel.
 5. **Ranking**: Rank channels by their importance scores to identify the most influential ones.
 
-**Note**: Ensure that your feature tensor requires gradients (`requires_grad=True`) and that `Ncut` is initialized with `track_grad=True`.
-
 ## Implementation Details
 
 ### Setup and Feature Extraction
@@ -127,7 +124,7 @@ Next, we run the differentiable NCUT to obtain the eigenvectors and k-way discre
 def differentiable_kway_ncut(features, n_segment):
     assert features.requires_grad is True
     # Compute eigenvectors with gradient tracking
-    eigvec = Ncut(n_eig=n_segment, track_grad=True).fit_transform(features)
+    eigvec = Ncut(n_eig=n_segment).fit_transform(features)
     # Discretize eigenvectors to get soft cluster assignments
     kway_eigvec = kway_ncut(eigvec)  # shape: [(B*H*W), K]
     return eigvec, kway_eigvec

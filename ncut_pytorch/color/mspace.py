@@ -56,7 +56,7 @@ def ncut_wrapper(features, n_eig, sigma=None):
 
     # features.requires_grad_(True)
     sigma = sigma or features.std(0).sum().item()
-    # eigvec, eigval = ncut_fn(features, n_eig, sigma=sigma, track_grad=True)
+    eigvec, eigval = ncut_fn(features, n_eig, sigma=sigma)
     W = rbf_affinity(features, sigma=sigma)
     # W = cosine_affinity(features, sigma=1.0)
     A = normalize_affinity(W)

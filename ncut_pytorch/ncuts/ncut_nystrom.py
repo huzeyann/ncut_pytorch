@@ -9,7 +9,6 @@ from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
 from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, grad_safe_eig_solve, correct_rotation, keep_topk_per_row
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
-from ncut_pytorch.utils.grad import grad_manager
 
 
 class NystromConfig:
@@ -23,7 +22,6 @@ class NystromConfig:
     n_neighbors = 32                # number of neighbors for eigenvector propagation, 10 is large enough for most cases
     n_neighbors_max_ratio = 1/32    # max ratio of n_neighbors to n_sample2, to avoid over smoothing
     matmul_chunk_size = 65536       # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
-    move_output_to_cpu = True       # if True, will move output to cpu, saves VRAM
     
     def update(self, kwargs: dict):
         for key, value in kwargs.items():
@@ -36,7 +34,6 @@ class NystromConfig:
 def ncut_fn(
         X: torch.Tensor,
         n_eig: int = 100,
-        track_grad: bool = False,
         d_sigma: float = None,
         device: str = None,
         sigma: float = None,
@@ -53,7 +50,6 @@ def ncut_fn(
     Args:
         X (torch.Tensor): input features, shape (N, D)
         n_eig (int): number of eigenvectors
-        track_grad (bool): keep track of pytorch gradients
         d_sigma (float): affinity sigma parameter, lower d_sigma results in sharper eigenvectors
         device (str): device, default 'auto' (auto detect GPU)
         sigma (float): affinity parameter, override d_sigma if provided
@@ -83,52 +79,49 @@ def ncut_fn(
     # check if enough data for nystrom approximation
     is_enough_data = X.shape[0] > config.n_sample
 
-    with grad_manager(track_grad):
-        # subsample for nystrom approximation
-        n_sample = min(config.n_sample, int(X.shape[0]*config.n_sample_max_ratio))
-        nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device) if is_enough_data else np.arange(X.shape[0])
-        nystrom_X = X[nystrom_indices].to(device)
+    # subsample for nystrom approximation
+    n_sample = min(config.n_sample, int(X.shape[0]*config.n_sample_max_ratio))
+    nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device) if is_enough_data else np.arange(X.shape[0])
+    nystrom_X = X[nystrom_indices].to(device)
 
-        # find optimal sigma for affinity matrix
-        if sigma is None:
-            if affinity_fn == rbf_affinity:
-                sigma = find_sigma_by_degree(nystrom_X, d_sigma, affinity_fn)
-            elif affinity_fn == cosine_affinity:
-                sigma = 0.5
-            else:
-                raise ValueError(f"`sigma` needs to be provided for affinity function {affinity_fn}, (sigma=0.5)")
-                
-        if repulsion_sigma is not None:
-            nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, sigma_attraction=sigma, sigma_repulsion=repulsion_sigma, repulsion_weight=repulsion_weight, affinity_fn=affinity_fn)
+    # find optimal sigma for affinity matrix
+    if sigma is None:
+        if affinity_fn == rbf_affinity:
+            sigma = find_sigma_by_degree(nystrom_X, d_sigma, affinity_fn)
+        elif affinity_fn == cosine_affinity:
+            sigma = 0.5
         else:
-            A = affinity_fn(nystrom_X, sigma=sigma)
-            nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
+            raise ValueError(f"`sigma` needs to be provided for affinity function {affinity_fn}, (sigma=0.5)")
+            
+    if repulsion_sigma is not None:
+        nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, sigma_attraction=sigma, sigma_repulsion=repulsion_sigma, repulsion_weight=repulsion_weight, affinity_fn=affinity_fn)
+    else:
+        A = affinity_fn(nystrom_X, sigma=sigma)
+        nystrom_eigvec, eigval = _plain_ncut(A, n_eig)
 
-        if no_propagation:
-            return nystrom_eigvec, eigval, nystrom_indices, sigma
+    if no_propagation:
+        return nystrom_eigvec, eigval, nystrom_indices, sigma
 
-        if not is_enough_data:
-            return nystrom_eigvec, eigval
+    if not is_enough_data:
+        return nystrom_eigvec, eigval
 
-        # propagate eigenvectors from subgraph to full graph
-        eigvec = nystrom_propagate(
-            nystrom_eigvec,
-            X,
-            nystrom_X,
-            extrapolation_factor=extrapolation_factor,
-            n_neighbors=config.n_neighbors,
-            n_sample=config.n_sample2,
-            matmul_chunk_size=config.matmul_chunk_size,
-            device=device,
-            move_output_to_cpu=config.move_output_to_cpu,
-            track_grad=track_grad,
-        )
+    # propagate eigenvectors from subgraph to full graph
+    eigvec = nystrom_propagate(
+        nystrom_eigvec,
+        X,
+        nystrom_X,
+        extrapolation_factor=extrapolation_factor,
+        n_neighbors=config.n_neighbors,
+        n_sample=config.n_sample2,
+        matmul_chunk_size=config.matmul_chunk_size,
+        device=device,
+    )
 
-        # post-hoc orthogonalization
-        if make_orthogonal:
-            eigvec = gram_schmidt(eigvec)
+    # post-hoc orthogonalization
+    if make_orthogonal:
+        eigvec = gram_schmidt(eigvec)
 
-        return eigvec, eigval
+    return eigvec, eigval
     
 
 def ncut_with_repulsion(
@@ -170,7 +163,6 @@ def nystrom_propagate(
         X: torch.Tensor,
         nystrom_X: torch.Tensor,
         extrapolation_factor: float = 1.0,
-        track_grad: bool = False,        
         device: str = None,
         return_indices: bool = False,
         **kwargs,
@@ -183,7 +175,6 @@ def nystrom_propagate(
         X (torch.Tensor): input features for all nodes, shape (N, D)
         nystrom_X (torch.Tensor): input features from nystrom sampled nodes, shape (m, D)
         extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
-        track_grad (bool): keep track of pytorch gradients, default False
         device (str): device to use for computation, if 'auto', will detect GPU automatically
         affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, sigma=float) and return affinity matrix
 
@@ -194,45 +185,44 @@ def nystrom_propagate(
     config = NystromConfig()
     config.update(kwargs)
 
-    with grad_manager(track_grad):
-        device = auto_device(nystrom_out.device, device)
-        indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
-        nystrom_out = nystrom_out[indices].to(device)
-        nystrom_X = nystrom_X[indices].to(device)
-        
-        sigma = find_sigma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
-        sigma = sigma * extrapolation_factor
-        
-        D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
+    device = auto_device(nystrom_out.device, device)
+    output_device = X.device
+    indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
+    nystrom_out = nystrom_out[indices].to(device)
+    nystrom_X = nystrom_X[indices].to(device)
+    
+    sigma = find_sigma_by_degree(nystrom_X, affinity_fn=rbf_affinity)
+    sigma = sigma * extrapolation_factor
+    
+    D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
 
-        all_outs = []
-        n_chunk = config.matmul_chunk_size
-        n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
-        n_neighbors = max(n_neighbors, 4)
-        for i in range(0, X.shape[0], n_chunk):
-            end = min(i + n_chunk, X.shape[0])
+    all_outs = []
+    n_chunk = config.matmul_chunk_size
+    n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
+    n_neighbors = max(n_neighbors, 4)
+    for i in range(0, X.shape[0], n_chunk):
+        end = min(i + n_chunk, X.shape[0])
 
-            _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, sigma=sigma)
-            _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
-            _Di = D[_indices].sum(1)
-            _Ai = _Ai / _Di[:, None]
+        _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, sigma=sigma)
+        _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
+        _Di = D[_indices].sum(1)
+        _Ai = _Ai / _Di[:, None]
 
-            weights = _Ai[..., None]  # (n, n_neighbors, 1)
-            neighbors = nystrom_out[_indices.flatten()]
-            neighbors = neighbors.reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
-            out = weights * neighbors  # (n, n_neighbors, d)
-            out = out.sum(dim=1)  # (n, d)
+        weights = _Ai[..., None]  # (n, n_neighbors, 1)
+        neighbors = nystrom_out[_indices.flatten()]
+        neighbors = neighbors.reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
+        out = weights * neighbors  # (n, n_neighbors, d)
+        out = out.sum(dim=1)  # (n, d)
 
-            if config.move_output_to_cpu and not track_grad:
-                out = out.to("cpu")
-            all_outs.append(out)
+        out = out.to(output_device)
+        all_outs.append(out)
 
-        all_outs = torch.cat(all_outs, dim=0)
+    all_outs = torch.cat(all_outs, dim=0)
 
-        if return_indices:
-            return all_outs, indices
-        
-        return all_outs
+    if return_indices:
+        return all_outs, indices
+    
+    return all_outs
 
 
 
