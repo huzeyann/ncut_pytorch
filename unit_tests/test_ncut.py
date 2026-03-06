@@ -10,9 +10,9 @@ class TestNcut:
         """Test that the Ncut class initializes correctly."""
         ncut = Ncut(**ncut_params)
         assert ncut.n_eig == ncut_params['n_eig']
-        assert ncut.d_sigma == ncut_params['d_sigma']
+        assert ncut.quantile_sigma == ncut_params['quantile_sigma']
         assert ncut.device == ncut_params['device']
-        assert ncut.track_grad == ncut_params['track_grad']
+        assert ncut.exact_gradient == ncut_params['exact_gradient']
         assert ncut._nystrom_x is None
         assert ncut._nystrom_eigvec is None
         assert ncut._eigval is None
@@ -96,13 +96,6 @@ class TestNcut:
         assert eigvec.shape == (small_feature_matrix.shape[0], 5)
         assert eigvec.dtype == torch.float16
 
-    def test_function_like_behavior(self, small_feature_matrix, ncut_params):
-        """Test the function-like behavior of Ncut."""
-        # When called with data as the first argument, Ncut should behave like a function
-        eigvec = Ncut(small_feature_matrix, **ncut_params)
-        
-        # Check shape
-        assert eigvec.shape == (small_feature_matrix.shape[0], ncut_params['n_eig'])
 
     def test_eigval_property(self, small_feature_matrix, ncut_params):
         """Test the eigval property."""

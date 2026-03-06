@@ -22,10 +22,11 @@ def ncut_click_prompt(
         click_weight: float = 0.5,
         bg_weight: float = 0.1,
         n_eig: int = 2,
-        d_sigma: float = None,
+        quantile_sigma: float = 0.25,
         device: str = None,
         sigma: float = None,
         affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
+        exact_gradient: bool = False,
         no_propagation: bool = False,
         return_indices_and_sigma: bool = False,
         **kwargs,
@@ -55,7 +56,7 @@ def ncut_click_prompt(
     
     # find optimal sigma for affinity matrix
     if sigma is None and affinity_fn == rbf_affinity:
-        sigma = find_sigma_by_degree(nystrom_X, d_sigma, affinity_fn)
+        sigma = find_sigma_by_degree(nystrom_X, quantile_sigma, affinity_fn)
         # TODO: change to std()
     elif sigma is None and affinity_fn == cosine_affinity:
         sigma = 0.5
@@ -76,7 +77,7 @@ def ncut_click_prompt(
     
     _A = click_weight * A_click + (1 - click_weight) * A
         
-    nystrom_eigvec, eigval = _plain_ncut(_A, n_eig)
+    nystrom_eigvec, eigval = _plain_ncut(_A, n_eig, exact_gradient=exact_gradient)
     
     if no_propagation:
         return nystrom_eigvec, eigval, nystrom_indices, sigma

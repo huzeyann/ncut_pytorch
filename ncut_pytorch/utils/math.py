@@ -18,7 +18,7 @@ import logging
 import numpy as np
 import torch
 
-from .torch_mod import svd_lowrank
+from .torch_mod import svd_lowrank as my_svd_lowrank
 
 
 def check_gamma_deprecated(gamma: float | None) -> float:
@@ -120,6 +120,23 @@ def pca_lowrank(
     u, s, v = svd_lowrank(mat, q)
     s /= math.sqrt(mat.shape[0])
     return u @ torch.diag(s)
+
+
+def svd_lowrank(mat: torch.Tensor, q: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """SVD lowrank implementation for float16 and bfloat16."""
+    dtype = mat.dtype
+    try:
+        with torch.autocast(device_type=mat.device.type, enabled=False):
+            if dtype == torch.float16 or dtype == torch.bfloat16:
+                mat = mat.float()  # svd_lowrank does not support float16
+            u, s, v = my_svd_lowrank(mat, q=q + 10)
+    except RuntimeError:
+        if dtype == torch.float16 or dtype == torch.bfloat16:
+            mat = mat.float()
+        u, s, v = my_svd_lowrank(mat, q=q + 10)
+
+    u, s, v = u[:, :q], s[:q], v[:, :q]
+    return u.to(dtype), s.to(dtype), v.to(dtype)
 
 
 def quantile_min_max(

@@ -35,7 +35,7 @@ def ncut_params():
     """Return a dictionary of parameters for Ncut."""
     return {
         'n_eig': 10,
-        'track_grad': False,
-        'd_sigma': None,
+        'exact_gradient': False,
+        'quantile_sigma': 0.25,
         'device': 'cpu',
     }

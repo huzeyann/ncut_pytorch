@@ -66,7 +66,7 @@ class TestBiasedNcut:
             fg_idx,
             n_eig=3,
             click_weight=0.5,
-            d_sigma=0.5
+            quantile_sigma=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 3)
         assert eigvals.shape == (3,)
@@ -77,7 +77,7 @@ class TestBiasedNcut:
             fg_idx,
             n_eig=5,
             click_weight=0.8,
-            d_sigma=0.5
+            quantile_sigma=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)
         
@@ -87,6 +87,6 @@ class TestBiasedNcut:
             fg_idx,
             n_eig=5,
             click_weight=0.5,
-            d_sigma=0.2
+            quantile_sigma=0.2
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)

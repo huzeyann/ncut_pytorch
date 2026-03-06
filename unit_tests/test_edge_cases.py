@@ -12,7 +12,7 @@ class TestEdgeCases:
         """Test with invalid sigma values."""
         # Check that Ncut raises an error with negative sigma
         with pytest.raises(Exception):
-            ncut = Ncut(n_eig=5, d_sigma=-0.1)
+            ncut = Ncut(n_eig=5, quantile_sigma=-0.1)
             ncut.fit(small_feature_matrix)
         
         # Check that ncut_fn raises an error with negative sigma
@@ -75,12 +75,12 @@ class TestEdgeCases:
 
     def test_edge_case_parameters(self, small_feature_matrix):
         """Test with edge case parameters."""
-        # Test with very small d_sigma
-        ncut = Ncut(n_eig=5, d_sigma=1e-10)
+        # Test with very small quantile_sigma
+        ncut = Ncut(n_eig=5, quantile_sigma=1e-10)
         ncut.fit(small_feature_matrix)
         
-        # Test with very large d_sigma
-        ncut = Ncut(n_eig=5, d_sigma=1e10)
+        # Test with very large quantile_sigma
+        ncut = Ncut(n_eig=5, quantile_sigma=0.99)
         ncut.fit(small_feature_matrix)
         
         # Test with n_eig=1
