@@ -18,21 +18,27 @@ import logging
 import numpy as np
 import torch
 
+
+_GAMMA_DEPRECATION_WARNED = False
+
 from .torch_mod import svd_lowrank as my_svd_lowrank
 
 
 def check_gamma_deprecated(gamma: float | None) -> float:
+    global _GAMMA_DEPRECATION_WARNED
     if gamma is not None:
-        logging.getLogger(__name__).warning("gamma is deprecated, use sigma instead")
+        if not _GAMMA_DEPRECATION_WARNED:
+            logging.getLogger(__name__).warning("gamma is deprecated, use sigma instead")
+            _GAMMA_DEPRECATION_WARNED = True
         sigma = np.sqrt(gamma)
-    return sigma
+        return sigma
 
 
 def rbf_affinity(
     X1: torch.Tensor,          # [N,D]
     X2: torch.Tensor | None = None,  # [M,D]
     sigma: float = 1.0,
-    zero_diag: bool = True,
+    zero_diag: bool = False,
     gamma: float | None = None,  # deprecated
 ) -> torch.Tensor:             # [N,M]
     """Computes RBF affinity matrix: W_ij = exp(-||x_i - x_j||^2 / (2 * sigma^2))."""
@@ -52,7 +58,7 @@ def cosine_affinity(
     X2: torch.Tensor | None = None,  # [M,D]
     sigma: float = 1.0,
     repulse: bool = False,
-    zero_diag: bool = True,
+    zero_diag: bool = False,
     gamma: float | None = None,  # deprecated
 ) -> torch.Tensor:             # [N,M]
     """Computes cosine-based affinity matrix."""
@@ -92,8 +98,8 @@ def grad_safe_eig_solve(
         is_symmetric = mat.shape[0] == mat.shape[1]
         if is_symmetric:
             s, u = torch.linalg.eigh(mat)
-            s = s.flip(dims=[0])
-            u = u.flip(dims=[1])
+            s = torch.flip(s, dims=[0])
+            u = torch.flip(u, dims=[1])
         else:
             s, u = torch.linalg.eig(mat)
         return u.to(dtype), s.to(dtype), None

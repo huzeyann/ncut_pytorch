@@ -113,3 +113,142 @@ def rbf_eigvec_manual_grad(
 
     return grad_u
 
+
+class MultiSpectralProjectorFromMasks(torch.autograd.Function):
+    """
+    A (symmetric) -> {P_b}_b, where P_b = U_{S_b} U_{S_b}^T and S_b is specified by a boolean mask.
+
+    Computes eigh(A) ONCE, sorts eigenpairs DESCENDING (largest-first), then forms projectors
+    for each mask.
+
+    Inputs:
+      A:     [N,N] (float), symmetric (or will be symmetrized if symmetrize=True)
+      masks: [B,N] (bool), masks[b,i]=True selects eigenvector i in DESCENDING eigen-order.
+
+    Output:
+      P: [B,N,N]
+    """
+
+    @staticmethod
+    def forward(
+        ctx,
+        A: torch.Tensor,          # [N,N]
+        masks: torch.Tensor,      # [B,N] bool (in DESCENDING eigen-order)
+        gap_eps: float = 0.0,
+        symmetrize: bool = True,
+    ):
+        if A.ndim != 2 or A.shape[0] != A.shape[1]:
+            raise ValueError(f"A must be square [N,N], got {tuple(A.shape)}")
+        if masks.ndim != 2:
+            raise ValueError(f"masks must be [B,N], got {tuple(masks.shape)}")
+        if masks.dtype != torch.bool:
+            raise ValueError("masks must be boolean")
+        N = A.shape[0]
+        B, N2 = masks.shape
+        if N2 != N:
+            raise ValueError(f"masks second dim must equal N={N}, got {N2}")
+        if (masks.sum(dim=1) == 0).any():
+            raise ValueError("Each mask row must select at least one eigenvector.")
+
+        device = A.device
+        masks = masks.to(device=device)
+
+        A_used = 0.5 * (A + A.T) if symmetrize else A
+
+        # eigh ascending -> flip to descending
+        evals_asc, U_asc = torch.linalg.eigh(A_used)
+        evals = torch.flip(evals_asc, dims=[0])   # [N] descending
+        U = torch.flip(U_asc, dims=[1])           # [N,N] descending columns
+
+        # Build projectors
+        P_out = []
+        for b in range(B):
+            U_S = U[:, masks[b]]                  # [N,p_b]
+            P_b = U_S @ U_S.T                     # [N,N]
+            P_out.append(P_b)
+        P = torch.stack(P_out, dim=0)             # [B,N,N]
+
+        ctx.save_for_backward(U, evals, masks)
+        ctx.gap_eps = float(gap_eps)
+        ctx.symmetrize = bool(symmetrize)
+
+        return P
+
+    @staticmethod
+    def backward(ctx, grad_P: torch.Tensor):
+        U, evals, masks = ctx.saved_tensors
+        gap_eps = ctx.gap_eps
+        symmetrize = ctx.symmetrize
+
+        if grad_P.ndim != 3:
+            raise ValueError(f"grad_P must be [B,N,N], got {tuple(grad_P.shape)}")
+        B, N, N2 = grad_P.shape
+        if N != N2:
+            raise ValueError("grad_P must be square per batch")
+
+        grad_A_used = torch.zeros((N, N), device=grad_P.device, dtype=grad_P.dtype)
+
+        for b in range(B):
+            mask = masks[b]                       # [N]
+            U_S = U[:, mask]                      # [N,p]
+            U_perp = U[:, ~mask]                  # [N,N-p]
+            lam_S = evals[mask]                   # [p]
+            lam_perp = evals[~mask]               # [N-p]
+
+            # symmetric part only matters
+            G = grad_P[b]
+            Gs = 0.5 * (G + G.T)
+
+            # H = U_perp^T Gs U_S
+            H = U_perp.T @ (Gs @ U_S)             # [N-p,p]
+
+            denom = lam_S[None, :] - lam_perp[:, None]  # [N-p,p]
+            if gap_eps > 0.0:
+                denom = torch.sign(denom) * torch.clamp(denom.abs(), min=gap_eps)
+
+            Q = H / denom                          # [N-p,p]
+
+            Bmat = U_perp @ (Q @ U_S.T)            # [N,N]
+            grad_A_used = grad_A_used + (Bmat + Bmat.T)
+
+        grad_A = 0.5 * (grad_A_used + grad_A_used.T) if symmetrize else grad_A_used
+        return grad_A, None, None, None
+
+
+def spectral_projectors_from_masks(
+    A: torch.Tensor,
+    masks: torch.Tensor,
+    gap_eps: float = 0.0,
+    symmetrize: bool = True,
+):
+    """
+    Convenience wrapper.
+
+    masks: [B,N] bool in DESCENDING eigen-order (0 = largest eigenvalue).
+    returns P: [B,N,N]
+    """
+    return MultiSpectralProjectorFromMasks.apply(A, masks, gap_eps, symmetrize)
+
+
+if __name__ == "__main__":
+    B = 2
+    N = 1000
+    masks = torch.zeros(B, N, dtype=torch.bool)
+    masks[0, :3] = True          # top-3 eigenvectors (largest-first)
+    masks[1, 3:6] = True         # next-3
+
+
+    A1 = torch.randn(N, N)
+    A1 = 0.5 * (A1 + A1.T)
+    A1.requires_grad_(True)
+    P1 = spectral_projectors_from_masks(A1, masks)
+
+    A2 = torch.randn(N, N)
+    A2 = 0.5 * (A2 + A2.T)
+    A2.requires_grad_(True)
+    P2 = spectral_projectors_from_masks(A2, masks)
+
+    loss = torch.norm(P1 - P2, p=2, dim=(0, 1)).sum()
+    loss.backward()
+    print(A1.grad.shape)    
+    print(A2.grad.shape)
