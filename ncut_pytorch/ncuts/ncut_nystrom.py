@@ -9,7 +9,10 @@ from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
 from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, grad_safe_eig_solve, correct_rotation, keep_topk_per_row, svd_lowrank
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
+import logging
 
+MATMUL_CHUNK_SIZE = 65536
+SMALL_SCALE_THRESHOLD = 8192    # if the number of nodes is less than SMALL_SCALE_THRESHOLD, skip nystrom approximation use exact ncut
 
 class NystromConfig:
     """
@@ -21,7 +24,6 @@ class NystromConfig:
     n_sample2 = 1024                # number of samples for eigenvector propagation, 1024 is large enough for most cases
     n_neighbors = 32                # number of neighbors for eigenvector propagation, 10 is large enough for most cases
     n_neighbors_max_ratio = 1/32    # max ratio of n_neighbors to n_sample2, to avoid over smoothing
-    matmul_chunk_size = 65536       # chunk size for matrix multiplication, larger chunk size is faster but requires more memory
     
     def update(self, kwargs: dict):
         for key, value in kwargs.items():
@@ -78,9 +80,11 @@ def ncut_fn(
     device = auto_device(X.device, device)
 
     # subsample for nystrom approximation
-    is_enough_data = X.shape[0] > config.n_sample
     n_sample = min(config.n_sample, int(X.shape[0]*config.n_sample_max_ratio))
-    nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device) if is_enough_data else np.arange(X.shape[0])
+    if X.shape[0] > SMALL_SCALE_THRESHOLD:
+        nystrom_indices = farthest_point_sampling(X, n_sample=n_sample, device=device)
+    else:
+        nystrom_indices = torch.arange(X.shape[0])
     nystrom_X = X[nystrom_indices].to(device)
 
     sigma, repulsion_sigma = find_optimal_sigma(nystrom_X, quantile_sigma, quantile_sigma_repulsion, sigma, repulsion_sigma, affinity_fn)
@@ -95,10 +99,6 @@ def ncut_fn(
     if no_propagation:
         return nystrom_eigvec, eigval, nystrom_indices, sigma
 
-    if not is_enough_data:
-        # skip nystrom approximation if not enough data, use exact ncut
-        return nystrom_eigvec, eigval
-
     # propagate eigenvectors from subgraph to full graph
     eigvec = nystrom_propagate(
         nystrom_eigvec,
@@ -107,7 +107,6 @@ def ncut_fn(
         extrapolation_factor=extrapolation_factor,
         n_neighbors=config.n_neighbors,
         n_sample=config.n_sample2,
-        matmul_chunk_size=config.matmul_chunk_size,
         device=device,
     )
 
@@ -117,6 +116,7 @@ def ncut_fn(
 
     return eigvec, eigval
     
+
 def find_optimal_sigma(
     X: torch.Tensor,
     quantile_sigma: float = 0.25,
@@ -136,6 +136,7 @@ def find_optimal_sigma(
         if sigma is None:
             raise ValueError(f"`sigma` need to be provided for affinity function {affinity_fn}, (sigma=0.5, repulsion_sigma=0.3)")
     return sigma, repulsion_sigma
+
 
 def ncut_with_repulsion(
     X: torch.Tensor,
@@ -197,11 +198,16 @@ def nystrom_propagate(
         nystrom_X (torch.Tensor): input features from nystrom sampled nodes, shape (m, D)
         extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         device (str): device to use for computation, if 'auto', will detect GPU automatically
-        affinity_fn (callable): affinity function, default rbf_affinity. Should accept (X1, X2=None, sigma=float) and return affinity matrix
+        return_indices (bool): whether to return the indices used for propagation
 
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
     """
+    if X.shape[0] <= SMALL_SCALE_THRESHOLD and nystrom_out.shape == X.shape and torch.allclose(nystrom_X.to(X.device), X, atol=1e-6):
+        # skip propagation if nystrom_out is the same as X, for small scale graph that don't need nystrom approximation
+        if return_indices:
+            return nystrom_out, np.arange(X.shape[0])
+        return nystrom_out
 
     config = NystromConfig()
     config.update(kwargs)
@@ -217,33 +223,36 @@ def nystrom_propagate(
     
     D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
 
-    all_outs = []
-    n_chunk = config.matmul_chunk_size
     n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
     n_neighbors = max(n_neighbors, 4)
+    n_chunk = _find_max_chunk_size(X, nystrom_X, device)
+
+    all_outs = torch.empty((X.shape[0], nystrom_out.shape[-1]), device=output_device, dtype=nystrom_out.dtype)
     for i in range(0, X.shape[0], n_chunk):
         end = min(i + n_chunk, X.shape[0])
 
         _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, sigma=sigma)
         _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
+        
         _Di = D[_indices].sum(1)
         _Ai = _Ai / _Di[:, None]
 
-        weights = _Ai[..., None]  # (n, n_neighbors, 1)
-        neighbors = nystrom_out[_indices.flatten()]
-        neighbors = neighbors.reshape(-1, n_neighbors, nystrom_out.shape[-1])  # (n, n_neighbors, d)
-        out = weights * neighbors  # (n, n_neighbors, d)
-        out = out.sum(dim=1)  # (n, d)
+        out = torch.einsum('nk,nkd->nd', _Ai, nystrom_out[_indices])
 
-        out = out.to(output_device)
-        all_outs.append(out)
-
-    all_outs = torch.cat(all_outs, dim=0)
+        all_outs[i:end] = out.to(output_device)
 
     if return_indices:
         return all_outs, indices
-    
     return all_outs
 
 
-
+def _find_max_chunk_size(X: torch.Tensor, nystrom_X: torch.Tensor, device: str):
+    max_chunk_size = MATMUL_CHUNK_SIZE
+    while max_chunk_size > 1:
+        try:
+            _ = rbf_affinity(X[:max_chunk_size].to(device), nystrom_X)
+            return max_chunk_size
+        except RuntimeError as e:
+            max_chunk_size = max_chunk_size // 2
+            continue
+    raise RuntimeError("failed to find max chunk size")

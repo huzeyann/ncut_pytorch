@@ -60,5 +60,5 @@ def _farthest_point_sampling(
     assert not torch.any(torch.isnan(X)), "X contains NaN"
     assert not torch.any(torch.isinf(X)), "X contains Inf"
     
-    samples_idx = sample_idx(X.cpu(), n_sample).numpy()
+    samples_idx = sample_idx(X.cpu(), n_sample)
     return samples_idx

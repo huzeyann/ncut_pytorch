@@ -89,7 +89,6 @@ def ncut_click_prompt(
         nystrom_X,
         n_neighbors=config.n_neighbors,
         n_sample=config.n_sample2,
-        matmul_chunk_size=config.matmul_chunk_size,
         device=device,
         return_indices=True,
     )

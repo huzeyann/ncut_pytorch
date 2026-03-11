@@ -56,6 +56,7 @@ class TestNcut:
         """Test the fit_transform method."""
         ncut = Ncut(**ncut_params)
         eigvec = ncut.fit_transform(small_feature_matrix)
+        assert torch.allclose(ncut._nystrom_x, small_feature_matrix, atol=1e-6)
         
         # Check shape
         assert eigvec.shape == (small_feature_matrix.shape[0], ncut_params['n_eig'])
@@ -105,3 +106,6 @@ class TestNcut:
         # Check that eigval returns the eigenvalues
         assert ncut.eigval is ncut._eigval
         assert ncut.eigval.shape == (ncut_params['n_eig'],)
+
+if __name__ == "__main__":
+    pytest.main([__file__])

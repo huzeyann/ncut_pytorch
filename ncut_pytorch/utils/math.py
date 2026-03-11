@@ -45,7 +45,11 @@ def rbf_affinity(
     sigma = sigma if gamma is None else check_gamma_deprecated(gamma)
     X2 = X1 if X2 is None else X2
 
-    dist2 = torch.cdist(X1, X2, p=2)**2
+    try:
+        dist2 = torch.cdist(X1, X2, p=2)**2
+    except NotImplementedError:
+        dist2 = X1.unsqueeze(1) - X2.unsqueeze(0)
+        dist2 = dist2.pow(2).sum(dim=-1)
     W = torch.exp(-dist2 / (2.0 * sigma * sigma))   # [N,M]
     if zero_diag and X1 is X2:
         W = W.clone()
