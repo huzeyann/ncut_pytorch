@@ -203,7 +203,7 @@ def nystrom_propagate(
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
     """
-    if X.shape[0] <= SMALL_SCALE_THRESHOLD and nystrom_out.shape == X.shape and torch.allclose(nystrom_X.to(X.device), X, atol=1e-6):
+    if X.shape[0] <= SMALL_SCALE_THRESHOLD and nystrom_X.shape == X.shape and torch.allclose(nystrom_X.to(X.device), X, atol=1e-6):
         # skip propagation if nystrom_out is the same as X, for small scale graph that don't need nystrom approximation
         if return_indices:
             return nystrom_out, np.arange(X.shape[0])
