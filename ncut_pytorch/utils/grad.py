@@ -114,7 +114,7 @@ def rbf_eigvec_manual_grad(
     return grad_u
 
 
-class MultiSpectralProjectorFromMasks(torch.autograd.Function):
+class EigvecOuterProduct(torch.autograd.Function):
     """
     A (symmetric) -> {P_b}_b, where P_b = U_{S_b} U_{S_b}^T and S_b is specified by a boolean mask.
 
@@ -212,22 +212,24 @@ class MultiSpectralProjectorFromMasks(torch.autograd.Function):
             grad_A_used = grad_A_used + (Bmat + Bmat.T)
 
         grad_A = 0.5 * (grad_A_used + grad_A_used.T) if symmetrize else grad_A_used
+        # print(f"grad_A.shape: {grad_A.shape}, grad_A.norm: {grad_A.norm()}")
         return grad_A, None, None, None
 
 
-def spectral_projectors_from_masks(
+def eigvec_outer_product(
     A: torch.Tensor,
-    masks: torch.Tensor,
+    eigval_masks: torch.Tensor,
     gap_eps: float = 0.0,
     symmetrize: bool = True,
 ):
     """
-    Convenience wrapper.
+    Computes the outer product of the eigenvectors U U^T, where U is the eigenvector matrix of A.
+    gradient of this function is stable, even if the eigenvalues are close to each other.
 
     masks: [B,N] bool in DESCENDING eigen-order (0 = largest eigenvalue).
     returns P: [B,N,N]
     """
-    return MultiSpectralProjectorFromMasks.apply(A, masks, gap_eps, symmetrize)
+    return EigvecOuterProduct.apply(A, eigval_masks, gap_eps, symmetrize)
 
 
 if __name__ == "__main__":
@@ -241,12 +243,12 @@ if __name__ == "__main__":
     A1 = torch.randn(N, N)
     A1 = 0.5 * (A1 + A1.T)
     A1.requires_grad_(True)
-    P1 = spectral_projectors_from_masks(A1, masks)
+    P1 = eigvec_outer_product(A1, masks)
 
     A2 = torch.randn(N, N)
     A2 = 0.5 * (A2 + A2.T)
     A2.requires_grad_(True)
-    P2 = spectral_projectors_from_masks(A2, masks)
+    P2 = eigvec_outer_product(A2, masks)
 
     loss = torch.norm(P1 - P2, p=2, dim=(0, 1)).sum()
     loss.backward()

@@ -1,7 +1,7 @@
 __all__ = ["mspace_color", "tsne_color", "umap_color", "umap_sphere_color", "rotate_rgb_cube", "convert_to_lab_color"]
 
 import warnings
-from typing import Any, Callable, Dict, Literal, Tuple, Optional
+from typing import Any, Callable, Dict, Literal, Tuple, Optional, List
 
 from numba.core.types import none
 import numpy as np
@@ -19,9 +19,10 @@ def _identity(X: torch.Tensor) -> torch.Tensor:
 def mspace_color(
         X: torch.Tensor,
         q: float = 0.95,
-        n_eig: Optional[int] = 8,
+        n_eig_list: Optional[List[int]] = [4, 16, 64],
         n_dim: int = 3,
-        training_steps: int = 1000,
+        encoder_training_steps: int = 3000,
+        decoder_training_steps: int = 0,
         progress_bar: bool = False,
         **kwargs: Any,
 ):
@@ -34,15 +35,16 @@ def mspace_color(
 
     low_dim_embedding = mspace_viz_transform(
         X=X,
-        n_eig=n_eig,
-        mood_dim=n_dim,
-        training_steps=training_steps,
-        decoder_training_steps=0,
+        n_eig_list=n_eig_list,
+        z_dim=n_dim,
+        encoder_training_steps=encoder_training_steps,
+        decoder_training_steps=decoder_training_steps,
         progress_bar=progress_bar,
-        eigvec_loss=1.0,
-        recon_loss=1.0,
+        flag_loss_mode='z',
+        flag_loss=1.0,
+        recon_loss=0.001,
         zero_center_loss=0.001,
-        repulsion_loss=0.01,
+        repulsion_loss=0.001,
         **kwargs)
 
     rgb = rgb_from_nd_colormap(low_dim_embedding, q=q)

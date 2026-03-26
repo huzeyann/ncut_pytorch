@@ -72,11 +72,11 @@ class NcutPredictor:
             hierarchy_assign.append(self.get_n_segments(n_eig))
         self._hierarchy_assign = hierarchy_assign
 
-    def get_n_segments(self, n_cluster: int, n_eig: int = 10) -> torch.Tensor:
+    def get_n_segments(self, n_cluster: int) -> torch.Tensor:
         self.__check_initialized()
-        eigvecs = self.get_n_eigvecs(n_eig)
+        eigvecs = self.get_n_eigvecs(n_cluster)
         # kway_eigvec = kway_ncut(eigvecs, device=self.device, sample_idx=self._kway_sample_idx)
-        kway_eigvec = quick_kway(eigvecs, n_eig=n_eig, n_clusters=n_cluster, device=self.device)
+        kway_eigvec = quick_kway(eigvecs, n_eig=n_cluster, n_clusters=n_cluster, device=self.device)
         cluster_assignment = kway_eigvec.argmax(dim=1).cpu()
         return cluster_assignment
 

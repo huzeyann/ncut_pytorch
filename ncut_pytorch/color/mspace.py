@@ -2,9 +2,10 @@ __all__ = ["train_mspace_model", "mspace_viz_transform"]
 
 import logging
 from collections import defaultdict
-from functools import partial
+from functools import partial, wraps
 import warnings
 import pytorch_lightning as pl
+from typing import List
 
 import numpy as np  
 import torch
@@ -15,58 +16,21 @@ from tqdm import tqdm
 
 from ncut_pytorch.utils.device import auto_device
 from ncut_pytorch import ncut_fn
-from ncut_pytorch.utils.math import grad_safe_eig_solve, normalize_affinity, rbf_affinity, svd_lowrank, cosine_affinity
+from ncut_pytorch.utils.math import normalize_affinity, rbf_affinity, cosine_affinity
+from ncut_pytorch.utils.grad import eigvec_outer_product
+from ncut_pytorch.utils.sigma import find_sigma_by_degree
 
 
-def _flag_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight):
-    _eigvec_gt = eigvec_gt[:, :n_eig]
-    _eigvec_hat = eigvec_hat[:, :n_eig]
-    left = _eigvec_gt @ _eigvec_gt.T
-    right = _eigvec_hat @ _eigvec_hat.T
-    left = left * weight[:, None] * weight[None, :]
-    right = right * weight[:, None] * weight[None, :]
-    loss = F.l1_loss(left, right)
-    return loss
-
-def flag_space_loss(eigvec_gt, eigvec_hat, n_eig, start=2, step_mult=2, weight=None):
-    if torch.all(eigvec_gt == 0) or torch.all(eigvec_hat == 0):
-        return torch.tensor(0, device=eigvec_gt.device)
-    
-    if weight is None:
-        weight = torch.ones(eigvec_gt.shape[0], device=eigvec_gt.device, dtype=eigvec_gt.dtype)
-    
-    loss = 0
-    n_eig = start // step_mult
-    while True:
-        n_eig *= step_mult
-        loss += _flag_ncut_loss(eigvec_gt, eigvec_hat, n_eig, weight)
-        if n_eig > eigvec_gt.shape[1] or n_eig > eigvec_hat.shape[1]:
-            break
-    return loss
-
-def filter_closeby_eigval(eigvec, eigval, threshold=1e-3):
-    # filter out eigvals that are too close to each other
-    # so the gradient is more stable
-    eigval_diff = torch.diff(eigval).abs()
-    keep_idx = torch.where(eigval_diff > threshold)[0]
-    return eigvec[:, keep_idx], eigval[keep_idx]
-
-def ncut_wrapper(features, n_eig, sigma=None):
-    # TODO: gradient is not stable.
-
-    # features.requires_grad_(True)
-    sigma = sigma or features.std(0).sum().item()
-    eigvec, eigval = ncut_fn(features, n_eig, sigma=sigma)
+def get_eigvec_outer_product(features: torch.Tensor, n_eig_list: List[int]) -> torch.Tensor:
+    sigma = find_sigma_by_degree(features)
     W = rbf_affinity(features, sigma=sigma)
-    # W = cosine_affinity(features, sigma=1.0)
     A = normalize_affinity(W)
-    eigvec, eigval, _ = svd_lowrank(A, n_eig)
-    # eigval, eigvec = torch.linalg.eigh(A)
-    # eigvec = eigvec.flip(dims=[1])
-    # eigval = eigval.flip(dims=[0])
-    # eigvec = eigvec[:, :n_eig]
-    # eigval = eigval[:n_eig]
-    return eigvec, eigval
+    eigval_masks = torch.zeros(len(n_eig_list), A.shape[0], dtype=torch.bool)
+    for i, n_eig in enumerate(n_eig_list):
+        eigval_masks[i, :n_eig] = True
+    P = eigvec_outer_product(A, eigval_masks)
+    return P
+
 
 
 class MovingMinMax(nn.Module):
@@ -112,12 +76,12 @@ class MLP(nn.Module):
 
 
 class MspaceAutoEncoder(nn.Module):
-    def __init__(self, in_dim, out_dim, mood_dim, n_layer=4, latent_dim=256, encoder_activation='gelu', decoder_activation='gelu', final_activation='identity'):
+    def __init__(self, in_dim, out_dim, z_dim, n_layer=4, latent_dim=256, encoder_activation='gelu', decoder_activation='gelu', final_activation='identity'):
         super().__init__()
-        self.encoder = MLP(in_dim, mood_dim, n_layer, latent_dim, encoder_activation, final_activation)
+        self.encoder = MLP(in_dim, z_dim, n_layer, latent_dim, encoder_activation, final_activation)
         self.decoder = nn.Sequential(
-            MovingMinMax(mood_dim),
-            MLP(mood_dim, out_dim, n_layer, latent_dim, decoder_activation)
+            MovingMinMax(z_dim),
+            MLP(z_dim, out_dim, n_layer, latent_dim, decoder_activation)
         )
     
 
@@ -260,34 +224,29 @@ class TrainDecoder(pl.LightningModule):
 class TrainEncoder(pl.LightningModule):
     N_ITER_PER_STEP = 10
     
-    def __init__(self, in_dim, out_dim, mood_dim=2, n_eig=8, n_elbow=3,
+    def __init__(self, in_dim, out_dim, z_dim=2, n_eig_list=[4, 16, 64],
                  n_layer=4, latent_dim=256, 
-                 eigvec_loss=100, recon_loss=0, 
-                 riemann_curvature_loss=0., axis_align_loss=0, 
-                 repulsion_loss=0.1, attraction_loss=0., 
-                 boundary_loss=0., zero_center_loss=0.01,
-                 lr=0.001, progress_bar=True, training_steps=500,
+                 flag_loss_mode='z_eigvec',  # 'z_eigvec' or 'z'
+                 flag_loss=1.0, recon_loss=1e-3, 
+                 repulsion_loss=1e-3, zero_center_loss=1e-3,
+                 lr=1e-3, progress_bar=True, training_steps=1000,
                  encoder_activation='gelu', decoder_activation='gelu', 
                  final_activation='identity',
                  log_grad_norm=False, 
                  **kwargs):
         super().__init__()
         
-        self.mspace_ae = MspaceAutoEncoder(in_dim, out_dim, mood_dim, n_layer, latent_dim, encoder_activation, decoder_activation, final_activation)
+        self.mspace_ae = MspaceAutoEncoder(in_dim, out_dim, z_dim, n_layer, latent_dim, encoder_activation, decoder_activation, final_activation)
                 
         self.loss_history = defaultdict(list)
 
-        self.eigvec_loss = eigvec_loss
+        self.flag_loss_mode = flag_loss_mode
+        self.flag_loss = flag_loss
         self.recon_loss = recon_loss
-        self.riemann_curvature_loss = riemann_curvature_loss
-        self.axis_align_loss = axis_align_loss
         self.repulsion_loss = repulsion_loss
-        self.attraction_loss = attraction_loss
-        self.boundary_loss = boundary_loss
         self.zero_center_loss = zero_center_loss
         self.lr = lr
-        self.n_eig = n_eig
-        self.n_elbow = n_elbow
+        self.n_eig_list = n_eig_list
 
         self.progress_bar = progress_bar
         self.training_steps = training_steps
@@ -303,11 +262,11 @@ class TrainEncoder(pl.LightningModule):
         return self.mspace_ae.encoder(x)
     
 
-    def _log_loss(self, loss, name, log_grad_norm=False):
-        if self.logger is None:
-            return
-        self.logger.log_metrics({f'loss/{name}': loss.item()}, step=self.global_step)
-        self.loss_history[f"loss/{name}"].append(loss.item())
+    def _log_loss(self, loss, name, log_grad_norm=False, iteration=0):
+        # if self.logger is None:
+            # return
+        # self.logger.log_metrics({f'loss/{name}': loss.item()}, step=self.global_step)
+        # self.loss_history[f"loss/{name}"].append(loss.item())
         if log_grad_norm:
             grad_norm = 0
             self.manual_backward(loss, retain_graph=True)
@@ -315,8 +274,10 @@ class TrainEncoder(pl.LightningModule):
                 if param.grad is not None:
                     grad_norm += param.grad.norm().item() ** 2
             grad_norm = grad_norm ** 0.5
-            self.logger.log_metrics({f'grad/{name}': grad_norm}, step=self.global_step)
-            self.loss_history[f"grad/{name}"].append(grad_norm)
+            # self.logger.log_metrics({f'grad/{name}': grad_norm}, step=self.global_step)
+            # self.loss_history[f"grad/{name}"].append(grad_norm)
+            if iteration % 10 == 0:
+                print(f"loss/{name} grad_norm: {grad_norm:.2e}, iteration: {iteration}")
             self.optimizers().zero_grad()
 
     def training_step(self, batch):
@@ -328,12 +289,10 @@ class TrainEncoder(pl.LightningModule):
 
         input_feats, output_feats = batch
         
-        stored_eigvec_gt = {}
-        # with torch.no_grad():
+        P_gt = {}
         # Compute eigvec_gt only once for each set of iterations
-        if self.eigvec_loss != 0:
-            eigvec_gt, eigval_gt = ncut_wrapper(input_feats, self.n_eig, sigma=input_feats.std(0).sum().item())
-            stored_eigvec_gt = eigvec_gt
+        if self.flag_loss != 0:
+            P_gt = get_eigvec_outer_product(input_feats, self.n_eig_list)
 
         
         # Run the same batch 10 times, updating parameters after each iteration
@@ -344,28 +303,36 @@ class TrainEncoder(pl.LightningModule):
             log_grad_norm = iteration == 0 and self.log_grad_norm
             
             total_loss = 0
-            if self.eigvec_loss != 0:
-                assert feats_compressed.requires_grad, "feats_compressed must be a tensor with requires_grad=True"
-                eigvec_hat, eigval_hat = ncut_wrapper(feats_compressed, self.n_eig, sigma=feats_compressed.std(0).sum().item())
-                assert eigvec_hat.requires_grad, "eigvec_hat must be a tensor with requires_grad=True"
-                eigvec_loss = flag_space_loss(stored_eigvec_gt, eigvec_hat, n_eig=self.n_eig, weight=None)
-                eigvec_loss = eigvec_loss * self.eigvec_loss
-                total_loss += eigvec_loss
-                self._log_loss(eigvec_loss, "eigvec", log_grad_norm=log_grad_norm)
+            if self.flag_loss != 0:
+                if self.flag_loss_mode == 'z_eigvec':
+                    P_hat = get_eigvec_outer_product(feats_compressed, self.n_eig_list)
+                    flag_loss = F.mse_loss(P_gt, P_hat)
+                elif self.flag_loss_mode == 'z':
+                    P_hat = feats_compressed @ feats_compressed.T
+                    flag_loss = F.mse_loss(P_gt.mean(0), P_hat)
+                flag_loss = flag_loss * self.flag_loss
+                total_loss += flag_loss
+                self._log_loss(flag_loss, "flag_loss", log_grad_norm=log_grad_norm, iteration=self.trainer.global_step)
 
             if self.recon_loss > 0:
                 feats_uncompressed = self.mspace_ae.decoder(feats_compressed)
-                recon_loss = F.smooth_l1_loss(output_feats, feats_uncompressed, beta=0.1)
+                recon_loss = F.mse_loss(output_feats, feats_uncompressed)
                 recon_loss = recon_loss * self.recon_loss
                 total_loss += recon_loss
-                self._log_loss(recon_loss, "recon", log_grad_norm=log_grad_norm)
+                self._log_loss(recon_loss, "recon_loss", log_grad_norm=log_grad_norm, iteration=self.trainer.global_step)
 
             if self.zero_center_loss > 0:
                 # zero_center_loss = feats_compressed.abs().mean()
                 zero_center_loss = (feats_compressed ** 2).mean()
                 zero_center_loss = zero_center_loss * self.zero_center_loss
                 total_loss += zero_center_loss
-                self._log_loss(zero_center_loss, "zero_center", log_grad_norm=log_grad_norm)
+                self._log_loss(zero_center_loss, "zero_center_loss", log_grad_norm=log_grad_norm, iteration=self.trainer.global_step)
+
+            if self.repulsion_loss > 0:
+                repulsion_loss = compute_repulsion_loss(feats_compressed)
+                repulsion_loss = repulsion_loss * self.repulsion_loss
+                total_loss += repulsion_loss
+                self._log_loss(repulsion_loss, "repulsion_loss", log_grad_norm=log_grad_norm, iteration=self.trainer.global_step)
 
             # Log the loss for this iteration
             if self.logger is not None:
@@ -387,86 +354,6 @@ class TrainEncoder(pl.LightningModule):
         return optimizer
 
 
-# Moving Average Callback
-class BestModelsAvgCallback(pl.Callback):
-    """
-    Callback to store the top models with the lowest total loss and average them at the end.
-    """
-    def __init__(self, top_k=10):
-        super().__init__()
-        self.top_k = top_k
-        self.best_models = []  # List of tuples (loss, params)
-        self.best_loss = float('inf')
-        
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        """Store the model if it has a lower loss than the current best models."""
-
-        # skip if the global step is on the frist 80% of the training steps
-        if trainer.global_step < trainer.max_steps * 0.8:
-            return
-        
-        # Get current model parameters
-        current_params = {}
-        for name, param in pl_module.named_parameters():
-            current_params[name] = param.data.clone()
-        
-        # Get the current total loss from the outputs
-        # The outputs from training_step is the total loss
-        current_loss = outputs['loss'].item()
-        
-        # If we have fewer than top_k models or this is a better model
-        if len(self.best_models) < self.top_k or current_loss < self.best_loss:
-            # Add to best models
-            self.best_models.append((current_loss, current_params))
-            
-            # Sort by loss (ascending)
-            self.best_models.sort(key=lambda x: x[0])
-            
-            # Keep only top_k models
-            if len(self.best_models) > self.top_k:
-                self.best_models = self.best_models[:self.top_k]
-            
-            # Update best loss
-            self.best_loss = self.best_models[0][0]
-    
-    def on_train_end(self, trainer, pl_module):
-        """Average the best model parameters and apply them to the model at the end of training."""
-        if self.best_models:
-            # Initialize averaged parameters
-            avg_params = {}
-            
-            # Get parameter names from the first model
-            param_names = self.best_models[0][1].keys()
-            
-            # Initialize with zeros of the same shape
-            for name in param_names:
-                avg_params[name] = torch.zeros_like(self.best_models[0][1][name])
-            
-            # Sum all parameters from best models
-            for _, params in self.best_models:
-                for name in param_names:
-                    avg_params[name] += params[name]
-            
-            # Divide by the number of models to get the average
-            for name in param_names:
-                avg_params[name] /= len(self.best_models)
-            
-            # Apply averaged parameters to the model
-            for name, param in pl_module.named_parameters():
-                if name in avg_params:
-                    param.data.copy_(avg_params[name])
-            
-            # Log the best loss and average loss
-            if pl_module.logger is not None:
-                pl_module.logger.log_metrics({
-                    'best_loss': self.best_loss,
-                    'avg_loss': sum(loss for loss, _ in self.best_models) / len(self.best_models)
-                }, step=trainer.global_step)
-
-            self.best_models = []
-            self.best_loss = float('inf')
-            
-
 def compute_repulsion_loss(
     points: torch.Tensor,      # [N, D]
 ) -> torch.Tensor:
@@ -475,115 +362,92 @@ def compute_repulsion_loss(
     mask = torch.eye(points.shape[0], device=points.device).bool()
     dist_matrix = dist_matrix + mask * 1e10
     nearest_dists, _ = torch.min(dist_matrix, dim=1)
-    repulsion = 1.0 / (nearest_dists + 0.01)
+    repulsion = 1.0 / (nearest_dists + 1)
     return torch.mean(repulsion)
 
 
-def train_mspace_model(compress_feats, uncompress_feats, training_steps=500, decoder_training_steps=1000,
-                    batch_size=1000, return_trainer=False, progress_bar=True,
-                    logger=False, use_wandb=False, model_avg_window=3, **model_kwargs):
-    # Disable lightning logs only for this function
-    original_lightning_level = logging.getLogger('lightning').level
-    original_pytorch_lightning_level = logging.getLogger("pytorch_lightning").level
-    
-    logging.getLogger('lightning').setLevel(0)
-    logging.getLogger("pytorch_lightning").setLevel(0)
-    
+def suppress_lightning_logs(func):
+    """Temporarily suppresses noisy PyTorch Lightning startup logs."""
     class IgnorePLFilter(logging.Filter):
         def filter(self, record):
             keywords = ['available:', 'CUDA', 'LOCAL_RANK:']
             return not any(keyword in record.getMessage() for keyword in keywords)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        original_lightning_level = logging.getLogger('lightning').level
+        original_pytorch_lightning_level = logging.getLogger("pytorch_lightning").level
+        logging.getLogger('lightning').setLevel(0)
+        logging.getLogger("pytorch_lightning").setLevel(0)
+        pl_filter = IgnorePLFilter()
+        logger_rank_zero = logging.getLogger('pytorch_lightning.utilities.rank_zero')
+        logger_cuda = logging.getLogger('pytorch_lightning.accelerators.cuda')
+        logger_rank_zero.addFilter(pl_filter)
+        logger_cuda.addFilter(pl_filter)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            logging.getLogger('lightning').setLevel(original_lightning_level)
+            logging.getLogger("pytorch_lightning").setLevel(original_pytorch_lightning_level)
+            logger_rank_zero.removeFilter(pl_filter)
+            logger_cuda.removeFilter(pl_filter)
+
+    return wrapper
+
+
+@suppress_lightning_logs
+def train_mspace_model(compress_feats, uncompress_feats, encoder_training_steps=3000, decoder_training_steps=3000,
+                    batch_size=1000, return_trainer=False, progress_bar=False,
+                    logger=False, use_wandb=False, **model_kwargs):
+    # check args
+    valid_keys = ['z_dim', 'flag_loss', 'flag_loss_mode', 'recon_loss', 'repulsion_loss', 'zero_center_loss', 'n_eig_list', 'n_layer', 'latent_dim', 'lr']
+    for key in model_kwargs.keys():
+        if key not in valid_keys:
+            raise ValueError(f"Invalid argument key: {key}. Valid keys: {valid_keys}")
+
+    compress_feats = compress_feats.float().cpu()
+    uncompress_feats = uncompress_feats.float().cpu()
+    l, c_in = compress_feats.shape
+    c_out = uncompress_feats.shape[1]
+
+    model = TrainEncoder(c_in, c_out, training_steps=encoder_training_steps, progress_bar=progress_bar, **model_kwargs)
     
-    pl_filter = IgnorePLFilter()
-    logger_rank_zero = logging.getLogger('pytorch_lightning.utilities.rank_zero')
-    logger_cuda = logging.getLogger('pytorch_lightning.accelerators.cuda')
-    logger_rank_zero.addFilter(pl_filter)
-    logger_cuda.addFilter(pl_filter)
+    dataset = TensorDataset(compress_feats, uncompress_feats)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+
+    trainer_args = {
+        'accelerator': auto_device(),
+        'devices': 1,
+        'enable_checkpointing': False,
+        'enable_progress_bar': False,
+        'enable_model_summary': False,
+    }
+
+    if use_wandb and not logger:
+        logger = pl.loggers.WandbLogger(project='mspace', name='mspace')
+
+    # train the autoencoder jointly
+    trainer = pl.Trainer(max_steps=encoder_training_steps, logger=logger, **trainer_args)
+    trainer.fit(model, dataloader)
     
-    try:
-        compress_feats = compress_feats.float().cpu()
-        uncompress_feats = uncompress_feats.float().cpu()
-        l, c_in = compress_feats.shape
-        c_out = uncompress_feats.shape[1]
+    mspace_ae = model.mspace_ae
 
-        model = TrainEncoder(c_in, c_out, training_steps=training_steps, progress_bar=progress_bar, **model_kwargs)
-        
-        dataset = TensorDataset(compress_feats, uncompress_feats)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    if decoder_training_steps > 0:
+        # train the decoder only
+        trainer = pl.Trainer(max_steps=decoder_training_steps, logger=logger, **trainer_args)
+        model2 = TrainDecoder(mspace_ae, progress_bar=progress_bar, training_steps=decoder_training_steps, **model_kwargs)
+        trainer.fit(model2, dataloader)
+        model.mspace_ae = model2.mspace_ae
 
-        trainer_args = {
-            'accelerator': auto_device(),
-            'devices': 1,
-            'enable_checkpointing': False,
-            'enable_progress_bar': False,
-            'enable_model_summary': False,
-            'callbacks': [BestModelsAvgCallback(top_k=model_avg_window)],
-        }
-
-        if use_wandb and not logger:
-            logger = pl.loggers.WandbLogger(project='mspace', name='mspace')
-
-        # train the autoencoder jointly
-        trainer = pl.Trainer(max_steps=training_steps, logger=logger, **trainer_args)
-        trainer.fit(model, dataloader)
-        
-        mspace_ae = model.mspace_ae
-
-        if decoder_training_steps > 0:
-            # train the decoder only
-            trainer = pl.Trainer(max_steps=decoder_training_steps, logger=logger, **trainer_args)
-            model2 = TrainDecoder(mspace_ae, progress_bar=progress_bar, training_steps=decoder_training_steps, **model_kwargs)
-            trainer.fit(model2, dataloader)
-            model.mspace_ae = model2.mspace_ae
-
-        if return_trainer:
-            result = model, trainer
-        else:
-            result = model
-    finally:
-        # Restore original logging configuration
-        logging.getLogger('lightning').setLevel(original_lightning_level)
-        logging.getLogger("pytorch_lightning").setLevel(original_pytorch_lightning_level)
-        logger_rank_zero.removeFilter(pl_filter)
-        logger_cuda.removeFilter(pl_filter)
+    if return_trainer:
+        result = model, trainer
+    else:
+        result = model
     
     return result
 
-
-def try_train_mspace(*args, **kwargs):
-    # TODO: msapce training sometimes fails into nan, why?
-    max_retries = 10
-    retry_count = 0
-    original_n_eig = kwargs.get('n_eig', 8)
-    
-    while retry_count < max_retries:
-        try:
-            model, trainer = train_mspace_model(*args, **kwargs)
-            return model, trainer
-        except Exception as e:
-            retry_count += 1
-            current_n_eig = kwargs.get('n_eig', original_n_eig)
-            n_eig = int(current_n_eig // 2)
-            
-            # If n_eig becomes too small, disable eigvec_loss and use minimum value
-            if n_eig < 2:
-                kwargs['eigvec_loss'] = 0.0
-                kwargs['recon_loss'] = 1.0
-                kwargs['n_eig'] = 2  # Ensure n_eig is at least 2
-                warnings.warn(f"Error in training mspace model: {e}. Disabling eigvec_loss and using n_eig=1. Retrying ({retry_count}/{max_retries})...")
-            else:
-                kwargs['n_eig'] = n_eig
-                warnings.warn(f"Error in training mspace model: {e}. Trying with n_eig={n_eig}... Retrying ({retry_count}/{max_retries})...")
-            
-            # If we've exhausted all retries, raise the exception
-            if retry_count >= max_retries:
-                raise Exception(f"Failed to train mspace model after {max_retries} retries. Last error: {e}")
-            
-            torch.cuda.empty_cache()
-
 def mspace_viz_transform(X, return_model=False, **kwargs):
     X = X.float().cpu()
-    # model, trainer = try_train_mspace(X, X, return_trainer=True, **kwargs)
     model, trainer = train_mspace_model(X, X, return_trainer=True, **kwargs)
 
     batch_size = kwargs.get('batch_size', 1000)
@@ -593,3 +457,4 @@ def mspace_viz_transform(X, return_model=False, **kwargs):
     if return_model:
         return compressed, model.mspace_ae
     return compressed
+

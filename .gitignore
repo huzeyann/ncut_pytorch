@@ -18,3 +18,5 @@ docs/site/
 .cursor/
 *.py
 update3dev.md
+*.jpg
+*.png

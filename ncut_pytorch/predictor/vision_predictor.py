@@ -76,7 +76,7 @@ class NcutVisionPredictor:
             torch.Tensor: Cluster assignment for the images. (b, h, w)
         """
         self.__check_initialized()
-        cluster_assignment = self.predictor.get_n_segments(n_segment, n_eig)
+        cluster_assignment = self.predictor.get_n_segments(n_segment)
         b, h, w = len(self._images), self._feat_hws[0], self._feat_hws[1]
         cluster_assignment = cluster_assignment.reshape(b, h, w)
         return cluster_assignment
