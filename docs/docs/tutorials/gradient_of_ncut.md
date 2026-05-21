@@ -6,7 +6,7 @@ In our PyTorch implementation of Normalized Cut (NCUT), gradient computation is 
 
 ## With Nyström Approximation
 
-This example demonstrates how to compute gradients when using the Nyström approximation.
+This example demonstrates how to compute gradients when using the Nyström approximation. For gradient-sensitive workloads in 3.0.0, enable `exact_gradient=True`.
 
 ```python
 from ncut_pytorch import Ncut
@@ -16,9 +16,10 @@ import torch
 features = torch.randn(10000, 768)
 features.requires_grad = True
 
-# Compute NCUT with Nyström approximation
-# Note: Gradients flow through the Nyström approximation steps.
-eigenvectors, eigenvalues = Ncut(n_eig=50).fit_transform(features)
+# Compute NCUT with the exact eigensolver path for a stable backward pass
+ncut = Ncut(n_eig=50, exact_gradient=True)
+eigenvectors = ncut.fit_transform(features)
+eigenvalues = ncut.eigval
 
 # Define a loss function (e.g., sum of eigenvectors)
 loss = eigenvectors.sum()

@@ -10,7 +10,11 @@
 ## Core Ncut Functions
 
 ::: ncut_pytorch.ncuts.ncut_nystrom.ncut_fn
+::: ncut_pytorch.ncuts.ncut_nystrom.nystrom_propagate
 ::: ncut_pytorch.ncuts.ncut_kway.kway_ncut
+::: ncut_pytorch.ncuts.ncut_kway.axis_align
+::: ncut_pytorch.ncuts.ncut_kway.quick_kway
+::: ncut_pytorch.ncuts.ncut_click.ncut_click_prompt
 
 ## Predictors
 
@@ -32,4 +36,5 @@
 
 ::: ncut_pytorch.utils.math.rbf_affinity
 ::: ncut_pytorch.utils.math.cosine_affinity
-::: ncut_pytorch.utils.gamma.find_gamma_by_degree
+::: ncut_pytorch.utils.math.quantile_normalize
+::: ncut_pytorch.utils.sigma.find_sigma_by_degree

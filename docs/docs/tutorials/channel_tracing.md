@@ -19,7 +19,7 @@ features_2d = features.view(-1, features.shape[-1])  # (H*W, feature_dimension)
 
 # 2. Compute NCUT with gradient tracking enabled
 n_eig = 20
-eigvecs = Ncut(n_eig=n_eig, device='cuda').fit_transform(features_2d)
+eigvecs = Ncut(n_eig=n_eig, exact_gradient=True, device='cuda').fit_transform(features_2d)
 
 # 3. Define a loss and backpropagate
 # Here we simply use the sum of eigenvectors as a dummy loss
@@ -123,8 +123,8 @@ Next, we run the differentiable NCUT to obtain the eigenvectors and k-way discre
 ```python
 def differentiable_kway_ncut(features, n_segment):
     assert features.requires_grad is True
-    # Compute eigenvectors with gradient tracking
-    eigvec = Ncut(n_eig=n_segment).fit_transform(features)
+    # Use the exact eigensolver path when gradients matter
+    eigvec = Ncut(n_eig=n_segment, exact_gradient=True).fit_transform(features)
     # Discretize eigenvectors to get soft cluster assignments
     kway_eigvec = kway_ncut(eigvec)  # shape: [(B*H*W), K]
     return eigvec, kway_eigvec

@@ -59,9 +59,9 @@ The model is trained with a combination of losses:
 
 ## Usage
 
-You can use `mspace_color` directly from `ncut_pytorch`.
+You can use `mspace_color` directly from `ncut_pytorch.color`.
 
-If `pytorch-lightning` is not installed, M-space falls back to a pure PyTorch trainer and emits a one-time install hint. Installing `ncut-pytorch[torch]` keeps the Lightning trainer path and its optional logger integrations.
+If `pytorch-lightning` is not installed, M-space falls back to a pure PyTorch trainer and emits a one-time install hint. Install `pytorch-lightning~=2.0` to keep the Lightning trainer path and its optional logger integrations.
 
 ```python
 from ncut_pytorch.color import mspace_color

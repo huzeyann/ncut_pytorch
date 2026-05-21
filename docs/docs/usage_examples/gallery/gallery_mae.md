@@ -1,4 +1,6 @@
 
+> Legacy note for 3.0.0: this gallery notebook still uses pre-3.0 symbols such as `NCUT` and `rgb_from_tsne_3d`. Use the migration guide to adapt the snippets before running them.
+
 
 <details>
 

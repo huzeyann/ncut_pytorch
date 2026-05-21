@@ -128,6 +128,7 @@ Just plugin features extracted from any pre-trained model and ready to go. Ncut 
     <pre><code class="language-shell">pip install -U ncut-pytorch</code></pre>
 </div>
 
+Install PyTorch separately if your environment does not already provide it. Predictor examples also need `torchvision`, and the optional Lightning-based M-space trainer uses `pytorch-lightning~=2.0`.
 
 ---
 
@@ -159,7 +160,7 @@ from ncut_pytorch import Ncut, kway_ncut
 from ncut_pytorch.color import umap_color, mspace_color
 
 features = torch.rand(1960, 768)
-eigvecs = Ncut(n_eig=100).fit_transform(features)  # (1960, 20)
+eigvecs = Ncut(n_eig=20).fit_transform(features)  # (1960, 20)
 
 # Color visualizations
 rgb_umap = umap_color(eigvecs[:, :20])      # UMAP-based RGB

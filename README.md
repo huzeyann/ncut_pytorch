@@ -26,15 +26,6 @@ https://github.com/user-attachments/assets/cdf53e33-bb34-4a84-b1f4-679b66da1d48
     <pre><code class="language-shell">pip install -U ncut-pytorch</code></pre>
 </div>
 
-For the original Lightning-based M-space trainer and built-in WandB logger:
-
-```shell
-pip install -U 'ncut-pytorch[torch]'
-```
-
-`mspace_color` still works without `pytorch-lightning`; it falls back to a pure PyTorch trainer and prints a one-time install hint.
-
-
 ## Quick Start: plain Ncut
 
 ```py linenums="1"
@@ -43,7 +34,7 @@ from ncut_pytorch import Ncut, kway_ncut
 from ncut_pytorch.color import umap_color, mspace_color
 
 features = torch.rand(1960, 768)
-eigvecs = Ncut(n_eig=100).fit_transform(features)  # (1960, 20)
+eigvecs = Ncut(n_eig=20).fit_transform(features)  # (1960, 20)
 
 # Color visualizations
 rgb_umap = umap_color(eigvecs[:, :20])      # UMAP-based RGB

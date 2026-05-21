@@ -1,5 +1,7 @@
 # Tutorial 10 - Application - Point Prompting
 
+> Legacy note for 3.0.0: this page still uses removed helpers such as `NCUT`, `rgb_from_tsne_3d`, `ncut_pytorch.backbone`, and `get_mask`. Treat it as a historical notebook and use the migration guide for current equivalents.
+
 NCUT embedding (eigenvectors) can be discretized to create segmentation mask.
 
 

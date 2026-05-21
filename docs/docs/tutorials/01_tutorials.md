@@ -120,7 +120,7 @@ plt.show()
 ``` py linenums="1"
 # visualize top 9 eigenvectors, 3 eigenvectors per row
 import matplotlib.pyplot as plt
-from ncut_pytorch import quantile_normalize
+from ncut_pytorch.utils.math import quantile_normalize
 fig, axs = plt.subplots(3, 4, figsize=(13, 10))
 i_eig = 0
 for i_row in range(3):
@@ -204,7 +204,7 @@ def plot_3d(X_3d, rgb, title):
 from ncut_pytorch.color import umap_color
 
 rgb = umap_color(eigenvectors[:, :10])
-plot_3d(rgb, rgb)
+plot_3d(rgb, rgb, "UMAP colors from the top 10 eigenvectors")
 ```
 
 <div style="text-align: center;">
@@ -420,7 +420,7 @@ def video_mae_feature(video_path, layer=11):
     videomae = VideoMAE(layer=layer)
     videomae = videomae.cuda()
     frames = frames.cuda()
-    frames = rearrange(frames, "(b t) c h w -> b t c h w", affinity_focal_gamma=16)
+    frames = rearrange(frames, "(b t) c h w -> b t c h w", t=16)
     feats = videomae(frames)
     return feats  # (t/2, (h*w), c)
 

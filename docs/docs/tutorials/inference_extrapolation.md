@@ -94,7 +94,6 @@ from ncut_pytorch import Ncut
 input_feats = feats.flatten(0, 2)
 
 # Initialize and fit Ncut
-# d_gamma: affinity parameter (formerly affinity_focal_gamma)
 ncut_model = Ncut(n_eig=20)
 eigenvectors = ncut_model.fit_transform(input_feats)
 ```
@@ -190,7 +189,7 @@ Recomputing eigenvectors on the new data alone may result in better segmentation
 
 ```python
 # Recompute NCUT from scratch for new images
-recomputed_eigenvectors, _ = Ncut(n_eig=50).fit_transform(new_feats.reshape(-1, new_feats.shape[-1]))
+recomputed_eigenvectors = Ncut(n_eig=50).fit_transform(new_feats.reshape(-1, new_feats.shape[-1]))
 
 # Recompute t-SNE colors
 recomputed_rgb = tsne_color(

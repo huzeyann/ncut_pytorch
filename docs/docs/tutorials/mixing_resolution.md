@@ -102,20 +102,23 @@ print("448x448 feature shape:", feats2.shape, 'num_nodes:', num_nodes2)
 
 ### Compute NCUT and t-SNE Coloring
 
-We now apply NCUT to the mixed features. Note the use of `Ncut` class and the correction of parameter names (`n_eig`, `n_sample`).
+We now apply NCUT to the mixed features.
 
 ```python
-from ncut_pytorch import Ncut, tsne_color
+from ncut_pytorch import Ncut
+from ncut_pytorch.color import tsne_color
 
 # Compute eigenvectors using Ncut
-# n_sample: number of samples for Nyström approximation
-# d_gamma: controls the sharpness of the affinity (formerly affinity_focal_gamma)
-eigenvectors, eigenvalues = Ncut(
-    n_eig=50, n_sample=30000, n_neighbors=10, d_gamma=0.5, device="cuda:0"
-).fit_transform(mixed_feats)
+ncut = Ncut(
+    n_eig=50,
+    n_sample=30000,
+    n_neighbors=10,
+    device="cuda:0",
+)
+eigenvectors = ncut.fit_transform(mixed_feats)
 
 # Generate RGB colors for visualization using t-SNE on eigenvectors
-X_3d, rgb = tsne_color(eigenvectors, num_sample=30000, knn=10, device="cuda:0")
+rgb = tsne_color(eigenvectors, num_sample=30000, knn=10, device="cuda:0")
 ```
 
 ### Plotting the Results

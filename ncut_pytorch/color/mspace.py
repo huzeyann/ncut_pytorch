@@ -29,8 +29,8 @@ LightningModuleBase = pl.LightningModule if pl is not None else nn.Module
 
 _LIGHTNING_FALLBACK_MSG = (
     "pytorch-lightning is not installed. Falling back to the pure PyTorch "
-    "M-space trainer. Install `ncut-pytorch[torch]` or "
-    "`pytorch-lightning~=2.0` to enable the Lightning trainer."
+    "M-space trainer. Install `pytorch-lightning~=2.0` to enable the "
+    "Lightning trainer."
 )
 _LIGHTNING_FALLBACK_WARNED = False
 _UNSUPPORTED_DEVICE_WARNED = set()

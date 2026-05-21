@@ -4,6 +4,7 @@ sort:
 nav:
   - Overview: 
     - index.md
+    - Migration to 3.0.0: migration_3_0.md
 
   - What is Ncut?: what_is_ncut.md
 

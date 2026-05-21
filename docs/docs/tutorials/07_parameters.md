@@ -1,6 +1,8 @@
 
 # Tutorial 7 - Parameters
 
+> Legacy note for 3.0.0: this page still describes older parameter names such as `affinity_focal_gamma`. Use the migration guide for the current `sigma` / `quantile_sigma` API until this page is fully rewritten.
+
 Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
 
 <script
@@ -109,4 +111,3 @@ This transform is inspired by [focal loss](https://paperswithcode.com/method/foc
 ## num_samples
 
 Nystrom approximation sample size (see [How NCUT Works](how_ncut_works.md)). A decent sampling size of Nystrom approximation is critical for a good approximation. Complexity scaling is **linear**.
-
