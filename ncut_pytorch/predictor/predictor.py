@@ -22,7 +22,7 @@ class NotInitializedError(Exception):
 class NcutPredictor:
     _initialized: bool = False
     device: str = 'cpu'
-    color_method: str = 'umap'
+    color_method: str = 'mspace'
     # ncut_fn: Callable = partial(ncut_fn, affinity_fn=cosine_affinity, sigma=0.4, repulsion_sigma=0.3)
     ncut_fn: Callable = partial(ncut_fn)
 

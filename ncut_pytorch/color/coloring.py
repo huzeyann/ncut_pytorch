@@ -3,7 +3,6 @@ __all__ = ["mspace_color", "tsne_color", "umap_color", "umap_sphere_color", "rot
 import warnings
 from typing import Any, Callable, Dict, Literal, Tuple, Optional, List
 
-from numba.core.types import none
 import numpy as np
 import torch
 
@@ -32,6 +31,14 @@ def mspace_color(
         (torch.Tensor): RGB color for each data sample, shape (n_samples, 3)
     """
     from .mspace import mspace_viz_transform
+
+    training_steps = kwargs.pop("training_steps", None)
+    if training_steps is not None:
+        encoder_training_steps = training_steps
+
+    n_eig = kwargs.pop("n_eig", None)
+    if n_eig is not None and "n_eig_list" not in kwargs:
+        n_eig_list = [n_eig]
 
     low_dim_embedding = mspace_viz_transform(
         X=X,

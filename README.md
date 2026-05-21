@@ -26,6 +26,14 @@ https://github.com/user-attachments/assets/cdf53e33-bb34-4a84-b1f4-679b66da1d48
     <pre><code class="language-shell">pip install -U ncut-pytorch</code></pre>
 </div>
 
+For the original Lightning-based M-space trainer and built-in WandB logger:
+
+```shell
+pip install -U 'ncut-pytorch[torch]'
+```
+
+`mspace_color` still works without `pytorch-lightning`; it falls back to a pure PyTorch trainer and prints a one-time install hint.
+
 
 ## Quick Start: plain Ncut
 

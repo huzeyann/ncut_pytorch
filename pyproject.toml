@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "torch>=2.10"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "3.0.0dev9"
+version = "3.0.0"
 authors = [
     { name = "Huzheng Yang", email = "huze.yann@gmail.com" },
 ]
@@ -31,11 +31,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-torch = [
-    "torch>=2.7.1",
-    "pytorch-lightning~=2.0",
-    "torchvision>=0.23.0",
-]
 cmap = [
     "pycolormap_2d",
     "scikit-image",
@@ -48,7 +43,7 @@ dev = [
     "pytest-benchmark>=5.1.0",
 ]
 all = [
-    "ncut_pytorch[torch,cmap,dev]",
+    "ncut_pytorch[cmap,dev]",
 ]
 
 [project.urls]
