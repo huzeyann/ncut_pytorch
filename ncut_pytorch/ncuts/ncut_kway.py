@@ -149,14 +149,19 @@ def _kmeans_kway(
     _eigvec = F.normalize(_eigvec, dim=1)
     indices = farthest_point_sampling(_eigvec, n_clusters)
     centroids = _eigvec[indices].clone()
+    feature_dim = _eigvec.shape[1]
+    ones = torch.ones(_eigvec.shape[0], device=_eigvec.device, dtype=_eigvec.dtype)
     for _ in range(kmeans_iter):
         similarities = torch.mm(_eigvec, centroids.t())
         assignments = similarities.argmax(dim=1)
-        for k in range(n_clusters):
-            mask = (assignments == k)
-            if mask.any():
-                centroids[k] = _eigvec[mask].mean(dim=0)
-                centroids[k] = F.normalize(centroids[k], dim=0)
+        counts = torch.zeros(n_clusters, device=_eigvec.device, dtype=_eigvec.dtype)
+        counts.index_add_(0, assignments, ones)
+        sums = torch.zeros((n_clusters, feature_dim), device=_eigvec.device, dtype=_eigvec.dtype)
+        sums.index_add_(0, assignments, _eigvec)
+        means = sums / counts.clamp_min(1).unsqueeze(1)
+        means = F.normalize(means, dim=1)
+        nonempty = counts > 0
+        centroids = torch.where(nonempty[:, None], means, centroids)
     R = centroids.t()
     R = R[:, torch.argsort(R[1])]
     R = R.to(device=original_device, dtype=original_dtype)

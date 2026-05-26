@@ -2,6 +2,40 @@ import pytest
 import torch
 import torch.nn.functional as F
 from ncut_pytorch import kway_ncut, axis_align, quick_kway, ncut_fn
+from ncut_pytorch.utils.device import auto_device
+from ncut_pytorch.utils.sample import farthest_point_sampling
+
+
+def _reference_kmeans_kway(
+    eigvec: torch.Tensor,
+    n_clusters: int = 10,
+    n_eig: int = 10,
+    n_sample: int = 10240,
+    device: str | None = None,
+    kmeans_iter: int = 10,
+) -> torch.Tensor:
+    original_device = eigvec.device
+    original_dtype = eigvec.dtype
+    device = auto_device(original_device, device)
+    if n_sample is not None and n_sample < eigvec.shape[0]:
+        random_indices = torch.randperm(eigvec.shape[0])[:n_sample]
+        eigvec = eigvec[random_indices]
+    eigvec = eigvec[:, :n_eig]
+    eigvec = eigvec.to(device)
+    eigvec = F.normalize(eigvec, dim=1)
+    indices = farthest_point_sampling(eigvec, n_clusters)
+    centroids = eigvec[indices].clone()
+    for _ in range(kmeans_iter):
+        similarities = torch.mm(eigvec, centroids.t())
+        assignments = similarities.argmax(dim=1)
+        for k in range(n_clusters):
+            mask = assignments == k
+            if mask.any():
+                centroids[k] = eigvec[mask].mean(dim=0)
+                centroids[k] = F.normalize(centroids[k], dim=0)
+    R = centroids.t()
+    R = R[:, torch.argsort(R[1])]
+    return R.to(device=original_device, dtype=original_dtype)
 
 
 class TestKwayNcut:
@@ -134,3 +168,21 @@ class TestKwayNcut:
         # Test with different kmeans_iter
         rotated_eigvec = quick_kway(eigvec, n_clusters=5, n_eig=8, n_sample=50, kmeans_iter=20)
         assert rotated_eigvec.shape == (eigvec.shape[0], 5)
+
+    def test_quick_kway_ret_R_matches_reference_update(self, random_seed):
+        """Test that quick_kway keeps the original K-means update semantics."""
+        eigvec = torch.randn(256, 12)
+        kwargs = {
+            "n_clusters": 6,
+            "n_eig": 10,
+            "n_sample": 128,
+            "device": "cpu",
+            "kmeans_iter": 6,
+        }
+
+        torch.manual_seed(random_seed)
+        expected = _reference_kmeans_kway(eigvec.clone(), **kwargs)
+        torch.manual_seed(random_seed)
+        actual = quick_kway(eigvec.clone(), ret_R=True, **kwargs)
+
+        assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
