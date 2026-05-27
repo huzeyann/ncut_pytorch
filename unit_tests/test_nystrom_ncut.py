@@ -1,6 +1,35 @@
+import statistics
+import time
+
 import torch
 from ncut_pytorch import ncut_fn
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, nystrom_propagate
+from ncut_pytorch.utils.math import gram_schmidt
+
+
+def _reference_gram_schmidt(matrix: torch.Tensor) -> torch.Tensor:
+    """Reference implementation matching the pre-optimization behavior."""
+    m, n = matrix.shape
+    orthogonal_matrix = torch.zeros((m, n), dtype=matrix.dtype, device=matrix.device)
+
+    for i in range(n):
+        vec = matrix[:, i]
+        for j in range(i):
+            proj = torch.dot(orthogonal_matrix[:, j], matrix[:, i]) / torch.dot(
+                orthogonal_matrix[:, j], orthogonal_matrix[:, j]
+            )
+            vec = vec - proj * orthogonal_matrix[:, j]
+        orthogonal_matrix[:, i] = vec / torch.norm(vec)
+    return orthogonal_matrix
+
+
+def _median_runtime(fn, matrix: torch.Tensor, repeats: int = 3) -> float:
+    timings = []
+    for _ in range(repeats):
+        start = time.perf_counter()
+        fn(matrix)
+        timings.append(time.perf_counter() - start)
+    return statistics.median(timings)
 
 
 class TestNystromNcut:
@@ -112,4 +141,36 @@ class TestNystromNcut:
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
         assert eigval.shape == (n_eig,)
 
+    def test_gram_schmidt_matches_reference_output(self, random_seed):
+        """Test that gram_schmidt matches the original implementation."""
+        torch.manual_seed(random_seed)
+        matrix = torch.randn(512, 16)
+
+        expected = _reference_gram_schmidt(matrix)
+        actual = gram_schmidt(matrix)
+
+        assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
+
+    def test_gram_schmidt_preserves_dtype(self):
+        """Test that gram_schmidt preserves dtype after the QR fast path."""
+        matrix = torch.randn(128, 8, dtype=torch.float16)
+
+        actual = gram_schmidt(matrix)
+
+        assert actual.dtype == torch.float16
+        assert actual.shape == matrix.shape
+
+    def test_gram_schmidt_reference_speedup(self, random_seed):
+        """Test that the QR fast path significantly outperforms the reference loop."""
+        torch.manual_seed(random_seed)
+        matrix = torch.randn(4096, 64)
+
+        expected = _reference_gram_schmidt(matrix)
+        actual = gram_schmidt(matrix)
+        assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
+
+        reference_time = _median_runtime(_reference_gram_schmidt, matrix)
+        optimized_time = _median_runtime(gram_schmidt, matrix)
+
+        assert reference_time / optimized_time >= 3.0
 

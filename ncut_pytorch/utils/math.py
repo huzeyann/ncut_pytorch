@@ -46,13 +46,22 @@ def rbf_affinity(
     X2 = X1 if X2 is None else X2
 
     try:
-        dist2 = torch.cdist(X1, X2, p=2)**2
-    except NotImplementedError:
-        dist2 = X1.unsqueeze(1) - X2.unsqueeze(0)
-        dist2 = dist2.pow(2).sum(dim=-1)
-    W = torch.exp(-dist2 / (2.0 * sigma * sigma))   # [N,M]
+        x1_sq = X1.pow(2).sum(dim=1, keepdim=True)
+        if X2 is X1:
+            dist2 = x1_sq + x1_sq.T
+        else:
+            x2_sq = X2.pow(2).sum(dim=1).unsqueeze(0)
+            dist2 = x1_sq + x2_sq
+        dist2.addmm_(X1, X2.T, beta=1.0, alpha=-2.0)
+        dist2.clamp_min_(0)
+    except RuntimeError:
+        try:
+            dist2 = torch.cdist(X1, X2, p=2).pow_(2)
+        except NotImplementedError:
+            dist2 = X1.unsqueeze(1) - X2.unsqueeze(0)
+            dist2 = dist2.pow(2).sum(dim=-1)
+    W = dist2.mul_(-0.5 / (sigma * sigma)).exp_()   # [N,M]
     if zero_diag and X1 is X2:
-        W = W.clone()
         W.fill_diagonal_(0.0)
     return W
 
@@ -180,19 +189,24 @@ def gram_schmidt(
     matrix: torch.Tensor,       # [m, n]
 ) -> torch.Tensor:             # [m, n]
     """Orthogonalizes a matrix column-wise using the Gram-Schmidt process."""
-    m, n = matrix.shape
-    device, dtype = matrix.device, matrix.dtype
-    orthogonal_matrix = torch.zeros((m, n), dtype=dtype, device=device)
+    dtype = matrix.dtype
+    qr_input = matrix
 
-    for i in range(n):
-        vec = matrix[:, i]
-        for j in range(i):
-            proj = torch.dot(orthogonal_matrix[:, j], matrix[:, i]) / torch.dot(
-                orthogonal_matrix[:, j], orthogonal_matrix[:, j]
-            )
-            vec = vec - proj * orthogonal_matrix[:, j]
-        orthogonal_matrix[:, i] = vec / torch.norm(vec)
-    return orthogonal_matrix
+    try:
+        with torch.autocast(device_type=matrix.device.type, enabled=False):
+            if dtype in (torch.float16, torch.bfloat16):
+                qr_input = matrix.float()
+            orthogonal_matrix, upper = torch.linalg.qr(qr_input, mode="reduced")
+    except RuntimeError:
+        if dtype in (torch.float16, torch.bfloat16):
+            qr_input = matrix.float()
+        orthogonal_matrix, upper = torch.linalg.qr(qr_input, mode="reduced")
+
+    # Keep a stable column orientation that matches the classical implementation.
+    signs = torch.sign(torch.diagonal(upper))
+    signs = torch.where(signs == 0, torch.ones_like(signs), signs)
+    orthogonal_matrix = orthogonal_matrix * signs.unsqueeze(0)
+    return orthogonal_matrix.to(dtype)
 
 
 def chunked_matmul(

@@ -1,9 +1,13 @@
+import statistics
+import time
+
 import pytest
 import torch
 import torch.nn.functional as F
 from ncut_pytorch import kway_ncut, axis_align, quick_kway, ncut_fn
 from ncut_pytorch.utils.device import auto_device
 from ncut_pytorch.utils.sample import farthest_point_sampling
+from ncut_pytorch.utils import sample as sample_utils
 
 
 def _reference_kmeans_kway(
@@ -36,6 +40,45 @@ def _reference_kmeans_kway(
     R = centroids.t()
     R = R[:, torch.argsort(R[1])]
     return R.to(device=original_device, dtype=original_dtype)
+
+
+def _reference_farthest_point_sampling(
+    X: torch.Tensor,
+    n_sample: int,
+    max_draw_ratio: float = 4.0,
+    max_dim: int = 8,
+    device: str | None = None,
+) -> torch.Tensor:
+    """Reference implementation matching the pre-optimization behavior."""
+    num_data = X.shape[0]
+    num_draw = int(n_sample * max_draw_ratio)
+
+    if num_draw > num_data:
+        return sample_utils._farthest_point_sampling(
+            X,
+            n_sample=n_sample,
+            max_dim=max_dim,
+            device=device,
+        )
+
+    draw_indices = torch.randperm(num_data)[:num_draw]
+    sampled_indices = sample_utils._farthest_point_sampling(
+        X[draw_indices],
+        n_sample=n_sample,
+        max_dim=max_dim,
+        device=device,
+    )
+    return draw_indices[sampled_indices]
+
+
+def _median_runtime(fn, repeats: int = 3) -> float:
+    timings = []
+    for seed in range(repeats):
+        torch.manual_seed(seed)
+        start = time.perf_counter()
+        fn()
+        timings.append(time.perf_counter() - start)
+    return statistics.median(timings)
 
 
 class TestKwayNcut:
@@ -186,3 +229,92 @@ class TestKwayNcut:
         actual = quick_kway(eigvec.clone(), ret_R=True, **kwargs)
 
         assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
+
+    def test_farthest_point_sampling_matches_full_path_when_presample_skipped(self):
+        """Test that the fast path still matches direct FPS when no pre-sampling is needed."""
+        X = torch.randn(64, 16)
+
+        torch.manual_seed(0)
+        expected = sample_utils._farthest_point_sampling(X, n_sample=32, device="cpu")
+        torch.manual_seed(0)
+        actual = farthest_point_sampling(X, n_sample=32, device="cpu")
+
+        assert torch.equal(actual, expected)
+
+    def test_farthest_point_sampling_presample_indices_are_sorted(self, random_seed):
+        """Test that stratified pre-sampling yields monotonic in-range candidate indices."""
+        torch.manual_seed(random_seed)
+        draw_indices = sample_utils._stratified_presample_indices(4096, 1024)
+
+        assert draw_indices.shape == (1024,)
+        assert torch.all(draw_indices[1:] > draw_indices[:-1])
+        assert draw_indices[0] >= 0
+        assert draw_indices[-1] < 4096
+
+    def test_farthest_point_sampling_non_cuda_forces_cpu_kernel(self, monkeypatch):
+        """Test that non-CUDA environments always execute FPS on CPU tensors."""
+        seen = {}
+
+        def fake_sample_idx(x: torch.Tensor, n_sample: int) -> torch.Tensor:
+            seen["device"] = x.device.type
+            return torch.arange(n_sample, device=x.device)
+
+        monkeypatch.setattr(sample_utils, "_HAS_CUDA_KERNEL", False)
+        monkeypatch.setattr(sample_utils, "sample_idx", fake_sample_idx)
+
+        result = sample_utils._farthest_point_sampling(
+            torch.randn(32, 4),
+            n_sample=8,
+            device="mps",
+        )
+
+        assert seen["device"] == "cpu"
+        assert result.device.type == "cpu"
+        assert torch.equal(result, torch.arange(8))
+
+    def test_farthest_point_sampling_returns_cpu_indices_from_accelerator_path(self, monkeypatch):
+        """Test that FPS indices are normalized back to CPU for downstream indexing."""
+        accelerator = None
+        if torch.cuda.is_available():
+            accelerator = "cuda"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            accelerator = "mps"
+
+        if accelerator is None:
+            pytest.skip("Accelerator device is required to validate CPU index normalization.")
+
+        def fake_sample_idx(x: torch.Tensor, n_sample: int) -> torch.Tensor:
+            return torch.arange(n_sample, device=x.device)
+
+        monkeypatch.setattr(sample_utils, "_HAS_CUDA_KERNEL", True)
+        monkeypatch.setattr(sample_utils, "sample_idx", fake_sample_idx)
+
+        result = sample_utils._farthest_point_sampling(
+            torch.randn(32, 4),
+            n_sample=8,
+            device=accelerator,
+        )
+
+        assert result.device.type == "cpu"
+        assert torch.equal(result, torch.arange(8))
+
+    def test_farthest_point_sampling_reference_speedup(self):
+        """Test that reduced pre-sampling significantly speeds up FPS on representative data."""
+        X = torch.randn(8192, 128)
+
+        torch.manual_seed(0)
+        actual = farthest_point_sampling(X, n_sample=2048, device="cpu")
+
+        assert actual.shape == (2048,)
+        assert torch.unique(actual).numel() == 2048
+        assert actual.min() >= 0
+        assert actual.max() < X.shape[0]
+
+        reference_time = _median_runtime(
+            lambda: _reference_farthest_point_sampling(X, n_sample=2048, device="cpu")
+        )
+        optimized_time = _median_runtime(
+            lambda: farthest_point_sampling(X, n_sample=2048, device="cpu")
+        )
+
+        assert reference_time / optimized_time >= 1.6
