@@ -1,10 +1,14 @@
 import statistics
 import time
 
+import pytest
 import torch
 from ncut_pytorch import ncut_fn
+from ncut_pytorch.ncuts import ncut_nystrom as nystrom_utils
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, nystrom_propagate
-from ncut_pytorch.utils.math import gram_schmidt
+from ncut_pytorch.utils.math import gram_schmidt, keep_topk_per_row, rbf_affinity
+from ncut_pytorch.utils.sample import farthest_point_sampling
+from ncut_pytorch.utils.sigma import _find_sigma_by_degree
 
 
 def _reference_gram_schmidt(matrix: torch.Tensor) -> torch.Tensor:
@@ -30,6 +34,120 @@ def _median_runtime(fn, matrix: torch.Tensor, repeats: int = 3) -> float:
         fn(matrix)
         timings.append(time.perf_counter() - start)
     return statistics.median(timings)
+
+
+def _median_call_runtime(fn, repeats: int = 3) -> float:
+    timings = []
+    for _ in range(repeats):
+        start = time.perf_counter()
+        fn()
+        timings.append(time.perf_counter() - start)
+    return statistics.median(timings)
+
+
+def _candidate_find_sigma_by_degree_rbf(
+    X: torch.Tensor,
+    quantile_sigma: float = 0.25,
+    init_sigma: float = 0.5,
+    r_tol: float = 1e-2,
+    max_iter: int = 100,
+) -> float:
+    """Candidate fast path that reuses one pairwise distance matrix across sigma search."""
+    x_sq = X.pow(2).sum(dim=1, keepdim=True)
+    dist2 = x_sq + x_sq.T
+    dist2.addmm_(X, X.T, beta=1.0, alpha=-2.0)
+    dist2.clamp_min_(0)
+
+    scale_inv_sigma = X.std(0).sum()
+    target_degree = torch.exp(dist2 * (-0.5 / (scale_inv_sigma * scale_inv_sigma))).mean(1)
+    target_degree = target_degree.float().quantile(quantile_sigma).item()
+
+    sigma = init_sigma
+    current_degree = torch.exp(dist2 * (-0.5 / (sigma * sigma))).mean().item()
+    low, high = 0.0, float("inf")
+    tol = r_tol * target_degree
+    i_iter = 0
+    while abs(current_degree - target_degree) > tol and i_iter < max_iter:
+        if current_degree > target_degree:
+            high = sigma
+            sigma = (low + sigma) / 2
+        else:
+            low = sigma
+            sigma = sigma * 2 if high == float("inf") else (sigma + high) / 2
+        current_degree = torch.exp(dist2 * (-0.5 / (sigma * sigma))).mean().item()
+        i_iter += 1
+    return sigma
+
+
+_NYSTROM_CHUNK_CACHE: dict[tuple[str, int, int, int, str, str], int] = {}
+
+
+def _candidate_find_max_chunk_size(
+    X: torch.Tensor,
+    nystrom_X: torch.Tensor,
+    device: str,
+) -> int:
+    """Candidate cache for repeated chunk-size probes on stable shapes."""
+    key = (
+        str(device),
+        X.shape[1],
+        nystrom_X.shape[0],
+        nystrom_X.shape[1],
+        str(X.dtype),
+        str(nystrom_X.dtype),
+    )
+    if key not in _NYSTROM_CHUNK_CACHE:
+        _NYSTROM_CHUNK_CACHE[key] = nystrom_utils._find_max_chunk_size(X, nystrom_X, device)
+    return _NYSTROM_CHUNK_CACHE[key]
+
+
+def _candidate_nystrom_propagate(
+    nystrom_out: torch.Tensor,
+    X: torch.Tensor,
+    nystrom_X: torch.Tensor,
+    extrapolation_factor: float = 1.0,
+    device: str = "cpu",
+    n_sample: int | None = None,
+    n_neighbors: int = 32,
+) -> torch.Tensor:
+    """Candidate propagate path with cached chunk probing and precomputed sigma distances."""
+    output_device = X.device
+    n_sample = nystrom_out.shape[0] if n_sample is None else n_sample
+
+    indices = farthest_point_sampling(nystrom_out, n_sample, device=device)
+    nystrom_out = nystrom_out[indices].to(device)
+    nystrom_X = nystrom_X[indices].to(device)
+
+    sigma = _candidate_find_sigma_by_degree_rbf(nystrom_X, quantile_sigma=0.25)
+    sigma = sigma * extrapolation_factor
+    D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
+    nystrom_x_sq = nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
+
+    n_chunk = _candidate_find_max_chunk_size(X, nystrom_X, device)
+    offsets_cache: dict[int, torch.Tensor] = {}
+    all_outs = torch.empty((X.shape[0], nystrom_out.shape[-1]), device=output_device, dtype=nystrom_out.dtype)
+    for i in range(0, X.shape[0], n_chunk):
+        end = min(i + n_chunk, X.shape[0])
+        Ai, topk_indices = nystrom_utils._rbf_topk_from_squared_distance(
+            X[i:end].to(device),
+            nystrom_X,
+            nystrom_x_sq,
+            sigma,
+            n_neighbors,
+        )
+        Di = D[topk_indices].sum(1)
+        Ai = Ai / Di[:, None]
+        out = nystrom_utils._weighted_neighbor_sum(Ai, topk_indices, nystrom_out, offsets_cache)
+        all_outs[i:end] = out.to(output_device)
+    return all_outs
+
+
+def _reference_weighted_neighbor_sum(
+    weights: torch.Tensor,
+    indices: torch.Tensor,
+    nystrom_out: torch.Tensor,
+) -> torch.Tensor:
+    return torch.einsum("nk,nkd->nd", weights, nystrom_out[indices])
 
 
 class TestNystromNcut:
@@ -116,6 +234,57 @@ class TestNystromNcut:
         assert not torch.isnan(eigvec).any()
         assert not torch.isinf(eigvec).any()
 
+    def test_weighted_neighbor_sum_matches_reference(self):
+        """Test that embedding_bag matches the original gather + einsum formula."""
+        weights = torch.tensor([[0.2, 0.3, 0.5], [1.0, 0.1, 0.4]], dtype=torch.float32)
+        indices = torch.tensor([[1, 4, 2], [0, 5, 3]], dtype=torch.long)
+        nystrom_out = torch.arange(1, 13, dtype=torch.float32).reshape(6, 2)
+
+        expected = _reference_weighted_neighbor_sum(weights, indices, nystrom_out)
+        actual = nystrom_utils._weighted_neighbor_sum(weights, indices, nystrom_out, {})
+
+        assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-6)
+
+    def test_dist_topk_embedding_bag_matches_reference_on_distinct_distances(self):
+        """Test that the fast top-k path matches the original formula when distances are unique."""
+        X = torch.tensor(
+            [[0.2, 0.1], [1.4, 1.1], [4.3, 2.2]],
+            dtype=torch.float32,
+        )
+        nystrom_X = torch.tensor(
+            [[0.0, 0.0], [1.1, 2.3], [2.7, 0.8], [3.2, 4.4], [5.5, 1.7]],
+            dtype=torch.float32,
+        )
+        nystrom_out = torch.tensor(
+            [[1.0, 0.0], [0.5, 1.0], [1.5, -0.5], [0.0, 2.0], [1.2, 0.8]],
+            dtype=torch.float32,
+        )
+        sigma = 1.7
+        n_neighbors = 3
+        D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
+
+        expected_weights, expected_indices = keep_topk_per_row(
+            rbf_affinity(X, nystrom_X, sigma=sigma),
+            n_neighbors,
+        )
+        expected_norm = expected_weights / D[expected_indices].sum(1, keepdim=True)
+        expected = _reference_weighted_neighbor_sum(expected_norm, expected_indices, nystrom_out)
+
+        nystrom_x_sq = nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
+        actual_weights, actual_indices = nystrom_utils._rbf_topk_from_squared_distance(
+            X,
+            nystrom_X,
+            nystrom_x_sq,
+            sigma,
+            n_neighbors,
+        )
+        actual_norm = actual_weights / D[actual_indices].sum(1, keepdim=True)
+        actual = nystrom_utils._weighted_neighbor_sum(actual_norm, actual_indices, nystrom_out, {})
+
+        assert torch.equal(actual_indices, expected_indices)
+        assert torch.allclose(actual_weights, expected_weights, atol=1e-6, rtol=1e-6)
+        assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-6)
+
     def test_ncut_fn_with_different_parameters(self, small_feature_matrix):
         """Test ncut_fn with different parameters."""
         # Test with different n_eig
@@ -174,3 +343,71 @@ class TestNystromNcut:
 
         assert reference_time / optimized_time >= 3.0
 
+    @pytest.mark.slow
+    def test_sigma_search_precomputed_distance_candidate_speedup(self):
+        """Simulation benchmark for reusing one distance matrix across sigma search."""
+        X = torch.randn(1000, 256)
+
+        expected = _find_sigma_by_degree(X, quantile_sigma=0.25, affinity_fn=rbf_affinity)
+        actual = _candidate_find_sigma_by_degree_rbf(X, quantile_sigma=0.25)
+
+        assert actual == pytest.approx(expected, abs=1e-6)
+
+        reference_time = _median_call_runtime(
+            lambda: _find_sigma_by_degree(X, quantile_sigma=0.25, affinity_fn=rbf_affinity)
+        )
+        candidate_time = _median_call_runtime(
+            lambda: _candidate_find_sigma_by_degree_rbf(X, quantile_sigma=0.25)
+        )
+
+        assert reference_time / candidate_time >= 1.5
+
+    @pytest.mark.slow
+    def test_nystrom_propagate_cached_chunk_and_sigma_candidate_speedup(self):
+        """Simulation benchmark for caching chunk probing and reusing sigma distances."""
+        X = torch.randn(16384, 32)
+        nystrom_X = torch.randn(1024, 32)
+        nystrom_out = torch.randn(1024, 64)
+
+        expected = nystrom_propagate(
+            nystrom_out,
+            X,
+            nystrom_X,
+            device="cpu",
+            n_sample=nystrom_X.shape[0],
+            n_neighbors=32,
+        )
+        _NYSTROM_CHUNK_CACHE.clear()
+        actual = _candidate_nystrom_propagate(
+            nystrom_out,
+            X,
+            nystrom_X,
+            device="cpu",
+            n_sample=nystrom_X.shape[0],
+            n_neighbors=32,
+        )
+
+        assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
+
+        reference_time = _median_call_runtime(
+            lambda: nystrom_propagate(
+                nystrom_out,
+                X,
+                nystrom_X,
+                device="cpu",
+                n_sample=nystrom_X.shape[0],
+                n_neighbors=32,
+            )
+        )
+        candidate_time = _median_call_runtime(
+            lambda: _candidate_nystrom_propagate(
+                nystrom_out,
+                X,
+                nystrom_X,
+                device="cpu",
+                n_sample=nystrom_X.shape[0],
+                n_neighbors=32,
+            )
+        )
+
+        assert reference_time / candidate_time >= 1.4

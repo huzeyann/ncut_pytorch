@@ -4,9 +4,10 @@ from typing import Callable, Union
 
 import torch
 import numpy as np
+import torch.nn.functional as F
 from ncut_pytorch.utils.sigma import find_sigma_by_degree
 from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
-from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, grad_safe_eig_solve, correct_rotation, keep_topk_per_row, svd_lowrank
+from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, grad_safe_eig_solve, correct_rotation, svd_lowrank
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
 import logging
@@ -180,6 +181,50 @@ def _plain_ncut(
     return eigvec, eigval
 
 
+def _rbf_topk_from_squared_distance(
+    X: torch.Tensor,
+    nystrom_X: torch.Tensor,
+    nystrom_x_sq: torch.Tensor,
+    sigma: float,
+    n_neighbors: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return top-k RBF weights without materializing the full affinity matrix."""
+    # Slow but easy to read:
+    # affinity = rbf_affinity(X, nystrom_X, sigma=sigma)
+    # return keep_topk_per_row(affinity, n_neighbors)
+    x_sq = X.pow(2).sum(dim=1, keepdim=True)
+    dist2 = x_sq + nystrom_x_sq
+    dist2.addmm_(X, nystrom_X.T, beta=1.0, alpha=-2.0)
+    dist2.clamp_min_(0)
+    dist2, indices = dist2.topk(k=n_neighbors, dim=-1, largest=False)
+    weights = dist2.mul_(-0.5 / (sigma * sigma)).exp_()
+    return weights, indices
+
+
+def _weighted_neighbor_sum(
+    weights: torch.Tensor,
+    indices: torch.Tensor,
+    nystrom_out: torch.Tensor,
+    offsets_cache: dict[int, torch.Tensor],
+) -> torch.Tensor:
+    """Compute the weighted neighbor sum without materializing a [n, k, d] gather tensor."""
+    # Slow but easy to read:
+    # gathered = nystrom_out[indices]
+    # return torch.einsum("nk,nkd->nd", weights, gathered)
+    n_rows, n_neighbors = indices.shape
+    offsets = offsets_cache.get(n_rows)
+    if offsets is None:
+        offsets = torch.arange(0, n_rows * n_neighbors, n_neighbors, device=indices.device, dtype=torch.long)
+        offsets_cache[n_rows] = offsets
+    return F.embedding_bag(
+        indices.reshape(-1),
+        nystrom_out,
+        offsets,
+        mode="sum",
+        per_sample_weights=weights.reshape(-1),
+    )
+
+
 def nystrom_propagate(
         nystrom_out: torch.Tensor,
         X: torch.Tensor,
@@ -215,29 +260,30 @@ def nystrom_propagate(
     device = auto_device(nystrom_out.device, device)
     output_device = X.device
     indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
-    nystrom_out = nystrom_out[indices].to(device)
-    nystrom_X = nystrom_X[indices].to(device)
+    nystrom_out = nystrom_out[indices].to(device).contiguous()
+    nystrom_X = nystrom_X[indices].to(device).contiguous()
     
     sigma = find_sigma_by_degree(nystrom_X, affinity_fn=rbf_affinity, quantile_sigma=0.25)
     sigma = sigma * extrapolation_factor
     
     D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
+    nystrom_x_sq = nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
 
     n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
     n_neighbors = max(n_neighbors, 4)
     n_chunk = _find_max_chunk_size(X, nystrom_X, device)
+    offsets_cache: dict[int, torch.Tensor] = {}
 
     all_outs = torch.empty((X.shape[0], nystrom_out.shape[-1]), device=output_device, dtype=nystrom_out.dtype)
     for i in range(0, X.shape[0], n_chunk):
         end = min(i + n_chunk, X.shape[0])
+        Xi = X[i:end].to(device)
 
-        _Ai = rbf_affinity(X[i:end].to(device), nystrom_X, sigma=sigma)
-        _Ai, _indices = keep_topk_per_row(_Ai, n_neighbors)  # (n, n_neighbors)
+        _Ai, _indices = _rbf_topk_from_squared_distance(Xi, nystrom_X, nystrom_x_sq, sigma, n_neighbors)
         
         _Di = D[_indices].sum(1)
         _Ai = _Ai / _Di[:, None]
-
-        out = torch.einsum('nk,nkd->nd', _Ai, nystrom_out[_indices])
+        out = _weighted_neighbor_sum(_Ai, _indices, nystrom_out, offsets_cache)
 
         all_outs[i:end] = out.to(output_device)
 
