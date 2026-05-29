@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "3.0.4"
+version = "3.0.5"
 authors = [
     { name = "Huzheng Yang", email = "huze.yann@gmail.com" },
 ]
@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy<2.0",
-    "torch-quickfps",
+    "fpsample>=0.2.0",
     "tqdm",
     "pillow",
     "opencv-python",
