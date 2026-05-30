@@ -32,7 +32,7 @@ except Exception as exc:
 _HAS_FPSAMPLE_BUCKET_FPS = _HAS_FPSAMPLE and hasattr(_fpsample, "bucket_fps_kdline_sampling")
 _HAS_FPSAMPLE_KDTREE_FPS = _HAS_FPSAMPLE and hasattr(_fpsample, "fps_npdu_kdtree_sampling")
 
-_DEFAULT_MAX_DRAW_RATIO = 2.0
+_DEFAULT_MAX_DRAW_RATIO = 4.0
 _DEFAULT_FPSAMPLE_H = 7
 
 
