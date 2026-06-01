@@ -2,6 +2,7 @@ __all__ = ["farthest_point_sampling"]
 
 import numpy as np
 import torch
+import warnings
 
 from .device import auto_device
 from .math import pca_lowrank
@@ -31,6 +32,7 @@ except Exception as exc:
 
 _HAS_FPSAMPLE_BUCKET_FPS = _HAS_FPSAMPLE and hasattr(_fpsample, "bucket_fps_kdline_sampling")
 _HAS_FPSAMPLE_KDTREE_FPS = _HAS_FPSAMPLE and hasattr(_fpsample, "fps_npdu_kdtree_sampling")
+_WARNED_ABOUT_LEGACY_FPSAMPLE = False
 
 _DEFAULT_MAX_DRAW_RATIO = 4.0
 _DEFAULT_FPSAMPLE_H = 7
@@ -87,6 +89,21 @@ def _raise_missing_fps_backend() -> None:
     raise ImportError(message) from (_FPSAMPLE_IMPORT_ERROR or _TORCH_QUICKFPS_IMPORT_ERROR)
 
 
+def _warn_about_legacy_fpsample() -> None:
+    global _WARNED_ABOUT_LEGACY_FPSAMPLE
+    if _WARNED_ABOUT_LEGACY_FPSAMPLE:
+        return
+
+    warnings.warn(
+        "package `fpsample` does not provide `bucket_fps_kdline_sampling`; "
+        "falling back to the slower `fps_npdu_kdtree_sampling` implementation. "
+        "Upgrade `fpsample` for the faster path.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    _WARNED_ABOUT_LEGACY_FPSAMPLE = True
+
+
 def _sample_idx_with_torch_quickfps(
     X: torch.Tensor,
     n_sample: int,
@@ -120,6 +137,7 @@ def _sample_idx_with_fpsample(
         h = min(_DEFAULT_FPSAMPLE_H, max(1, int(np.log2(X_np.shape[0]))))
         samples_idx = _fpsample.bucket_fps_kdline_sampling(X_np, n_sample, h)
     elif _HAS_FPSAMPLE_KDTREE_FPS:
+        _warn_about_legacy_fpsample()
         samples_idx = _fpsample.fps_npdu_kdtree_sampling(X_np, n_sample)
     else:
         raise ImportError(
