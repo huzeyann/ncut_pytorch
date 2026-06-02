@@ -1,6 +1,5 @@
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Union
 
-import cv2
 import numpy as np
 import torch
 import torch.nn as nn
@@ -226,18 +225,19 @@ class NcutVisionPredictor:
         """
         self.__check_initialized()
         b, h, w = cluster_assignment.shape
+        lowres_cluster_assignment = cluster_assignment.cpu().numpy()
         color_palette = self.predictor.get_color_palette()
-        n_cluster = cluster_assignment.max() + 1
-        cluster_assignment = cluster_assignment.flatten()
+        n_cluster = int(cluster_assignment.max().item()) + 1
+        flat_cluster_assignment = cluster_assignment.flatten()
         discrete_rgb = np.zeros((b * h * w, 3), dtype=np.uint8)
         for i in range(n_cluster):
-            mask = cluster_assignment == i
+            mask = flat_cluster_assignment == i
             if mask.sum() == 0:
                 continue
             color = color_palette[mask].mean(0)
             color = (color * 255).cpu().numpy()
             color = np.clip(color, 0, 255).astype(np.uint8)
-            discrete_rgb[mask] = color
+            discrete_rgb[mask.cpu().numpy()] = color
         discrete_rgb = discrete_rgb.reshape(b, h, w, 3)
         
         # convert to PIL image and resize to the original size
@@ -246,7 +246,7 @@ class NcutVisionPredictor:
             img = Image.fromarray(discrete_rgb[i])
             img = img.resize(self._images[i].size, Image.Resampling.NEAREST)
             if draw_border:
-                img = self._draw_segments_border(img)
+                img = self._draw_segments_border(img, lowres_cluster_assignment[i])
             pil_images.append(img)
         
         return pil_images
@@ -255,21 +255,108 @@ class NcutVisionPredictor:
         self.predictor.refresh_color_palette()
     
     @staticmethod
-    def _draw_segments_border(img: Image.Image, min_area_ratio: float = 0.0005) -> Image.Image:
-        img = np.array(img)
-        src_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        src_gray = src_gray.astype(np.int32)
-    
-        contours, hierarchy = cv2.findContours(src_gray, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-    
-        area_threshold = src_gray.shape[0] * src_gray.shape[1] * min_area_ratio
-        drawing = img.copy()
-        for i in range(len(contours)):
-            area = cv2.contourArea(contours[i])
-            if area >= area_threshold:
-                color = (0, 0, 0)
-                cv2.drawContours(drawing, contours, i, color, 1, cv2.LINE_8, hierarchy, 0)
+    def _draw_segments_border(
+        img: Image.Image,
+        lowres_cluster_assignment: np.ndarray,
+        min_area_ratio: float = 0.0005,
+    ) -> Image.Image:
+        drawing = np.array(img)
+        labels = NcutVisionPredictor._resize_label_map(
+            lowres_cluster_assignment,
+            drawing.shape[:2],
+        )
+        keep_mask_lowres = NcutVisionPredictor._get_component_keep_mask_lowres(
+            lowres_cluster_assignment,
+            min_area_ratio=min_area_ratio,
+        )
+        keep_mask = NcutVisionPredictor._resize_bool_mask(
+            keep_mask_lowres,
+            drawing.shape[:2],
+        )
+
+        boundary = np.zeros(labels.shape, dtype=bool)
+
+        horizontal_diff = labels[:, :-1] != labels[:, 1:]
+        horizontal_diff &= keep_mask[:, :-1] & keep_mask[:, 1:]
+        boundary[:, :-1] |= horizontal_diff
+
+        vertical_diff = labels[:-1, :] != labels[1:, :]
+        vertical_diff &= keep_mask[:-1, :] & keep_mask[1:, :]
+        boundary[:-1, :] |= vertical_diff
+
+        boundary[0, :] |= keep_mask[0, :]
+        boundary[-1, :] |= keep_mask[-1, :]
+        boundary[:, 0] |= keep_mask[:, 0]
+        boundary[:, -1] |= keep_mask[:, -1]
+
+        drawing[boundary] = 0
         return Image.fromarray(drawing)
+
+    @staticmethod
+    def _resize_label_map(labels: np.ndarray, image_hw: Tuple[int, int]) -> np.ndarray:
+        target_h, target_w = image_hw
+        if labels.shape == (target_h, target_w):
+            return labels.astype(np.int32, copy=False)
+
+        label_img = Image.fromarray(labels.astype(np.int32))
+        label_img = label_img.resize((target_w, target_h), Image.Resampling.NEAREST)
+        return np.array(label_img, dtype=np.int32)
+
+    @staticmethod
+    def _resize_bool_mask(mask: np.ndarray, image_hw: Tuple[int, int]) -> np.ndarray:
+        target_h, target_w = image_hw
+        if mask.shape == (target_h, target_w):
+            return mask.astype(bool, copy=False)
+
+        mask_img = Image.fromarray(mask.astype(np.uint8) * 255)
+        mask_img = mask_img.resize((target_w, target_h), Image.Resampling.NEAREST)
+        return np.array(mask_img, dtype=np.uint8) > 0
+
+    @staticmethod
+    def _get_component_keep_mask_lowres(
+        lowres_cluster_assignment: np.ndarray,
+        min_area_ratio: float = 0.0005,
+    ) -> np.ndarray:
+        labels = np.asarray(lowres_cluster_assignment, dtype=np.int32)
+        keep_mask = np.zeros(labels.shape, dtype=bool)
+        visited = np.zeros(labels.shape, dtype=bool)
+        area_threshold = labels.size * min_area_ratio
+        height, width = labels.shape
+
+        for row in range(height):
+            for col in range(width):
+                if visited[row, col]:
+                    continue
+
+                label = labels[row, col]
+                component = []
+                stack = [(row, col)]
+                visited[row, col] = True
+
+                while stack:
+                    y, x = stack.pop()
+                    component.append((y, x))
+
+                    row_start = max(0, y - 1)
+                    row_end = min(height, y + 2)
+                    col_start = max(0, x - 1)
+                    col_end = min(width, x + 2)
+                    for ny in range(row_start, row_end):
+                        for nx in range(col_start, col_end):
+                            if (ny == y and nx == x) or visited[ny, nx]:
+                                continue
+                            if labels[ny, nx] != label:
+                                continue
+                            visited[ny, nx] = True
+                            stack.append((ny, nx))
+
+                if len(component) < area_threshold:
+                    continue
+
+                for y, x in component:
+                    keep_mask[y, x] = True
+
+        return keep_mask
 
     @staticmethod
     def _image_xy_to_tensor_index(image_whs: np.array,
