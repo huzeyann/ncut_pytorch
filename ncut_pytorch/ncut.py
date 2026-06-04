@@ -3,8 +3,9 @@ from typing import Callable, Union
 import torch
 
 from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
-from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
+from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity, chunked_matmul
 from ncut_pytorch.ncuts.ncut_kway import quick_kway
+from ncut_pytorch.utils.device import auto_device
 
 class Ncut:
     """
@@ -184,7 +185,7 @@ class Ncut:
             kmeans_iter=kmeans_iter,
             ret_R=True,
         )
-        self._kway_R[(n_clusters, n_eig)] = R
+        self._kway_R[(n_clusters, n_eig)] = R.cpu()
         return self
 
     def kway_transform(self, X: torch.Tensor, n_clusters: int, n_eig: int) -> torch.Tensor:
@@ -209,4 +210,7 @@ class Ncut:
             )
 
         eigvec = self.transform(X)[:, :n_eig]
-        return eigvec @ self._kway_R[cache_key]
+        R = self._kway_R[cache_key]
+        device = auto_device(self.device)
+
+        return chunked_matmul(eigvec, R, device=device, large_device=eigvec.device)
