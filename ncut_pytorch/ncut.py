@@ -4,7 +4,7 @@ import torch
 
 from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
 from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
-
+from ncut_pytorch.ncuts.ncut_kway import quick_kway
 
 class Ncut:
     """
@@ -69,6 +69,8 @@ class Ncut:
         self._nystrom_eigvec = None
         self._eigval = None
 
+        self._kway_R: dict[tuple[int, int], torch.Tensor] = {}
+
     @property
     def eigval(self) -> torch.Tensor:
         return self._eigval
@@ -114,9 +116,7 @@ class Ncut:
         Returns:
             eigvec (torch.Tensor): eigenvectors, shape (N, n_eig)
         """
-        # check if fit has been called
-        if self._nystrom_x is None:
-            raise ValueError("Ncut has not been fitted yet. Call fit() first.")
+        self._check_is_fitted()
 
         # propagate eigenvectors from subgraph to full graph
         eigvec = nystrom_propagate(
@@ -142,3 +142,71 @@ class Ncut:
 
     def __call__(self, X: torch.Tensor) -> torch.Tensor:
         return self.fit_transform(X)
+
+    def _check_is_fitted(self) -> None:
+        if self._nystrom_x is None or self._nystrom_eigvec is None:
+            raise ValueError("Ncut has not been fitted yet. Call fit() first.")
+
+    def _validate_kway_params(self, n_clusters: int, n_eig: int) -> None:
+        self._check_is_fitted()
+
+        if not isinstance(n_clusters, int) or not isinstance(n_eig, int):
+            raise TypeError("n_clusters and n_eig must be integers.")
+        if n_clusters <= 0 or n_eig <= 0:
+            raise ValueError("n_clusters and n_eig must be positive.")
+        if n_eig < 2:
+            raise ValueError("n_eig must be at least 2 for k-way discretization.")
+        if n_eig > self._nystrom_eigvec.shape[1]:
+            raise ValueError(
+                f"n_eig={n_eig} exceeds fitted eigenvector count {self._nystrom_eigvec.shape[1]}."
+            )
+
+    def kway_fit(self, n_clusters: int, n_eig: int, kmeans_iter: int = 10) -> "Ncut":
+        """
+        Fit and cache a k-way rotation matrix for the fitted eigenvectors.
+
+        Args:
+            n_clusters (int): number of output clusters.
+            n_eig (int): number of leading eigenvectors to use.
+            kmeans_iter (int): number of k-means refinement iterations.
+
+        Returns:
+            Ncut: current instance.
+        """
+        self._validate_kway_params(n_clusters=n_clusters, n_eig=n_eig)
+
+        R = quick_kway(
+            self._nystrom_eigvec[:, :n_eig],
+            n_clusters=n_clusters,
+            n_eig=n_eig,
+            n_sample=self._nystrom_eigvec.shape[0],
+            device=self.device,
+            kmeans_iter=kmeans_iter,
+            ret_R=True,
+        )
+        self._kway_R[(n_clusters, n_eig)] = R
+        return self
+
+    def kway_transform(self, X: torch.Tensor, n_clusters: int, n_eig: int) -> torch.Tensor:
+        """
+        Transform data with a previously fitted k-way rotation matrix.
+
+        Args:
+            X (torch.Tensor): input features, shape (N, D).
+            n_clusters (int): number of output clusters.
+            n_eig (int): number of leading eigenvectors to use.
+
+        Returns:
+            torch.Tensor: rotated eigenvectors, shape (N, n_clusters).
+        """
+        self._validate_kway_params(n_clusters=n_clusters, n_eig=n_eig)
+
+        cache_key = (n_clusters, n_eig)
+        if cache_key not in self._kway_R:
+            raise ValueError(
+                "K-way rotation has not been fitted for this configuration. "
+                "Call kway_fit() with the same n_clusters and n_eig first."
+            )
+
+        eigvec = self.transform(X)[:, :n_eig]
+        return eigvec @ self._kway_R[cache_key]

@@ -107,5 +107,37 @@ class TestNcut:
         assert ncut.eigval is ncut._eigval
         assert ncut.eigval.shape == (ncut_params['n_eig'],)
 
+    def test_kway_fit_requires_fit_first(self):
+        """Test that kway_fit requires a fitted Ncut model."""
+        ncut = Ncut(n_eig=5)
+
+        with pytest.raises(ValueError, match="Call fit\\(\\) first"):
+            ncut.kway_fit(n_clusters=3, n_eig=3)
+
+    def test_kway_fit_and_transform(self, small_feature_matrix, ncut_params):
+        """Test the k-way fit/transform workflow with fewer eigenvectors than the base model."""
+        ncut = Ncut(**ncut_params).fit(small_feature_matrix)
+
+        result = ncut.kway_fit(n_clusters=3, n_eig=4, kmeans_iter=2)
+        kway_eigvec = ncut.kway_transform(small_feature_matrix[:8], n_clusters=3, n_eig=4)
+
+        assert result is ncut
+        assert (3, 4) in ncut._kway_R
+        assert kway_eigvec.shape == (8, 3)
+
+    def test_kway_transform_requires_cached_rotation(self, small_feature_matrix, ncut_params):
+        """Test that kway_transform requires a matching cached rotation."""
+        ncut = Ncut(**ncut_params).fit(small_feature_matrix)
+
+        with pytest.raises(ValueError, match="Call kway_fit\\(\\)"):
+            ncut.kway_transform(small_feature_matrix, n_clusters=3, n_eig=3)
+
+    def test_kway_fit_rejects_too_many_eigenvectors(self, small_feature_matrix, ncut_params):
+        """Test that kway_fit validates the requested eigenvector count."""
+        ncut = Ncut(**ncut_params).fit(small_feature_matrix)
+
+        with pytest.raises(ValueError, match="exceeds fitted eigenvector count"):
+            ncut.kway_fit(n_clusters=3, n_eig=ncut_params['n_eig'] + 1)
+
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -49,6 +49,28 @@ def test_sample_idx_with_fpsample_uses_supported_kdtree_api(monkeypatch):
     assert calls == {"shape": (6, 4), "n_sample": 2}
 
 
+def test_sample_idx_with_legacy_fpsample_warns_and_uses_kdtree(monkeypatch):
+    class FakeFPSample:
+        def fps_npdu_kdtree_sampling(self, X_np, n_sample):
+            return np.array([4, 0], dtype=np.int32)
+
+    monkeypatch.setattr(sample_utils, "_HAS_FPSAMPLE", True)
+    monkeypatch.setattr(sample_utils, "_HAS_FPSAMPLE_BUCKET_FPS", False)
+    monkeypatch.setattr(sample_utils, "_HAS_FPSAMPLE_KDTREE_FPS", True)
+    monkeypatch.setattr(sample_utils, "_WARNED_ABOUT_LEGACY_FPSAMPLE", False)
+    monkeypatch.setattr(sample_utils, "_fpsample", FakeFPSample())
+
+    with pytest.warns(RuntimeWarning, match="falling back to the slower"):
+        sampled = sample_utils._sample_idx_with_fpsample(
+            torch.randn(6, 3),
+            2,
+            max_dim=3,
+            device="cpu",
+        )
+
+    assert torch.equal(sampled, torch.tensor([4, 0], dtype=torch.long))
+
+
 def test_internal_fps_uses_fpsample_fallback_without_torch_quickfps(monkeypatch):
     calls = {}
 
