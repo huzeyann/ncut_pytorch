@@ -148,7 +148,7 @@ def ncut_with_repulsion(
     affinity_fn: Union["rbf_affinity", "cosine_affinity"] = cosine_affinity,
     exact_gradient: bool = False,
     eps: float = 1e-8,
-):
+):  # TODO: add I
     A = affinity_fn(X, sigma=sigma_attraction)
     R = affinity_fn(X, sigma=sigma_repulsion, repulse=True)
     R = R * repulsion_weight
@@ -169,7 +169,7 @@ def _plain_ncut(
         A: torch.Tensor,
         n_eig: int = 100,
         exact_gradient: bool = False,
-):
+):  # TODO: add I
     A = normalize_affinity(A)
     if exact_gradient:
         eigvec, eigval, _ = grad_safe_eig_solve(A, n_eig)

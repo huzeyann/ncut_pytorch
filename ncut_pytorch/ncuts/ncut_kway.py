@@ -46,7 +46,14 @@ def quick_kway(
     ret_R: bool = False,
 ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:  # [n, k] or ([n, k], [k, k])
     """Quick K-way Ncut using K-means for rotation matrix."""
-    R = _kmeans_kway(eigvec, n_clusters, n_eig, n_sample, device, kmeans_iter)
+    R = _kmeans_kway(
+        eigvec,
+        n_clusters,
+        n_eig,
+        n_sample,
+        device,
+        kmeans_iter,
+    )
     if ret_R:
         return R
     device = auto_device(eigvec.device, device)
@@ -65,13 +72,21 @@ def axis_align(
     """Multiclass Spectral Clustering (SX Yu, J Shi, 2003)."""
     n, k = eigvec.shape
     if sample_idx is None:
-        sample_idx = farthest_point_sampling(eigvec, n_sample, device=device)
+        sample_idx = farthest_point_sampling(
+            eigvec,
+            n_sample,
+            device=device,
+        )
     eigvec = eigvec[sample_idx]
 
     eigvec = F.normalize(eigvec, dim=1)
 
     # Initialize R matrix with FPS
-    _sample_idx = farthest_point_sampling(eigvec, k, device=device)
+    _sample_idx = farthest_point_sampling(
+        eigvec,
+        k,
+        device=device,
+    )
     R = eigvec[_sample_idx].T
     
     original_device = eigvec.device
@@ -147,7 +162,10 @@ def _kmeans_kway(
     _eigvec = _eigvec[:, :n_eig]
     _eigvec = _eigvec.to(device)
     _eigvec = F.normalize(_eigvec, dim=1)
-    indices = farthest_point_sampling(_eigvec, n_clusters)
+    indices = farthest_point_sampling(
+        _eigvec,
+        n_clusters,
+    )
     centroids = _eigvec[indices].clone()
     feature_dim = _eigvec.shape[1]
     ones = torch.ones(_eigvec.shape[0], device=_eigvec.device, dtype=_eigvec.dtype)

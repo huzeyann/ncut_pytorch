@@ -4,6 +4,7 @@ __all__ = [
     "keep_topk_per_row",
     "grad_safe_eig_solve",
     "pca_lowrank",
+    "random_orthogonal_projection",
     "quantile_min_max",
     "quantile_normalize",
     "gram_schmidt",
@@ -207,6 +208,32 @@ def gram_schmidt(
     signs = torch.where(signs == 0, torch.ones_like(signs), signs)
     orthogonal_matrix = orthogonal_matrix * signs.unsqueeze(0)
     return orthogonal_matrix.to(dtype)
+
+
+def random_orthogonal_projection(
+    mat: torch.Tensor,          # [n, m]
+    q: int,
+    *,
+    generator: torch.Generator | None = None,
+) -> torch.Tensor:             # [n, q]
+    """Projects features onto a random orthonormal basis."""
+    if mat.ndim != 2:
+        raise ValueError("mat must be a 2D tensor")
+    if q <= 0:
+        raise ValueError("q must be positive")
+    if q >= mat.shape[1]:
+        return mat
+
+    work_dtype = torch.float32 if mat.dtype in (torch.float16, torch.bfloat16) else mat.dtype
+    basis = torch.randn(
+        (mat.shape[1], q),
+        device=mat.device,
+        dtype=work_dtype,
+        generator=generator,
+    )
+    basis = gram_schmidt(basis)
+    projected = mat.to(work_dtype) @ basis
+    return projected.to(mat.dtype)
 
 
 def chunked_matmul(

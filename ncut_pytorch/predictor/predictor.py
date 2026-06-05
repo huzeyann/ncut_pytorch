@@ -58,7 +58,11 @@ class NcutPredictor:
     def refresh_eigvecs(self, n_eig: int) -> None:
         eigvecs, eigval = self.ncut_fn(self._features, n_eig=n_eig, device=self.device)
         self._eigvecs = eigvecs
-        self._kway_sample_idx = farthest_point_sampling(eigvecs, 10240, device=self.device)
+        self._kway_sample_idx = farthest_point_sampling(
+            eigvecs,
+            10240,
+            device=self.device,
+        )
 
     def get_n_eigvecs(self, n_eig: int) -> torch.Tensor:
         cache_hit = n_eig <= self._eigvecs.shape[1]
@@ -76,7 +80,12 @@ class NcutPredictor:
         self.__check_initialized()
         eigvecs = self.get_n_eigvecs(n_cluster)
         # kway_eigvec = kway_ncut(eigvecs, device=self.device, sample_idx=self._kway_sample_idx)
-        kway_eigvec = quick_kway(eigvecs, n_eig=n_cluster, n_clusters=n_cluster, device=self.device)
+        kway_eigvec = quick_kway(
+            eigvecs,
+            n_eig=n_cluster,
+            n_clusters=n_cluster,
+            device=self.device,
+        )
         cluster_assignment = kway_eigvec.argmax(dim=1).cpu()
         return cluster_assignment
 
@@ -106,7 +115,10 @@ class NcutPredictor:
         )
 
         eigvecs = kway_ncut(eigvecs, device=self.device)
-        R = axis_align(eigvecs, device=self.device)
+        R = axis_align(
+            eigvecs,
+            device=self.device,
+        )
         kway_eigvecs = chunked_matmul(eigvecs, R, device=self.device, large_device=eigvecs.device)
 
         # find which cluster is the foreground

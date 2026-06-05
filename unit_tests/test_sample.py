@@ -3,6 +3,60 @@ import pytest
 import torch
 
 from ncut_pytorch.utils import sample as sample_utils
+from ncut_pytorch.utils.math import random_orthogonal_projection
+
+
+def test_default_fps_dimension_reduction_method_is_random_orthogonal():
+    assert sample_utils.FPS_DIMENSION_REDUCTION_METHOD == "random_orthogonal"
+
+
+def test_random_orthogonal_projection_reduces_dimension_and_preserves_dtype():
+    torch.manual_seed(0)
+    X = torch.randn(7, 11, dtype=torch.float32)
+
+    projected = random_orthogonal_projection(X, q=4)
+
+    assert projected.shape == (7, 4)
+    assert projected.dtype == X.dtype
+    assert torch.isfinite(projected).all()
+
+
+def test_prepare_fps_input_supports_random_orthogonal_projection():
+    torch.manual_seed(0)
+    X = torch.randn(6, 10)
+
+    prepared = sample_utils._prepare_fps_input(
+        X,
+        max_dim=4,
+        device="cpu",
+    )
+
+    assert prepared.shape == (6, 4)
+    assert torch.isfinite(prepared).all()
+
+
+def test_prepare_fps_input_supports_pca_projection(monkeypatch):
+    X = torch.randn(6, 10)
+    monkeypatch.setattr(sample_utils, "FPS_DIMENSION_REDUCTION_METHOD", "pca")
+
+    prepared = sample_utils._prepare_fps_input(
+        X,
+        max_dim=4,
+        device="cpu",
+    )
+
+    assert prepared.shape == (6, 4)
+    assert torch.isfinite(prepared).all()
+
+
+def test_prepare_fps_input_rejects_unknown_reduction_method(monkeypatch):
+    monkeypatch.setattr(sample_utils, "FPS_DIMENSION_REDUCTION_METHOD", "unknown")
+    with pytest.raises(ValueError, match="Unsupported FPS reduction method"):
+        sample_utils._prepare_fps_input(
+            torch.randn(6, 10),
+            max_dim=4,
+            device="cpu",
+        )
 
 
 def test_farthest_point_sampling_remaps_presampled_indices(monkeypatch):

@@ -5,7 +5,7 @@ import torch
 import warnings
 
 from .device import auto_device
-from .math import pca_lowrank
+from .math import pca_lowrank, random_orthogonal_projection
 
 _TORCH_QUICKFPS_IMPORT_ERROR: Exception | None = None
 try:
@@ -14,11 +14,13 @@ try:
     _TORCH_QUICKFPS_OP = "torch_quickfps::_sample_idx_impl"
     _HAS_CUDA_KERNEL = torch._C._dispatch_has_kernel_for_dispatch_key(_TORCH_QUICKFPS_OP, "CUDA")
     _HAS_TORCH_QUICKFPS = True
+    sample_idx = _torch_quickfps_sample_idx
 except Exception as exc:
     _torch_quickfps_sample_idx = None
     _HAS_CUDA_KERNEL = False
     _HAS_TORCH_QUICKFPS = False
     _TORCH_QUICKFPS_IMPORT_ERROR = exc
+    sample_idx = None
 
 _FPSAMPLE_IMPORT_ERROR: Exception | None = None
 try:
@@ -36,6 +38,29 @@ _WARNED_ABOUT_LEGACY_FPSAMPLE = False
 
 _DEFAULT_MAX_DRAW_RATIO = 4.0
 _DEFAULT_FPSAMPLE_H = 7
+# Edit this variable in code to switch the FPS pre-projection method.
+FPS_DIMENSION_REDUCTION_METHOD = "random_orthogonal"
+
+
+def _reduce_fps_dimension(
+    X: torch.Tensor,
+    *,
+    max_dim: int,
+) -> torch.Tensor:
+    reduction_method = FPS_DIMENSION_REDUCTION_METHOD
+    if X.shape[1] <= max_dim:
+        return X
+
+    if reduction_method == "random_orthogonal":
+        return random_orthogonal_projection(X, q=max_dim)
+
+    if reduction_method == "pca":
+        return pca_lowrank(X, q=max_dim)
+
+    raise ValueError(
+        "Unsupported FPS reduction method: "
+        f"{reduction_method!r}. Expected 'random_orthogonal' or 'pca'."
+    )
 
 
 def _stratified_presample_indices(
@@ -67,8 +92,10 @@ def _prepare_fps_input(
     target_device = "cpu" if force_cpu else auto_device(X.device, device)
     X = X.to(target_device)
 
-    if X.shape[1] > max_dim:
-        X = pca_lowrank(X, q=max_dim)
+    X = _reduce_fps_dimension(
+        X,
+        max_dim=max_dim,
+    )
 
     assert X.ndim == 2, "X should be a 2D tensor"
     assert X.shape[0] > 0, "X should have at least 1 data point"
@@ -117,7 +144,7 @@ def _sample_idx_with_torch_quickfps(
         device=device,
         force_cpu=not _HAS_CUDA_KERNEL,
     )
-    return _torch_quickfps_sample_idx(X, n_sample).cpu()
+    return sample_idx(X, n_sample).cpu()
 
 
 def _sample_idx_with_fpsample(
@@ -130,7 +157,11 @@ def _sample_idx_with_fpsample(
     if not _HAS_FPSAMPLE:
         _raise_missing_fps_backend()
 
-    X = _prepare_fps_input(X, max_dim=max_dim, device=device)
+    X = _prepare_fps_input(
+        X,
+        max_dim=max_dim,
+        device=device,
+    )
     X_np = X.cpu().numpy()
 
     if _HAS_FPSAMPLE_BUCKET_FPS:
@@ -161,7 +192,12 @@ def farthest_point_sampling(
     num_draw = min(num_data, max(n_sample, int(n_sample * max_draw_ratio)))
 
     if num_draw >= num_data:
-        return _farthest_point_sampling(X, n_sample, device=device, max_dim=max_dim)
+        return _farthest_point_sampling(
+            X,
+            n_sample,
+            device=device,
+            max_dim=max_dim,
+        )
 
     draw_indices = _stratified_presample_indices(num_data, num_draw)
     subset_indices = draw_indices if X.device.type == "cpu" else draw_indices.to(X.device)
