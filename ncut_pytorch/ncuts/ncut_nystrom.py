@@ -48,6 +48,7 @@ def ncut_fn(
         device: str | None = None,
         make_orthogonal: bool = False,
         no_propagation: bool = False,
+        affinity_diag_eps: float = 1e-6,
         **kwargs,
 ) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
     """Normalized Cut, balanced sampling and nystrom approximation.
@@ -64,6 +65,7 @@ def ncut_fn(
         extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         exact_gradient (bool): use full spectrum and exact gradient, can be slower and unstable, default False
         make_orthogonal (bool): make eigenvectors orthogonal
+        affinity_diag_eps (float): add a small diagonal shift after affinity normalization and before eig/SVD, default 1e-6
         
     Returns:
         eigenvectors (torch.Tensor): shape (N, n_eig)
@@ -91,11 +93,24 @@ def ncut_fn(
     sigma, repulsion_sigma = find_optimal_sigma(nystrom_X, quantile_sigma, quantile_sigma_repulsion, sigma, repulsion_sigma, affinity_fn)
 
     if repulsion_sigma and repulsion_weight:
-        nystrom_eigvec, eigval = ncut_with_repulsion(nystrom_X, n_eig, sigma, 
-            repulsion_sigma, repulsion_weight, affinity_fn, exact_gradient)
+        nystrom_eigvec, eigval = ncut_with_repulsion(
+            nystrom_X,
+            n_eig,
+            sigma,
+            repulsion_sigma,
+            repulsion_weight,
+            affinity_fn,
+            exact_gradient,
+            affinity_diag_eps=affinity_diag_eps,
+        )
     else:
         A = affinity_fn(nystrom_X, sigma=sigma)
-        nystrom_eigvec, eigval = _plain_ncut(A, n_eig, exact_gradient)
+        nystrom_eigvec, eigval = _plain_ncut(
+            A,
+            n_eig,
+            exact_gradient,
+            affinity_diag_eps=affinity_diag_eps,
+        )
 
     if no_propagation:
         return nystrom_eigvec, eigval, nystrom_indices, sigma
@@ -148,7 +163,8 @@ def ncut_with_repulsion(
     affinity_fn: Union["rbf_affinity", "cosine_affinity"] = cosine_affinity,
     exact_gradient: bool = False,
     eps: float = 1e-8,
-):  # TODO: add I
+    affinity_diag_eps: float = 1e-6,
+):
     A = affinity_fn(X, sigma=sigma_attraction)
     R = affinity_fn(X, sigma=sigma_repulsion, repulse=True)
     R = R * repulsion_weight
@@ -157,6 +173,7 @@ def ncut_with_repulsion(
     D = D_A + D_R
     W = A - R + torch.diag(D_R)
     W = W / D[:, None]
+    W = _add_diagonal_shift(W, affinity_diag_eps)
     if exact_gradient:
         eigvec, eigval, _ = grad_safe_eig_solve(W, n_eig)
     else:
@@ -165,12 +182,27 @@ def ncut_with_repulsion(
     return eigvec, eigval
 
 
+def _add_diagonal_shift(
+    matrix: torch.Tensor,
+    diag_eps: float,
+) -> torch.Tensor:
+    if diag_eps == 0.0:
+        return matrix
+
+    shifted = matrix.clone()
+    diag_idx = torch.arange(shifted.shape[0], device=shifted.device)
+    shifted[diag_idx, diag_idx] += diag_eps
+    return shifted
+
+
 def _plain_ncut(
         A: torch.Tensor,
         n_eig: int = 100,
         exact_gradient: bool = False,
-):  # TODO: add I
+        affinity_diag_eps: float = 1e-6,
+):
     A = normalize_affinity(A)
+    A = _add_diagonal_shift(A, affinity_diag_eps)
     if exact_gradient:
         eigvec, eigval, _ = grad_safe_eig_solve(A, n_eig)
     else:

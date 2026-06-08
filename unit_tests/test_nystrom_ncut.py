@@ -187,6 +187,21 @@ class TestNystromNcut:
         # Check that eigenvalues are sorted in descending order
         assert torch.all(eigval[:-1] >= eigval[1:])
 
+    def test_ncut_fn_with_affinity_diag_eps(self, small_feature_matrix):
+        """Test the ncut_fn function with a small diagonal shift."""
+        n_eig = 5
+        eigvec, eigval = ncut_fn(
+            small_feature_matrix,
+            n_eig=n_eig,
+            affinity_diag_eps=1e-6,
+            make_orthogonal=True,
+        )
+
+        assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
+        assert eigval.shape == (n_eig,)
+        assert not torch.isnan(eigvec).any()
+        assert not torch.isnan(eigval).any()
+
     def test_plain_ncut(self):
         """Test the _plain_ncut function."""
         # Create a simple affinity matrix
@@ -207,6 +222,32 @@ class TestNystromNcut:
         # Check that eigenvectors have unit norm
         norms = torch.norm(eigvec, dim=0)
         assert torch.allclose(norms, torch.ones_like(norms), atol=1e-5)
+
+    def test_plain_ncut_affinity_diag_eps_preserves_exact_eigvecs(self):
+        """A diagonal shift should preserve exact eigenvectors and shift eigenvalues uniformly."""
+        torch.manual_seed(0)
+        X = torch.randn(32, 6)
+        A = rbf_affinity(X, sigma=0.7)
+        A.requires_grad_()
+        n_eig = 6
+        affinity_diag_eps = 1e-4
+
+        eigvec_base, eigval_base = _plain_ncut(
+            A,
+            n_eig=n_eig,
+            exact_gradient=True,
+        )
+        eigvec_shifted, eigval_shifted = _plain_ncut(
+            A,
+            n_eig=n_eig,
+            exact_gradient=True,
+            affinity_diag_eps=affinity_diag_eps,
+        )
+
+        cosine = torch.abs(torch.sum(eigvec_base * eigvec_shifted, dim=0))
+        assert torch.allclose(cosine, torch.ones_like(cosine), atol=1e-4, rtol=1e-4)
+        expected_shift = torch.full_like(eigval_base, affinity_diag_eps)
+        assert torch.allclose(eigval_shifted - eigval_base, expected_shift, atol=1e-4, rtol=1e-4)
 
     def test_nystrom_propagate(self, small_feature_matrix):
         """Test the _nystrom_propagate function."""

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ncut_pytorch"
-version = "3.0.10"
+version = "3.0.11"
 authors = [
     { name = "Huzheng Yang", email = "huze.yann@gmail.com" },
 ]
@@ -21,7 +21,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "numpy<2.0",
     "fpsample>=0.2.0",
     "tqdm",
     "pillow",
