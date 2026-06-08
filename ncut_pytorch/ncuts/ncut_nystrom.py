@@ -48,7 +48,7 @@ def ncut_fn(
         device: str | None = None,
         make_orthogonal: bool = False,
         no_propagation: bool = False,
-        affinity_diag_eps: float = 1e-6,
+        affinity_diag_eps: float = 1e-8,
         **kwargs,
 ) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]]:
     """Normalized Cut, balanced sampling and nystrom approximation.
@@ -163,7 +163,7 @@ def ncut_with_repulsion(
     affinity_fn: Union["rbf_affinity", "cosine_affinity"] = cosine_affinity,
     exact_gradient: bool = False,
     eps: float = 1e-8,
-    affinity_diag_eps: float = 1e-6,
+    affinity_diag_eps: float = 1e-8,
 ):
     A = affinity_fn(X, sigma=sigma_attraction)
     R = affinity_fn(X, sigma=sigma_repulsion, repulse=True)
@@ -199,7 +199,7 @@ def _plain_ncut(
         A: torch.Tensor,
         n_eig: int = 100,
         exact_gradient: bool = False,
-        affinity_diag_eps: float = 1e-6,
+        affinity_diag_eps: float = 1e-8,
 ):
     A = normalize_affinity(A)
     A = _add_diagonal_shift(A, affinity_diag_eps)
