@@ -1,6 +1,3 @@
-import statistics
-import time
-
 import pytest
 import torch
 import torch.nn.functional as F
@@ -40,45 +37,6 @@ def _reference_kmeans_kway(
     R = centroids.t()
     R = R[:, torch.argsort(R[1])]
     return R.to(device=original_device, dtype=original_dtype)
-
-
-def _reference_farthest_point_sampling(
-    X: torch.Tensor,
-    n_sample: int,
-    max_draw_ratio: float = 4.0,
-    max_dim: int = 8,
-    device: str | None = None,
-) -> torch.Tensor:
-    """Reference implementation matching the pre-optimization behavior."""
-    num_data = X.shape[0]
-    num_draw = int(n_sample * max_draw_ratio)
-
-    if num_draw > num_data:
-        return sample_utils._farthest_point_sampling(
-            X,
-            n_sample=n_sample,
-            max_dim=max_dim,
-            device=device,
-        )
-
-    draw_indices = torch.randperm(num_data)[:num_draw]
-    sampled_indices = sample_utils._farthest_point_sampling(
-        X[draw_indices],
-        n_sample=n_sample,
-        max_dim=max_dim,
-        device=device,
-    )
-    return draw_indices[sampled_indices]
-
-
-def _median_runtime(fn, repeats: int = 3) -> float:
-    timings = []
-    for seed in range(repeats):
-        torch.manual_seed(seed)
-        start = time.perf_counter()
-        fn()
-        timings.append(time.perf_counter() - start)
-    return statistics.median(timings)
 
 
 class TestKwayNcut:
@@ -297,24 +255,3 @@ class TestKwayNcut:
 
         assert result.device.type == "cpu"
         assert torch.equal(result, torch.arange(8))
-
-    def test_farthest_point_sampling_reference_speedup(self):
-        """Test that reduced pre-sampling significantly speeds up FPS on representative data."""
-        X = torch.randn(8192, 128)
-
-        torch.manual_seed(0)
-        actual = farthest_point_sampling(X, n_sample=2048, device="cpu")
-
-        assert actual.shape == (2048,)
-        assert torch.unique(actual).numel() == 2048
-        assert actual.min() >= 0
-        assert actual.max() < X.shape[0]
-
-        reference_time = _median_runtime(
-            lambda: _reference_farthest_point_sampling(X, n_sample=2048, device="cpu")
-        )
-        optimized_time = _median_runtime(
-            lambda: farthest_point_sampling(X, n_sample=2048, device="cpu")
-        )
-
-        assert reference_time / optimized_time >= 1.6

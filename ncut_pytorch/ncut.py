@@ -162,7 +162,7 @@ class Ncut:
                 f"n_eig={n_eig} exceeds fitted eigenvector count {self._nystrom_eigvec.shape[1]}."
             )
 
-    def kway_fit(self, n_clusters: int, n_eig: int, kmeans_iter: int = 10) -> "Ncut":
+    def kway_fit(self, n_clusters: int, n_eig: int, kmeans_iter: int = 300, fit_eigvec: torch.Tensor = None) -> "Ncut":
         """
         Fit and cache a k-way rotation matrix for the fitted eigenvectors.
 
@@ -170,14 +170,16 @@ class Ncut:
             n_clusters (int): number of output clusters.
             n_eig (int): number of leading eigenvectors to use.
             kmeans_iter (int): number of k-means refinement iterations.
+            fit_eigvec (torch.Tensor): eigenvectors, shape (N, n_eig), optional input to kway fitting.
 
         Returns:
             Ncut: current instance.
         """
         self._validate_kway_params(n_clusters=n_clusters, n_eig=n_eig)
+        fit_eigvec = fit_eigvec if fit_eigvec is not None else self._nystrom_eigvec
 
         R = quick_kway(
-            self._nystrom_eigvec[:, :n_eig],
+            fit_eigvec[:, :n_eig],
             n_clusters=n_clusters,
             n_eig=n_eig,
             n_sample=self._nystrom_eigvec.shape[0],
@@ -188,7 +190,7 @@ class Ncut:
         self._kway_R[(n_clusters, n_eig)] = R.cpu()
         return self
 
-    def kway_transform(self, X: torch.Tensor, n_clusters: int, n_eig: int) -> torch.Tensor:
+    def kway_transform(self, X: torch.Tensor, n_clusters: int, n_eig: int, normalize: bool = False) -> torch.Tensor:
         """
         Transform data with a previously fitted k-way rotation matrix.
 
@@ -196,6 +198,7 @@ class Ncut:
             X (torch.Tensor): input features, shape (N, D).
             n_clusters (int): number of output clusters.
             n_eig (int): number of leading eigenvectors to use.
+            normalize (bool): whether to normalize the eigenvectors, so to return cosine similarity.
 
         Returns:
             torch.Tensor: rotated eigenvectors, shape (N, n_clusters).
@@ -212,5 +215,7 @@ class Ncut:
         eigvec = self.transform(X)[:, :n_eig]
         R = self._kway_R[cache_key]
         device = auto_device(self.device)
+        if normalize:
+            eigvec = torch.nn.functional.normalize(eigvec, dim=-1)
 
         return chunked_matmul(eigvec, R, device=device, large_device=eigvec.device)
