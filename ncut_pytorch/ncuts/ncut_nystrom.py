@@ -25,6 +25,7 @@ class NystromConfig:
     n_sample2 = 1024                # number of samples for eigenvector propagation, 1024 is large enough for most cases
     n_neighbors = 32                # number of neighbors for eigenvector propagation, 10 is large enough for most cases
     n_neighbors_max_ratio = 1/32    # max ratio of n_neighbors to n_sample2, to avoid over smoothing
+    chunk_size = MATMUL_CHUNK_SIZE  # fixed chunk size for pairwise propagation matmul
     
     def update(self, kwargs: dict):
         for key, value in kwargs.items():
@@ -122,7 +123,8 @@ def ncut_fn(
         nystrom_X,
         extrapolation_factor=extrapolation_factor,
         n_neighbors=config.n_neighbors,
-        n_sample=config.n_sample2,
+        n_sample2=config.n_sample2,
+        chunk_size=config.chunk_size,
         device=device,
     )
 
@@ -303,7 +305,9 @@ def nystrom_propagate(
 
     n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
     n_neighbors = max(n_neighbors, 4)
-    n_chunk = _find_max_chunk_size(X, nystrom_X, device)
+    if config.chunk_size < 1:
+        raise ValueError("chunk_size must be at least 1")
+    n_chunk = min(config.chunk_size, X.shape[0])
     offsets_cache: dict[int, torch.Tensor] = {}
 
     all_outs = torch.empty((X.shape[0], nystrom_out.shape[-1]), device=output_device, dtype=nystrom_out.dtype)
@@ -322,15 +326,3 @@ def nystrom_propagate(
     if return_indices:
         return all_outs, indices
     return all_outs
-
-
-def _find_max_chunk_size(X: torch.Tensor, nystrom_X: torch.Tensor, device: str):
-    max_chunk_size = MATMUL_CHUNK_SIZE
-    while max_chunk_size > 1:
-        try:
-            _ = rbf_affinity(X[:max_chunk_size].to(device), nystrom_X)
-            return max_chunk_size
-        except RuntimeError as e:
-            max_chunk_size = max_chunk_size // 2
-            continue
-    raise RuntimeError("failed to find max chunk size")

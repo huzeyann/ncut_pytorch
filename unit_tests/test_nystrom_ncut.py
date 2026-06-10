@@ -7,7 +7,6 @@ from ncut_pytorch import ncut_fn
 from ncut_pytorch.ncuts import ncut_nystrom as nystrom_utils
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, nystrom_propagate
 from ncut_pytorch.utils.math import gram_schmidt, keep_topk_per_row, rbf_affinity
-from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.sigma import _find_sigma_by_degree
 
 
@@ -77,69 +76,6 @@ def _candidate_find_sigma_by_degree_rbf(
         current_degree = torch.exp(dist2 * (-0.5 / (sigma * sigma))).mean().item()
         i_iter += 1
     return sigma
-
-
-_NYSTROM_CHUNK_CACHE: dict[tuple[str, int, int, int, str, str], int] = {}
-
-
-def _candidate_find_max_chunk_size(
-    X: torch.Tensor,
-    nystrom_X: torch.Tensor,
-    device: str,
-) -> int:
-    """Candidate cache for repeated chunk-size probes on stable shapes."""
-    key = (
-        str(device),
-        X.shape[1],
-        nystrom_X.shape[0],
-        nystrom_X.shape[1],
-        str(X.dtype),
-        str(nystrom_X.dtype),
-    )
-    if key not in _NYSTROM_CHUNK_CACHE:
-        _NYSTROM_CHUNK_CACHE[key] = nystrom_utils._find_max_chunk_size(X, nystrom_X, device)
-    return _NYSTROM_CHUNK_CACHE[key]
-
-
-def _candidate_nystrom_propagate(
-    nystrom_out: torch.Tensor,
-    X: torch.Tensor,
-    nystrom_X: torch.Tensor,
-    extrapolation_factor: float = 1.0,
-    device: str = "cpu",
-    n_sample: int | None = None,
-    n_neighbors: int = 32,
-) -> torch.Tensor:
-    """Candidate propagate path with cached chunk probing and precomputed sigma distances."""
-    output_device = X.device
-    n_sample = nystrom_out.shape[0] if n_sample is None else n_sample
-
-    indices = farthest_point_sampling(nystrom_out, n_sample, device=device)
-    nystrom_out = nystrom_out[indices].to(device)
-    nystrom_X = nystrom_X[indices].to(device)
-
-    sigma = _candidate_find_sigma_by_degree_rbf(nystrom_X, quantile_sigma=0.25)
-    sigma = sigma * extrapolation_factor
-    D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
-    nystrom_x_sq = nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
-
-    n_chunk = _candidate_find_max_chunk_size(X, nystrom_X, device)
-    offsets_cache: dict[int, torch.Tensor] = {}
-    all_outs = torch.empty((X.shape[0], nystrom_out.shape[-1]), device=output_device, dtype=nystrom_out.dtype)
-    for i in range(0, X.shape[0], n_chunk):
-        end = min(i + n_chunk, X.shape[0])
-        Ai, topk_indices = nystrom_utils._rbf_topk_from_squared_distance(
-            X[i:end].to(device),
-            nystrom_X,
-            nystrom_x_sq,
-            sigma,
-            n_neighbors,
-        )
-        Di = D[topk_indices].sum(1)
-        Ai = Ai / Di[:, None]
-        out = nystrom_utils._weighted_neighbor_sum(Ai, topk_indices, nystrom_out, offsets_cache)
-        all_outs[i:end] = out.to(output_device)
-    return all_outs
 
 
 def _reference_weighted_neighbor_sum(
@@ -275,6 +211,62 @@ class TestNystromNcut:
         assert not torch.isnan(eigvec).any()
         assert not torch.isinf(eigvec).any()
 
+    def test_ncut_fn_forwards_fixed_chunk_size_to_propagate(self, monkeypatch, small_feature_matrix):
+        """ncut_fn should forward the fixed chunk-size config to nystrom_propagate."""
+        recorded_kwargs = {}
+
+        def fake_nystrom_propagate(nystrom_out, X, nystrom_X, **kwargs):
+            recorded_kwargs.update(kwargs)
+            return torch.zeros((X.shape[0], nystrom_out.shape[1]), dtype=nystrom_out.dtype, device=X.device)
+
+        monkeypatch.setattr(nystrom_utils, "nystrom_propagate", fake_nystrom_propagate)
+
+        eigvec, eigval = ncut_fn(
+            small_feature_matrix,
+            n_eig=3,
+            n_sample2=64,
+            chunk_size=2048,
+        )
+
+        assert eigvec.shape == (small_feature_matrix.shape[0], 3)
+        assert eigval.shape == (3,)
+        assert recorded_kwargs["n_sample2"] == 64
+        assert recorded_kwargs["chunk_size"] == 2048
+
+    def test_nystrom_propagate_uses_fixed_chunk_size(self, monkeypatch):
+        """nystrom_propagate should split the input by the configured fixed chunk size."""
+        chunk_sizes = []
+        X = torch.randn(17, 4)
+        nystrom_X = torch.randn(8, 4)
+        nystrom_out = torch.randn(8, 3)
+
+        monkeypatch.setattr(nystrom_utils, "find_sigma_by_degree", lambda *args, **kwargs: 1.0)
+
+        def fake_rbf_topk_from_squared_distance(Xi, sampled_X, sampled_x_sq, sigma, n_neighbors):
+            chunk_sizes.append(Xi.shape[0])
+            weights = torch.ones((Xi.shape[0], n_neighbors), device=Xi.device, dtype=Xi.dtype)
+            indices = torch.zeros((Xi.shape[0], n_neighbors), device=Xi.device, dtype=torch.long)
+            return weights, indices
+
+        def fake_weighted_neighbor_sum(weights, indices, sampled_out, offsets_cache):
+            return torch.zeros((weights.shape[0], sampled_out.shape[-1]), device=weights.device, dtype=sampled_out.dtype)
+
+        monkeypatch.setattr(nystrom_utils, "_rbf_topk_from_squared_distance", fake_rbf_topk_from_squared_distance)
+        monkeypatch.setattr(nystrom_utils, "_weighted_neighbor_sum", fake_weighted_neighbor_sum)
+
+        out = nystrom_propagate(
+            nystrom_out,
+            X,
+            nystrom_X,
+            device="cpu",
+            n_sample2=nystrom_out.shape[0],
+            n_neighbors=4,
+            chunk_size=5,
+        )
+
+        assert out.shape == (X.shape[0], nystrom_out.shape[1])
+        assert chunk_sizes == [5, 5, 5, 2]
+
     def test_weighted_neighbor_sum_matches_reference(self):
         """Test that embedding_bag matches the original gather + einsum formula."""
         weights = torch.tensor([[0.2, 0.3, 0.5], [1.0, 0.1, 0.4]], dtype=torch.float32)
@@ -402,53 +394,3 @@ class TestNystromNcut:
         )
 
         assert reference_time / candidate_time >= 1.5
-
-    @pytest.mark.slow
-    def test_nystrom_propagate_cached_chunk_and_sigma_candidate_speedup(self):
-        """Simulation benchmark for caching chunk probing and reusing sigma distances."""
-        X = torch.randn(16384, 32)
-        nystrom_X = torch.randn(1024, 32)
-        nystrom_out = torch.randn(1024, 64)
-
-        expected = nystrom_propagate(
-            nystrom_out,
-            X,
-            nystrom_X,
-            device="cpu",
-            n_sample=nystrom_X.shape[0],
-            n_neighbors=32,
-        )
-        _NYSTROM_CHUNK_CACHE.clear()
-        actual = _candidate_nystrom_propagate(
-            nystrom_out,
-            X,
-            nystrom_X,
-            device="cpu",
-            n_sample=nystrom_X.shape[0],
-            n_neighbors=32,
-        )
-
-        assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
-
-        reference_time = _median_call_runtime(
-            lambda: nystrom_propagate(
-                nystrom_out,
-                X,
-                nystrom_X,
-                device="cpu",
-                n_sample=nystrom_X.shape[0],
-                n_neighbors=32,
-            )
-        )
-        candidate_time = _median_call_runtime(
-            lambda: _candidate_nystrom_propagate(
-                nystrom_out,
-                X,
-                nystrom_X,
-                device="cpu",
-                n_sample=nystrom_X.shape[0],
-                n_neighbors=32,
-            )
-        )
-
-        assert reference_time / candidate_time >= 1.4
