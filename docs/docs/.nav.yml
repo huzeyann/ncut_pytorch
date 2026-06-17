@@ -9,13 +9,13 @@ nav:
 
   - How Fast is Ncut?: how_fast_is_ncut.md
 
+  - How Ncut Works:
+    - methods/*.md
+  
   - Tutorials: 
     - tutorials/01_tutorials.md
     - tutorials/02_discrete_ncut.md
     - tutorials/03_hierarchy_ncut.md
-
-  - How Ncut Works:
-    - methods/*.md
   
   - Tutorials (misc):
     - Feature Alignment: tutorials/feature_alignment.md
@@ -25,12 +25,10 @@ nav:
     - tutorials/channel_tracing.md
     - tutorials/mixing_resolution.md
 
-  - Usage Examples:
-    - Model Gallery: usage_examples/model_gallery.md
-    - Out-of-Distribution Adaptation: usage_examples/ood_adaptation.md
-
   - Blogs:
     - blogs/*.md
+    - Model Gallery: usage_examples/model_gallery.md
+    - Out-of-Distribution Adaptation: usage_examples/ood_adaptation.md
   
   - API References: api/api_reference.md
   
