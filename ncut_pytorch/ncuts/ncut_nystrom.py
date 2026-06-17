@@ -1,6 +1,6 @@
 __all__ = ['ncut_fn', 'nystrom_propagate']
 
-from typing import Callable, Union
+from typing import Callable, NamedTuple, Union
 
 import torch
 import numpy as np
@@ -14,6 +14,15 @@ import logging
 
 MATMUL_CHUNK_SIZE = 65536
 SMALL_SCALE_THRESHOLD = 8192    # if the number of nodes is less than SMALL_SCALE_THRESHOLD, skip nystrom approximation use exact ncut
+
+
+class NystromPropagationCache(NamedTuple):
+    indices: torch.Tensor
+    sampled_nystrom_X: torch.Tensor
+    sampled_nystrom_eigvec: torch.Tensor
+    sigma: float | torch.Tensor
+    D: torch.Tensor
+    nystrom_x_sq: torch.Tensor
 
 class NystromConfig:
     """
@@ -219,7 +228,7 @@ def _rbf_topk_from_squared_distance(
     X: torch.Tensor,
     nystrom_X: torch.Tensor,
     nystrom_x_sq: torch.Tensor,
-    sigma: float,
+    sigma: float | torch.Tensor,
     n_neighbors: int,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Return top-k RBF weights without materializing the full affinity matrix."""
@@ -266,7 +275,7 @@ def nystrom_propagate(
         extrapolation_factor: float = 1.0,
         device: str = None,
         return_indices: bool = False,
-        cache: object | None = None,
+        cache: NystromPropagationCache | None = None,
         **kwargs,
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """propagate output from nystrom sampled nodes to all nodes,
@@ -279,7 +288,7 @@ def nystrom_propagate(
         extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         device (str): device to use for computation, if 'auto', will detect GPU automatically
         return_indices (bool): whether to return the indices used for propagation
-        cache (object | None): optional cache owner, intended for Ncut instances
+        cache (NystromPropagationCache | None): optional explicit propagation cache
 
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
@@ -295,31 +304,21 @@ def nystrom_propagate(
 
     device = auto_device(nystrom_out.device, device)
     output_device = X.device
-    indices = getattr(cache, "_propagation_indices", None)
-    sigma = getattr(cache, "_propagation_sigma", None)
-    D = getattr(cache, "_propagation_D", None)
-    nystrom_x_sq = getattr(cache, "_propagation_nystrom_x_sq", None)
-    sampled_nystrom_X = getattr(cache, "_propagation_sampled_x", None)
-
-    if indices is None or sigma is None or D is None or nystrom_x_sq is None or sampled_nystrom_X is None:
+    if cache is None:
         indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
-        sampled_nystrom_X = nystrom_X[indices].to(device).contiguous()
-
-        sigma = find_sigma_by_degree(sampled_nystrom_X, affinity_fn=rbf_affinity, quantile_sigma=0.25)
+        nystrom_X = nystrom_X[indices].to(device).contiguous()
+        nystrom_out = nystrom_out[indices].to(device).contiguous()
+        sigma = find_sigma_by_degree(nystrom_X, affinity_fn=rbf_affinity, quantile_sigma=0.25)
         sigma = sigma * extrapolation_factor
-
-        D = rbf_affinity(sampled_nystrom_X, sigma=sigma).mean(1)
-        nystrom_x_sq = sampled_nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
-
-        if cache is not None:
-            cache._propagation_indices = indices
-            cache._propagation_sampled_x = sampled_nystrom_X
-            cache._propagation_sigma = float(sigma)
-            cache._propagation_D = D
-            cache._propagation_nystrom_x_sq = nystrom_x_sq
-
-    nystrom_out = nystrom_out[indices].to(device).contiguous()
-    nystrom_X = sampled_nystrom_X
+        D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
+        nystrom_x_sq = nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
+    else:
+        indices = cache.indices
+        nystrom_X = cache.sampled_nystrom_X
+        nystrom_out = cache.sampled_nystrom_eigvec
+        sigma = cache.sigma
+        D = cache.D
+        nystrom_x_sq = cache.nystrom_x_sq
 
     n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
     n_neighbors = max(n_neighbors, 4)

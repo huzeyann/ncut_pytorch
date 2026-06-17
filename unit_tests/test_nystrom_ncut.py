@@ -1,10 +1,10 @@
 import statistics
 import time
-from types import SimpleNamespace
 
 import pytest
 import torch
-from ncut_pytorch import ncut_fn
+import ncut_pytorch.ncut as ncut_module
+from ncut_pytorch import Ncut, ncut_fn
 from ncut_pytorch.ncuts import ncut_nystrom as nystrom_utils
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, nystrom_propagate
 from ncut_pytorch.utils.math import gram_schmidt, keep_topk_per_row, rbf_affinity
@@ -268,17 +268,21 @@ class TestNystromNcut:
         assert out.shape == (X.shape[0], nystrom_out.shape[1])
         assert chunk_sizes == [5, 5, 5, 2]
 
-    def test_nystrom_propagate_reuses_precomputed_cache(self, monkeypatch):
-        """nystrom_propagate should reuse sigma and degree precomputation from the cache."""
+    def test_nystrom_propagate_reuses_explicit_cache(self, monkeypatch):
+        """nystrom_propagate should reuse an explicitly provided propagation cache."""
         X = torch.randn(13, 4)
         nystrom_X = torch.randn(8, 4)
         nystrom_out = torch.randn(8, 3)
-        cache = SimpleNamespace(
-            _propagation_indices=None,
-            _propagation_sampled_x=None,
-            _propagation_sigma=None,
-            _propagation_D=None,
-            _propagation_nystrom_x_sq=None,
+        sampled_indices = torch.tensor([0, 2, 4, 6], dtype=torch.long)
+        sampled_nystrom_X = nystrom_X[sampled_indices].contiguous()
+        sampled_nystrom_out = nystrom_out[sampled_indices].contiguous()
+        cache = nystrom_utils.NystromPropagationCache(
+            indices=sampled_indices,
+            sampled_nystrom_X=sampled_nystrom_X,
+            sampled_nystrom_eigvec=sampled_nystrom_out,
+            sigma=1.0,
+            D=rbf_affinity(sampled_nystrom_X, sigma=1.0).mean(1),
+            nystrom_x_sq=sampled_nystrom_X.pow(2).sum(dim=1).unsqueeze(0),
         )
         counters = {"fps": 0, "sigma": 0}
 
@@ -316,9 +320,38 @@ class TestNystromNcut:
 
         assert first.shape == second.shape == (X.shape[0], nystrom_out.shape[1])
         assert torch.allclose(first, second, atol=1e-6, rtol=1e-6)
+        assert counters == {"fps": 0, "sigma": 0}
+
+    def test_ncut_transform_reuses_propagation_cache(self, monkeypatch, small_feature_matrix):
+        """Ncut.transform should build the propagation cache once and reuse it."""
+        model = Ncut(
+            n_eig=3,
+            device="cpu",
+            n_sample2=4,
+            n_neighbors=4,
+            chunk_size=32,
+        ).fit(small_feature_matrix)
+        X = small_feature_matrix + 0.01
+        counters = {"fps": 0, "sigma": 0}
+
+        def fake_farthest_point_sampling(values, n_sample, device=None):
+            counters["fps"] += 1
+            return torch.tensor([0, 2, 4, 6], dtype=torch.long)
+
+        def fake_find_sigma_by_degree(*args, **kwargs):
+            counters["sigma"] += 1
+            return 1.0
+
+        monkeypatch.setattr(ncut_module, "farthest_point_sampling", fake_farthest_point_sampling)
+        monkeypatch.setattr(ncut_module, "find_sigma_by_degree", fake_find_sigma_by_degree)
+
+        first = model.transform(X)
+        second = model.transform(X)
+
+        assert first.shape == second.shape == (X.shape[0], model.n_eig)
+        assert torch.allclose(first, second, atol=1e-6, rtol=1e-6)
         assert counters == {"fps": 1, "sigma": 1}
-        assert cache._propagation_sigma == pytest.approx(1.0)
-        assert torch.equal(cache._propagation_indices, torch.tensor([0, 2, 4, 6], dtype=torch.long))
+        assert model._propagation_cache is not None
 
     def test_weighted_neighbor_sum_matches_reference(self):
         """Test that embedding_bag matches the original gather + einsum formula."""

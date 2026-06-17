@@ -2,10 +2,18 @@ from typing import Callable, Union
 
 import torch
 
-from ncut_pytorch.ncuts.ncut_nystrom import ncut_fn, nystrom_propagate
+from ncut_pytorch.ncuts.ncut_nystrom import (
+    SMALL_SCALE_THRESHOLD,
+    NystromConfig,
+    NystromPropagationCache,
+    ncut_fn,
+    nystrom_propagate,
+)
 from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity, chunked_matmul
 from ncut_pytorch.ncuts.ncut_kway import quick_kway
 from ncut_pytorch.utils.device import auto_device
+from ncut_pytorch.utils.sample import farthest_point_sampling
+from ncut_pytorch.utils.sigma import find_sigma_by_degree
 
 class Ncut:
     """
@@ -69,11 +77,7 @@ class Ncut:
         self._nystrom_x = None
         self._nystrom_eigvec = None
         self._eigval = None
-        self._propagation_indices = None
-        self._propagation_sampled_x = None
-        self._propagation_sigma = None
-        self._propagation_D = None
-        self._propagation_nystrom_x_sq = None
+        self._propagation_cache: NystromPropagationCache | None = None
 
         self._kway_R: dict[tuple[int, int], torch.Tensor] = {}
 
@@ -110,11 +114,7 @@ class Ncut:
         self._nystrom_eigvec = eigvec
         self._eigval = eigval
         self.sigma = sigma
-        self._propagation_indices = None
-        self._propagation_sampled_x = None
-        self._propagation_sigma = None
-        self._propagation_D = None
-        self._propagation_nystrom_x_sq = None
+        self._propagation_cache = None
         return self
 
     def transform(self, X: torch.Tensor) -> torch.Tensor:
@@ -128,6 +128,9 @@ class Ncut:
             eigvec (torch.Tensor): eigenvectors, shape (N, n_eig)
         """
         self._check_is_fitted()
+        cache = self._propagation_cache
+        if cache is None and not self._should_skip_propagation(X):
+            cache = self._ensure_propagation_cache()
 
         # propagate eigenvectors from subgraph to full graph
         eigvec = nystrom_propagate(
@@ -136,7 +139,7 @@ class Ncut:
             self._nystrom_x,
             extrapolation_factor=self.extrapolation_factor,
             device=self.device,
-            cache=self,
+            cache=cache,
             **self.kwargs
         )
         return eigvec
@@ -158,6 +161,39 @@ class Ncut:
     def _check_is_fitted(self) -> None:
         if self._nystrom_x is None or self._nystrom_eigvec is None:
             raise ValueError("Ncut has not been fitted yet. Call fit() first.")
+
+    def _should_skip_propagation(self, X: torch.Tensor) -> bool:
+        return (
+            X.shape[0] <= SMALL_SCALE_THRESHOLD
+            and self._nystrom_x.shape == X.shape
+            and torch.allclose(self._nystrom_x.to(X.device), X, atol=1e-6)
+        )
+
+    def _ensure_propagation_cache(self) -> NystromPropagationCache:
+        if self._propagation_cache is not None:
+            return self._propagation_cache
+
+        # Intentionally mirrors the small cache-precompute block from nystrom_propagate
+        # so transform() can pass explicit cached tensors instead of cache=self.
+        config = NystromConfig()
+        config.update(self.kwargs)
+        device = auto_device(self._nystrom_eigvec.device, self.device)
+        indices = farthest_point_sampling(self._nystrom_eigvec, config.n_sample2, device=device)
+        sampled_nystrom_x = self._nystrom_x[indices].to(device).contiguous()
+        sampled_nystrom_eigvec = self._nystrom_eigvec[indices].to(device).contiguous()
+
+        sigma = find_sigma_by_degree(sampled_nystrom_x, affinity_fn=rbf_affinity, quantile_sigma=0.25)
+        sigma = sigma * self.extrapolation_factor
+
+        self._propagation_cache = NystromPropagationCache(
+            indices=indices,
+            sampled_nystrom_X=sampled_nystrom_x,
+            sampled_nystrom_eigvec=sampled_nystrom_eigvec,
+            sigma=float(sigma),
+            D=rbf_affinity(sampled_nystrom_x, sigma=sigma).mean(1),
+            nystrom_x_sq=sampled_nystrom_x.pow(2).sum(dim=1).unsqueeze(0),
+        )
+        return self._propagation_cache
 
     def _validate_kway_params(self, n_clusters: int, n_eig: int) -> None:
         self._check_is_fitted()
