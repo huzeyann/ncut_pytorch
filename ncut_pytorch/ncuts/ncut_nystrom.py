@@ -266,6 +266,7 @@ def nystrom_propagate(
         extrapolation_factor: float = 1.0,
         device: str = None,
         return_indices: bool = False,
+        cache: object | None = None,
         **kwargs,
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """propagate output from nystrom sampled nodes to all nodes,
@@ -278,6 +279,7 @@ def nystrom_propagate(
         extrapolation_factor (float): control how far can we extrapolate, larger extrapolation_factor means we can extrapolate further, default 1.0
         device (str): device to use for computation, if 'auto', will detect GPU automatically
         return_indices (bool): whether to return the indices used for propagation
+        cache (object | None): optional cache owner, intended for Ncut instances
 
     Returns:
         torch.Tensor: output propagated by nearest neighbors, shape (N, D)
@@ -293,15 +295,31 @@ def nystrom_propagate(
 
     device = auto_device(nystrom_out.device, device)
     output_device = X.device
-    indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
+    indices = getattr(cache, "_propagation_indices", None)
+    sigma = getattr(cache, "_propagation_sigma", None)
+    D = getattr(cache, "_propagation_D", None)
+    nystrom_x_sq = getattr(cache, "_propagation_nystrom_x_sq", None)
+    sampled_nystrom_X = getattr(cache, "_propagation_sampled_x", None)
+
+    if indices is None or sigma is None or D is None or nystrom_x_sq is None or sampled_nystrom_X is None:
+        indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
+        sampled_nystrom_X = nystrom_X[indices].to(device).contiguous()
+
+        sigma = find_sigma_by_degree(sampled_nystrom_X, affinity_fn=rbf_affinity, quantile_sigma=0.25)
+        sigma = sigma * extrapolation_factor
+
+        D = rbf_affinity(sampled_nystrom_X, sigma=sigma).mean(1)
+        nystrom_x_sq = sampled_nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
+
+        if cache is not None:
+            cache._propagation_indices = indices
+            cache._propagation_sampled_x = sampled_nystrom_X
+            cache._propagation_sigma = float(sigma)
+            cache._propagation_D = D
+            cache._propagation_nystrom_x_sq = nystrom_x_sq
+
     nystrom_out = nystrom_out[indices].to(device).contiguous()
-    nystrom_X = nystrom_X[indices].to(device).contiguous()
-    
-    sigma = find_sigma_by_degree(nystrom_X, affinity_fn=rbf_affinity, quantile_sigma=0.25)
-    sigma = sigma * extrapolation_factor
-    
-    D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
-    nystrom_x_sq = nystrom_X.pow(2).sum(dim=1).unsqueeze(0)
+    nystrom_X = sampled_nystrom_X
 
     n_neighbors = int(min(config.n_neighbors, len(indices)*config.n_neighbors_max_ratio))
     n_neighbors = max(n_neighbors, 4)

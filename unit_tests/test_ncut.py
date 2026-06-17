@@ -19,6 +19,11 @@ class TestNcut:
         assert ncut._nystrom_x is None
         assert ncut._nystrom_eigvec is None
         assert ncut._eigval is None
+        assert ncut._propagation_indices is None
+        assert ncut._propagation_sampled_x is None
+        assert ncut._propagation_sigma is None
+        assert ncut._propagation_D is None
+        assert ncut._propagation_nystrom_x_sq is None
 
     def test_fit(self, small_feature_matrix, ncut_params):
         """Test the fit method."""
@@ -33,9 +38,41 @@ class TestNcut:
         assert ncut._nystrom_eigvec is not None
         assert ncut._eigval is not None
         assert ncut.sigma is not None
+        assert ncut._propagation_indices is None
+        assert ncut._propagation_sampled_x is None
+        assert ncut._propagation_sigma is None
+        assert ncut._propagation_D is None
+        assert ncut._propagation_nystrom_x_sq is None
         
         # Check shapes
         assert ncut._eigval.shape == (ncut_params['n_eig'],)
+
+    def test_fit_resets_propagation_cache(self, monkeypatch):
+        """Test that fit clears propagation cache and leaves lazy population to transform."""
+        X = torch.randn(10, 4)
+        eigvec = torch.randn(6, 3)
+        eigval = torch.randn(3)
+        indices = torch.tensor([0, 1, 2, 3, 4, 5], dtype=torch.long)
+
+        def fake_ncut_fn(*args, **kwargs):
+            return eigvec, eigval, indices, 0.7
+
+        monkeypatch.setattr(ncut_module, "ncut_fn", fake_ncut_fn)
+
+        ncut = Ncut(n_eig=3, device="cpu")
+        ncut._propagation_indices = torch.tensor([0])
+        ncut._propagation_sampled_x = torch.randn(1, 4)
+        ncut._propagation_sigma = 1.0
+        ncut._propagation_D = torch.randn(1)
+        ncut._propagation_nystrom_x_sq = torch.randn(1, 1)
+
+        ncut.fit(X)
+
+        assert ncut._propagation_indices is None
+        assert ncut._propagation_sampled_x is None
+        assert ncut._propagation_sigma is None
+        assert ncut._propagation_D is None
+        assert ncut._propagation_nystrom_x_sq is None
 
     def test_transform(self, small_feature_matrix, ncut_params):
         """Test the transform method."""
@@ -54,6 +91,25 @@ class TestNcut:
         
         # Check shape
         assert eigvec_subset.shape == (subset.shape[0], ncut_params['n_eig'])
+
+    def test_transform_forwards_self_as_cache(self, monkeypatch):
+        """Test that transform forwards the instance itself as cache."""
+        ncut = Ncut(n_eig=3, device="cpu")
+        ncut._nystrom_x = torch.randn(4, 2)
+        ncut._nystrom_eigvec = torch.randn(4, 3)
+
+        recorded = {}
+
+        def fake_nystrom_propagate(nystrom_out, X, nystrom_X, **kwargs):
+            recorded["cache"] = kwargs["cache"]
+            return torch.zeros((X.shape[0], nystrom_out.shape[1]), dtype=nystrom_out.dtype)
+
+        monkeypatch.setattr(ncut_module, "nystrom_propagate", fake_nystrom_propagate)
+
+        out = ncut.transform(torch.randn(6, 2))
+
+        assert out.shape == (6, 3)
+        assert recorded["cache"] is ncut
 
     def test_fit_transform(self, small_feature_matrix, ncut_params):
         """Test the fit_transform method."""

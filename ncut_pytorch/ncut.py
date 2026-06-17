@@ -69,6 +69,11 @@ class Ncut:
         self._nystrom_x = None
         self._nystrom_eigvec = None
         self._eigval = None
+        self._propagation_indices = None
+        self._propagation_sampled_x = None
+        self._propagation_sigma = None
+        self._propagation_D = None
+        self._propagation_nystrom_x_sq = None
 
         self._kway_R: dict[tuple[int, int], torch.Tensor] = {}
 
@@ -105,6 +110,11 @@ class Ncut:
         self._nystrom_eigvec = eigvec
         self._eigval = eigval
         self.sigma = sigma
+        self._propagation_indices = None
+        self._propagation_sampled_x = None
+        self._propagation_sigma = None
+        self._propagation_D = None
+        self._propagation_nystrom_x_sq = None
         return self
 
     def transform(self, X: torch.Tensor) -> torch.Tensor:
@@ -126,6 +136,7 @@ class Ncut:
             self._nystrom_x,
             extrapolation_factor=self.extrapolation_factor,
             device=self.device,
+            cache=self,
             **self.kwargs
         )
         return eigvec
@@ -187,7 +198,7 @@ class Ncut:
             kmeans_iter=kmeans_iter,
             ret_R=True,
         )
-        self._kway_R[(n_clusters, n_eig)] = R.cpu()
+        self._kway_R[(n_clusters, n_eig)] = R
         return self
 
     def kway_transform(self, X: torch.Tensor, n_clusters: int, n_eig: int, normalize: bool = False) -> torch.Tensor:
@@ -218,4 +229,5 @@ class Ncut:
         if normalize:
             eigvec = torch.nn.functional.normalize(eigvec, dim=-1)
 
-        return chunked_matmul(eigvec, R, device=device, large_device=eigvec.device)
+        kway_eigvec = eigvec @ R
+        return kway_eigvec

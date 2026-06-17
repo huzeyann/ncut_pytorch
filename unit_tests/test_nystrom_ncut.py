@@ -1,5 +1,6 @@
 import statistics
 import time
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -266,6 +267,58 @@ class TestNystromNcut:
 
         assert out.shape == (X.shape[0], nystrom_out.shape[1])
         assert chunk_sizes == [5, 5, 5, 2]
+
+    def test_nystrom_propagate_reuses_precomputed_cache(self, monkeypatch):
+        """nystrom_propagate should reuse sigma and degree precomputation from the cache."""
+        X = torch.randn(13, 4)
+        nystrom_X = torch.randn(8, 4)
+        nystrom_out = torch.randn(8, 3)
+        cache = SimpleNamespace(
+            _propagation_indices=None,
+            _propagation_sampled_x=None,
+            _propagation_sigma=None,
+            _propagation_D=None,
+            _propagation_nystrom_x_sq=None,
+        )
+        counters = {"fps": 0, "sigma": 0}
+
+        def fake_farthest_point_sampling(values, n_sample, device=None):
+            counters["fps"] += 1
+            return torch.tensor([0, 2, 4, 6], dtype=torch.long)
+
+        def fake_find_sigma_by_degree(*args, **kwargs):
+            counters["sigma"] += 1
+            return 1.0
+
+        monkeypatch.setattr(nystrom_utils, "farthest_point_sampling", fake_farthest_point_sampling)
+        monkeypatch.setattr(nystrom_utils, "find_sigma_by_degree", fake_find_sigma_by_degree)
+
+        first = nystrom_propagate(
+            nystrom_out,
+            X,
+            nystrom_X,
+            device="cpu",
+            n_sample2=4,
+            n_neighbors=4,
+            chunk_size=32,
+            cache=cache,
+        )
+        second = nystrom_propagate(
+            nystrom_out,
+            X,
+            nystrom_X,
+            device="cpu",
+            n_sample2=4,
+            n_neighbors=4,
+            chunk_size=32,
+            cache=cache,
+        )
+
+        assert first.shape == second.shape == (X.shape[0], nystrom_out.shape[1])
+        assert torch.allclose(first, second, atol=1e-6, rtol=1e-6)
+        assert counters == {"fps": 1, "sigma": 1}
+        assert cache._propagation_sigma == pytest.approx(1.0)
+        assert torch.equal(cache._propagation_indices, torch.tensor([0, 2, 4, 6], dtype=torch.long))
 
     def test_weighted_neighbor_sum_matches_reference(self):
         """Test that embedding_bag matches the original gather + einsum formula."""
