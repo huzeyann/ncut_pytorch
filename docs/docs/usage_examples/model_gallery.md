@@ -5,7 +5,7 @@ hide:
 
 # Model Gallery
 
-> Migration note for 3.0.0: the linked notebook-style gallery pages are being ported from the older `NCUT` / `rgb_from_tsne_3d` API. Use the current imports shown in the main docs or the migration guide when adapting those examples.
+> Legacy note: the linked notebook-style gallery pages are being ported from the older `NCUT` / `rgb_from_tsne_3d` API. Use the current imports shown on the home page when adapting those examples.
 
 ## Image
 

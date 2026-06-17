@@ -4,7 +4,6 @@ sort:
 nav:
   - Overview: 
     - index.md
-    - Migration to 3.0.0: migration_3_0.md
 
   - What is Ncut?: what_is_ncut.md
 
@@ -18,12 +17,10 @@ nav:
   - How Ncut Works:
     - methods/*.md
   
-  - Tutorials (advanced):
+  - Tutorials (misc):
     - Feature Alignment: tutorials/feature_alignment.md
     - Custom Model: tutorials/custom_model.md
     - tutorials/inference_extrapolation.md
-
-  - Tutorials (miscs):
     - tutorials/gradient_of_ncut.md
     - tutorials/channel_tracing.md
     - tutorials/mixing_resolution.md

@@ -63,11 +63,9 @@
 
 <div  style="text-align: center;">
 <video width="90%" controls muted autoplay loop>
-  <source src="images/index/demo_heatmap.mp4" type="video/mp4">
+  <source src="images/index/demo_heatmap_2025_2x.mp4" type="video/mp4">
 </video>
-<p>Video: Heatmap is cosine distance of eigenvectors, w.r.t the mouse pointer.
-<a href="alignedcut_vs_Ncut/">details</a>
-</p>
+<p>Video: hierarchical clustering visualization @<a href="https://github.com/huzeyann/ncut_pytorch/blob/master/examples/preview.ipynb">preview.ipynb</a></p>
 </div>
 
 <!-- ## Demo -->
@@ -128,50 +126,45 @@ Just plugin features extracted from any pre-trained model and ready to go. Ncut 
     <pre><code class="language-shell">pip install -U ncut-pytorch</code></pre>
 </div>
 
-Install PyTorch separately if your environment does not already provide it. Predictor examples also need `torchvision`, and the optional Lightning-based M-space trainer uses `pytorch-lightning~=2.0`.
-
 ---
 
-## Quick Start: Ncut with DINO Features
+## Quick Start
 
-```py linenums="1"
-from ncut_pytorch.predictor import NcutDinov3Predictor
-from PIL import Image
-
-predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16")
-predictor = predictor.to('cuda')
-
-images = [Image.open(f"images/view_{i}.jpg") for i in range(4)]
-predictor.set_images(images)
-
-image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
-display(image)
-
-```
-
-![summary](https://github.com/user-attachments/assets/a5d8a966-990b-4f6d-be10-abb00291bee2)
-
-
-## Quick Start: Ncut with Your Features
+The input to `Ncut` is a feature tensor shaped `(N, D)`, where `N` is the number of points and `D` is the feature dimension. If you already extracted features from a model, start here.
 
 ```py linenums="1"
 import torch
 from ncut_pytorch import Ncut, kway_ncut
-from ncut_pytorch.color import umap_color, mspace_color
+from ncut_pytorch.color import umap_color
 
 features = torch.rand(1960, 768)
-eigvecs = Ncut(n_eig=20).fit_transform(features)  # (1960, 20)
 
-# Color visualizations
-rgb_umap = umap_color(eigvecs[:, :20])      # UMAP-based RGB
-rgb_mspace = mspace_color(features, n_eig=20)  # M-space RGB
+ncut = Ncut(n_eig=20)
+eigvecs = ncut.fit_transform(features)  # (1960, 20)
+eigvals = ncut.eigval
 
-# Discrete segmentation
-n_cluster = 10
-kway_eigvecs = kway_ncut(eigvecs[:, :n_cluster])
-cluster_assignment = kway_eigvecs.argmax(1)
-cluster_centroids = kway_eigvecs.argmax(0)
+clusters = kway_ncut(eigvecs[:, :10], n_clusters=10).argmax(dim=1)
+rgb = umap_color(eigvecs[:, :20])
 ```
+
+If you only have images and want a ready-made path, use the DINOv3 predictor. It is just a convenience wrapper around feature extraction, Ncut, and visualization.
+
+```py linenums="1"
+from pathlib import Path
+from PIL import Image
+from ncut_pytorch.predictor import NcutDinov3Predictor
+
+image_dir = Path("examples/images")
+images = [Image.open(image_dir / f"view_{i}.jpg") for i in range(4)]
+
+predictor = NcutDinov3Predictor(model_cfg="dinov3_vitl16").to("cuda")
+predictor.set_images(images)
+
+image = predictor.summary(n_segments=[10, 25, 50, 100], draw_border=True)
+display(image)
+```
+
+![summary](https://github.com/user-attachments/assets/a5d8a966-990b-4f6d-be10-abb00291bee2)
 
 
 ---

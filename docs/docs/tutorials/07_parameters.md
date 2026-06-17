@@ -1,7 +1,7 @@
 
 # Tutorial 7 - Parameters
 
-> Legacy note for 3.0.0: this page still describes older parameter names such as `affinity_focal_gamma`. Use the migration guide for the current `sigma` / `quantile_sigma` API until this page is fully rewritten.
+> Legacy note: this page still describes older parameter names such as `affinity_focal_gamma`. Use the current `sigma` / `quantile_sigma` API shown in the API reference until this page is fully rewritten.
 
 Please visit our <a href="https://huggingface.co/spaces/huzey/ncut-pytorch" target="_blank">🤗HuggingFace Demo</a>. Play around models and parameters.
 
