@@ -25,6 +25,12 @@ nav:
     - tutorials/channel_tracing.md
     - tutorials/mixing_resolution.md
 
+  - Examples:
+    - Multi-scale Clustering: https://github.com/huzeyann/ncut_pytorch/blob/master/examples/summary.ipynb
+    - Single-scale Clustering: https://github.com/huzeyann/ncut_pytorch/blob/master/examples/generate.ipynb
+    - Inference Time: https://github.com/huzeyann/ncut_pytorch/blob/master/examples/predictor.ipynb
+    - Interactive Preview: https://github.com/huzeyann/ncut_pytorch/blob/master/examples/preview.ipynb
+
   - Blogs:
     - blogs/*.md
     - Model Gallery: usage_examples/model_gallery.md
