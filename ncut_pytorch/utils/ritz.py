@@ -9,9 +9,9 @@ def _ritz_extrapolate(
         evecs,
         degrees,
         n_eig=64,  # 增大 n_eig 可以提高精度
-        p_subspace=128,  # p1: T_x 子空间大小
+        p_subspace=128,  # p1: T_x 子空间大小p
         p_spectral=256,  # p2: 近似 S ≈ U2 Lambda2 U2^T 的谱基大小
-        gamma=1.0,
+        sigma=1.0,
         chunk_size=512,
         self_affinity=1.0,
         eps=1e-8,
@@ -39,7 +39,7 @@ def _ritz_extrapolate(
         x = extrapolate_points[start:start + chunk_size]
         bsz = x.shape[0]
 
-        K = rbf_affinity(x, points, gamma=gamma)  # [b, n]
+        K = rbf_affinity(x, points, sigma=sigma)  # [b, n]
         d_x = (self_affinity + K.sum(dim=1)).clamp_min(eps)  # [b]
         d_old_aug = (degrees[None, :] + K).clamp_min(eps)  # [b, n]
 
@@ -112,7 +112,7 @@ def ritz_extrapolate(
         n_eig=64,  # 增大 n_eig 可以提高精度
         p_subspace=128,  # p1: T_x 子空间大小
         p_spectral=256,  # p2: 近似 S ≈ U2 Lambda2 U2^T 的谱基大小
-        gamma=1.0,
+        sigma=1.0,
         chunk_size=512,
         self_affinity=1.0,
         eps=1e-8,
@@ -128,7 +128,7 @@ def ritz_extrapolate(
     n = points.shape[0]
     p_subspace, p_spectral = _check_args(n, n_eig, p_subspace, p_spectral)
 
-    W = rbf_affinity(points, points, gamma=gamma)
+    W = rbf_affinity(points, points, sigma=sigma)
     degrees = W.sum(dim=1).clamp_min(eps)
     S = normalize_affinity(W)
     evals, evecs = torch.linalg.eigh(S)  # 担心evecs会有sign flipping，不同次call结果会不一样
@@ -142,7 +142,7 @@ def ritz_extrapolate(
         n_eig,
         p_subspace,
         p_spectral,
-        gamma,
+        sigma,
         chunk_size,
         self_affinity,
         eps
