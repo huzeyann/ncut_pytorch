@@ -56,12 +56,6 @@
 <div style="display: flex; flex-wrap: wrap; gap: 20px;">
 
   <div style="flex: 1; min-width: 300px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-    <h3 style="margin-top: 0;">5. Mspace Coloring</h3>
-    <p>Techniques for visualizing high-dimensional spectral embeddings in interpretable color spaces.</p>
-    <a href="04_mspace_coloring" style="color: #007bff; font-weight: bold; text-decoration: none;">View coloring methods →</a>
-  </div>
-
-  <div style="flex: 1; min-width: 300px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0;">6. Feature Alignment</h3>
     <p>Methods for aligning features from different models or embedding spaces, useful for model comparison and ensemble techniques.</p>
     <a href="05_feature_align" style="color: #007bff; font-weight: bold; text-decoration: none;">Learn alignment →</a>

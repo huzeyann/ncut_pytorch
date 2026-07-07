@@ -1,121 +1,70 @@
 # k-way Ncut
 
-!!! abstract "TL;DR"
-    
-    1. **Solve Ncut**: Compute the Ncut eigenvectors $Z \in \mathbb{R}^{N\times K}$.
-    2. **Find Rotation**: Iterative optimize rotation $R$ via SVD until convergence.
-    3. **Rotate and Discretize**: Apply $R$ to $Z$ and assign discrete clusters.
+NCut eigenvectors are defined only up to an orthogonal rotation. k-way Ncut finds the rotation that aligns the continuous embedding with a discrete cluster indicator matrix.
 
----
+Reference: [Yu and Shi, "Multiclass spectral clustering," 2003](https://people.eecs.berkeley.edu/~jordan/courses/281B-spring04/readings/yu-shi.pdf).
 
-We need k-way Ncut because the Ncut eigenvectors do not directly give discrete labels; k-way Ncut is a principled solution to generate discrete labels from Ncut eigenvectors.
+## Notation
 
-![TODO image]()
+- $Z = [z_1, \dots, z_K] \in \mathbb{R}^{N \times K}$ : NCut eigenvectors
+- $R \in \mathbb{R}^{K \times K}, \; R^\top R = I$ : unknown orthogonal rotation
+- $\tilde{X}_{i,:} = Z_{i,:} / \|Z_{i,:}\|_2$ : row-normalized, each point on the unit sphere
+- $X \in \{0, 1\}^{N \times K}$ : one-hot cluster indicator, $X_{il}=1 \iff l=\arg\max_k (\tilde{X}R)_{ik}$
 
-## How k-way Ncut Works (short version)
+## Alternating optimization
 
-> **Compute Ncut eigenvectors → row-normalize → iterate: assign clusters by argmax → recompute rotation $R$ via SVD ($M = X^\top\tilde{X}$), ($R = \tilde{U}U^\top$).**
+Initialize $R_0$ from $K$ FPS-selected rows of $\tilde{X}$ (approximately orthogonal), then repeat until convergence:
 
-> This rotation $R$ aligns normalized cuts with discrete labels.
-
-reference: [Yu and Shi, "Multiclass spectral clustering,"](https://people.eecs.berkeley.edu/~jordan/courses/281B-spring04/readings/yu-shi.pdf)
-
-## How k-way Ncut Works (long version)
-
-### **How to Rotate Ncut Eigenvectors Using $R$**
-
-Given the Ncut embedding
-$$
-Z = [z_1,\dots,z_K] \in \mathbb{R}^{N\times K},
-$$
-Ncut gives you eigenvectors only up to an **unknown orthogonal rotation**:
+**1. Assign discrete labels given $R$:**
 
 $$
-Z \sim ZR ,\quad R^\top R = I.
+Y = \tilde{X} R, \qquad
+X_{il} = 1 \iff l = \arg\max_k Y_{ik}
 $$
 
-To convert $Z$ into **hard cluster assignments**, [the k-way Ncut paper](https://people.eecs.berkeley.edu/~jordan/courses/281B-spring04/readings/yu-shi.pdf) find the rotation $R$ that makes $ZR$ “as close as possible” to a one-hot indicator matrix.
-
-The core idea is:
-
-> **Rotate the continuous embedding so that each data point is closest to a single coordinate axis.**
-
-This is solved via an **alternating optimization**:
-
-### **Step 1 — Row-normalize the eigenvectors**
-
-Normalize each row of $Z$:
+**2. Update $R$ given $X$ via SVD:**
 
 $$
-\tilde{X}_{i,:} = \frac{Z_{i,:}}{\|Z_{i,:}\|_2},
+M = X^\top \tilde{X}, \qquad
+M = U \Omega V^\top, \qquad
+R = V U^\top
 $$
 
-so each point lies on the unit sphere.
+$R = VU^\top$ is the orthogonal matrix that best aligns $\tilde{X}$ to $X$ in the least-squares sense.
 
-### **Step 2 — Initialize $R$**
+## Convergence
 
-Pick $K$ rows of $\tilde{X}$ that are approximately orthogonal.
-
-Form an initial orthogonal matrix $R_0$.
-
-### **Step 3 — Given $R$, assign discrete labels (closest axis)**
-
-Compute:
+The NCut objective value is tracked as
 
 $$
-Y = \tilde{X} R.
+\mathrm{ncut} = 2\bigl(N - \operatorname{tr}\Omega\bigr)
 $$
 
-For each point $i$, pick the index of its largest coordinate:
+and the loop stops when $|\mathrm{ncut}_t - \mathrm{ncut}_{t-1}| < \varepsilon$. Typically converges in a few iterations.
+
+## Quick variant: `quick_kway`
+
+`quick_kway` replaces the SVD-based alternating optimization with spherical k-means on the row-normalized eigenvectors $\tilde{X}$.
+
+- $C \in \mathbb{R}^{K \times K}$ : centroids, initialized from $K$ FPS-selected rows of $\tilde{X}$
+- Iterate $T$ times:
+
+**1. Assign each point to its nearest centroid by cosine similarity:**
 
 $$
-X_{il}=1 \iff l=\arg\max_k Y_{ik}.
+a_i = \arg\max_k (\tilde{X} C^\top)_{ik}
 $$
 
-This converts the rotated embedding into a discrete indicator matrix $X$.
-
-### **Step 4 — Given $X$, update $R$ via SVD**
-
-Compute:
+**2. Update centroids as the normalized mean of assigned points:**
 
 $$
-M = X^\top \tilde{X}.
+C_{k,:} \leftarrow \operatorname{normalize}\!\left(\frac{1}{|\{i : a_i = k\}|} \sum_{i : a_i = k} \tilde{X}_{i,:}\right)
 $$
 
-Take the SVD:
+**3. Return rotation:**
 
 $$
-M = U \Omega \tilde{U}^\top.
+R = C^\top
 $$
 
-Then the optimal rotation is:
-
-$$
-\boxed{R = \tilde{U} U^\top}
-$$
-
-This is the orthogonal matrix that best aligns $\tilde{X}$ to the discrete solution in least-squares sense.
-
-### **Step 5 — Repeat until convergence**
-
-Alternate:
-
-1. $R \rightarrow X$  (argmax assignment)
-2. $X \rightarrow R$  (SVD update)
-
-Typically converges in a few iterations.
-
-
-<div style="display: flex; justify-content: space-between; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-  <a href="../02b_nystrom_ncut_quality" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; transition: all 0.2s;">
-    <span style="font-size: 12px; color: #666; margin-bottom: 5px;">Previous</span>
-    <span style="font-size: 16px; font-weight: bold; color: #007bff;">← Nyström Ncut (Quality)</span>
-  </a>
-  <a href="../" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.2s;">
-    <span style="font-size: 16px; font-weight: bold; color: #007bff;">Back to Overview</span>
-  </a>
-  <a href="../04_mspace_coloring" style="flex: 1; text-decoration: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: flex-end; text-align: right; transition: all 0.2s;">
-    <span style="font-size: 12px; color: #666; margin-bottom: 5px;">Next</span>
-    <span style="font-size: 16px; font-weight: bold; color: #007bff;">Mspace Coloring →</span>
-  </a>
-</div>
+Use `quick_kway` when $N$ is large and a few k-means iterations suffice; use `axis_align` (the SVD alternating optimization above) when accuracy is preferred.
