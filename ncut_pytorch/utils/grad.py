@@ -12,6 +12,7 @@ def rbf_eigvec_manual_grad(
     r: int = 1,               # target eigenvector index in U (assumed "largest-first" if you pass top-k)
     I: torch.Tensor | None = None,   # [m] indices; if None -> all points
     eps: float = 1e-12,
+    gap_eps: float = 1e-6,
     squared_objective: bool = True,
 ):
     """
@@ -62,6 +63,8 @@ def rbf_eigvec_manual_grad(
 
     denom = (lam_r - evals).clone()            # [K]
     denom[r] = torch.inf
+    if gap_eps > 0.0:
+        denom = torch.sign(denom) * torch.clamp(denom.abs(), min=gap_eps)
 
     UI = U[I, :]                               # [m,K]
     uI = u[I]                                  # [m]
@@ -134,7 +137,7 @@ class EigvecOuterProduct(torch.autograd.Function):
         ctx,
         A: torch.Tensor,          # [N,N]
         masks: torch.Tensor,      # [B,N] bool (in DESCENDING eigen-order)
-        gap_eps: float = 0.0,
+        gap_eps: float = 1e-6,
         symmetrize: bool = True,
     ):
         if A.ndim != 2 or A.shape[0] != A.shape[1]:
@@ -219,7 +222,7 @@ class EigvecOuterProduct(torch.autograd.Function):
 def eigvec_outer_product(
     A: torch.Tensor,
     eigval_masks: torch.Tensor,
-    gap_eps: float = 0.0,
+    gap_eps: float = 1e-6,
     symmetrize: bool = True,
 ):
     """
