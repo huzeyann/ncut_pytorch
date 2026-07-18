@@ -13,7 +13,7 @@ from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity, chunked_matmu
 from ncut_pytorch.ncuts.ncut_kway import quick_kway
 from ncut_pytorch.utils.device import auto_device
 from ncut_pytorch.utils.sample import farthest_point_sampling
-from ncut_pytorch.utils.sigma import find_sigma_by_degree
+from ncut_pytorch.utils.sigma import find_sigma, _pop_deprecated_sigma_kwargs
 
 class Ncut:
     """
@@ -23,8 +23,8 @@ class Ncut:
     def __init__(
             self,
             n_eig: int = 100,
-            quantile_sigma: float = 0.25,
-            quantile_sigma_repulsion: float = 0.20,
+            A_degree: float | None = None,
+            A_rep_degree: float = 0.3,
             sigma: float | None = None,
             repulsion_sigma: float | None = None,
             repulsion_weight: float | None = None,
@@ -39,8 +39,8 @@ class Ncut:
         Args:       
             n_eig (int): number of eigenvectors
             n_eig (int): number of eigenvectors
-            quantile_sigma (float): quantile of affinity sigma parameter, lower quantile_sigma results in sharper eigenvectors
-            quantile_sigma_repulsion (float): quantile of repulsion sigma parameter, lower quantile_sigma_repulsion results in sharper eigenvectors
+            A_degree (float): target mean affinity for sigma search, None uses median pairwise distance; lower A_degree results in sharper eigenvectors
+            A_rep_degree (float): target mean affinity for repulsion sigma parameter, lower results in sharper eigenvectors
             sigma (float): affinity parameter, override d_sigma if provided
             repulsion_sigma (float): (if use repulsion) repulsion sigma parameter, default None (no repulsion)
             repulsion_weight (float): (if use repulsion) repulsion weight, default 0.2
@@ -62,9 +62,15 @@ class Ncut:
             >>> new_eigvec = ncut.transform(new_X)
             >>> print(new_eigvec.shape)  # (500, 20)
         """
+        _A_degree, _A_rep_degree = _pop_deprecated_sigma_kwargs(kwargs)
+        if _A_degree is not None:
+            A_degree = _A_degree
+        if _A_rep_degree is not None:
+            A_rep_degree = _A_rep_degree
+
         self.n_eig = n_eig
-        self.quantile_sigma = quantile_sigma
-        self.quantile_sigma_repulsion = quantile_sigma_repulsion
+        self.A_degree = A_degree
+        self.A_rep_degree = A_rep_degree
         self.sigma = sigma
         self.repulsion_sigma = repulsion_sigma
         self.repulsion_weight = repulsion_weight
@@ -98,8 +104,8 @@ class Ncut:
             ncut_fn(
                 X,
                 n_eig=self.n_eig,
-                quantile_sigma=self.quantile_sigma,
-                quantile_sigma_repulsion=self.quantile_sigma_repulsion,
+                A_degree=self.A_degree,
+                A_rep_degree=self.A_rep_degree,
                 sigma=self.sigma,
                 repulsion_sigma=self.repulsion_sigma,
                 repulsion_weight=self.repulsion_weight,
@@ -182,7 +188,7 @@ class Ncut:
         sampled_nystrom_x = self._nystrom_x[indices].to(device).contiguous()
         sampled_nystrom_eigvec = self._nystrom_eigvec[indices].to(device).contiguous()
 
-        sigma = find_sigma_by_degree(sampled_nystrom_x, affinity_fn=rbf_affinity, quantile_sigma=0.25)
+        sigma = find_sigma(sampled_nystrom_x, A_degree=0.25)
         sigma = sigma * self.extrapolation_factor
 
         self._propagation_cache = NystromPropagationCache(

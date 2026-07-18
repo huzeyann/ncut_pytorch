@@ -8,7 +8,7 @@ from ncut_pytorch import Ncut, ncut_fn
 from ncut_pytorch.ncuts import ncut_nystrom as nystrom_utils
 from ncut_pytorch.ncuts.ncut_nystrom import _plain_ncut, nystrom_propagate
 from ncut_pytorch.utils.math import gram_schmidt, keep_topk_per_row, rbf_affinity
-from ncut_pytorch.utils.sigma import _find_sigma_by_degree
+from ncut_pytorch.utils.sigma import _find_sigma
 
 
 def _reference_gram_schmidt(matrix: torch.Tensor) -> torch.Tensor:
@@ -43,40 +43,6 @@ def _median_call_runtime(fn, repeats: int = 3) -> float:
         fn()
         timings.append(time.perf_counter() - start)
     return statistics.median(timings)
-
-
-def _candidate_find_sigma_by_degree_rbf(
-    X: torch.Tensor,
-    quantile_sigma: float = 0.25,
-    init_sigma: float = 0.5,
-    r_tol: float = 1e-2,
-    max_iter: int = 100,
-) -> float:
-    """Candidate fast path that reuses one pairwise distance matrix across sigma search."""
-    x_sq = X.pow(2).sum(dim=1, keepdim=True)
-    dist2 = x_sq + x_sq.T
-    dist2.addmm_(X, X.T, beta=1.0, alpha=-2.0)
-    dist2.clamp_min_(0)
-
-    scale_inv_sigma = X.std(0).sum()
-    target_degree = torch.exp(dist2 * (-0.5 / (scale_inv_sigma * scale_inv_sigma))).mean(1)
-    target_degree = target_degree.float().quantile(quantile_sigma).item()
-
-    sigma = init_sigma
-    current_degree = torch.exp(dist2 * (-0.5 / (sigma * sigma))).mean().item()
-    low, high = 0.0, float("inf")
-    tol = r_tol * target_degree
-    i_iter = 0
-    while abs(current_degree - target_degree) > tol and i_iter < max_iter:
-        if current_degree > target_degree:
-            high = sigma
-            sigma = (low + sigma) / 2
-        else:
-            low = sigma
-            sigma = sigma * 2 if high == float("inf") else (sigma + high) / 2
-        current_degree = torch.exp(dist2 * (-0.5 / (sigma * sigma))).mean().item()
-        i_iter += 1
-    return sigma
 
 
 def _reference_weighted_neighbor_sum(
@@ -241,7 +207,7 @@ class TestNystromNcut:
         nystrom_X = torch.randn(8, 4)
         nystrom_out = torch.randn(8, 3)
 
-        monkeypatch.setattr(nystrom_utils, "find_sigma_by_degree", lambda *args, **kwargs: 1.0)
+        monkeypatch.setattr(nystrom_utils, "find_sigma", lambda *args, **kwargs: 1.0)
 
         def fake_rbf_topk_from_squared_distance(Xi, sampled_X, sampled_x_sq, sigma, n_neighbors):
             chunk_sizes.append(Xi.shape[0])
@@ -290,12 +256,12 @@ class TestNystromNcut:
             counters["fps"] += 1
             return torch.tensor([0, 2, 4, 6], dtype=torch.long)
 
-        def fake_find_sigma_by_degree(*args, **kwargs):
+        def fake_find_sigma(*args, **kwargs):
             counters["sigma"] += 1
             return 1.0
 
         monkeypatch.setattr(nystrom_utils, "farthest_point_sampling", fake_farthest_point_sampling)
-        monkeypatch.setattr(nystrom_utils, "find_sigma_by_degree", fake_find_sigma_by_degree)
+        monkeypatch.setattr(nystrom_utils, "find_sigma", fake_find_sigma)
 
         first = nystrom_propagate(
             nystrom_out,
@@ -338,12 +304,12 @@ class TestNystromNcut:
             counters["fps"] += 1
             return torch.tensor([0, 2, 4, 6], dtype=torch.long)
 
-        def fake_find_sigma_by_degree(*args, **kwargs):
+        def fake_find_sigma(*args, **kwargs):
             counters["sigma"] += 1
             return 1.0
 
         monkeypatch.setattr(ncut_module, "farthest_point_sampling", fake_farthest_point_sampling)
-        monkeypatch.setattr(ncut_module, "find_sigma_by_degree", fake_find_sigma_by_degree)
+        monkeypatch.setattr(ncut_module, "find_sigma", fake_find_sigma)
 
         first = model.transform(X)
         second = model.transform(X)
@@ -414,7 +380,7 @@ class TestNystromNcut:
         
         # Test with different d_sigma
         d_sigma = 0.5
-        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, quantile_sigma=d_sigma)
+        eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=n_eig, A_degree=d_sigma)
         assert eigvec.shape == (small_feature_matrix.shape[0], n_eig)
         assert eigval.shape == (n_eig,)
         
@@ -463,20 +429,28 @@ class TestNystromNcut:
         assert reference_time / optimized_time >= 3.0
 
     @pytest.mark.slow
-    def test_sigma_search_precomputed_distance_candidate_speedup(self):
-        """Simulation benchmark for reusing one distance matrix across sigma search."""
+    def test_find_sigma_hits_A_degree(self):
+        """_find_sigma should return a sigma whose mean affinity matches A_degree."""
+        torch.manual_seed(42)
         X = torch.randn(1000, 256)
 
-        expected = _find_sigma_by_degree(X, quantile_sigma=0.25, affinity_fn=rbf_affinity)
-        actual = _candidate_find_sigma_by_degree_rbf(X, quantile_sigma=0.25)
+        target = 0.1
+        sigma = _find_sigma(X, A_degree=target, max_iter=100, tol=1e-4)
+        mean_aff = rbf_affinity(X, X, sigma=sigma).mean().item()
 
-        assert actual == pytest.approx(expected, abs=1e-6)
+        assert abs(mean_aff - target) < 1e-2
 
-        reference_time = _median_call_runtime(
-            lambda: _find_sigma_by_degree(X, quantile_sigma=0.25, affinity_fn=rbf_affinity)
-        )
-        candidate_time = _median_call_runtime(
-            lambda: _candidate_find_sigma_by_degree_rbf(X, quantile_sigma=0.25)
-        )
+    @pytest.mark.slow
+    def test_find_sigma_median_only(self):
+        """With A_degree=None, _find_sigma returns the median pairwise distance."""
+        torch.manual_seed(42)
+        X = torch.randn(200, 16)
 
-        assert reference_time / candidate_time >= 1.5
+        sigma = _find_sigma(X, A_degree=None)
+
+        dist = torch.cdist(X, X, p=2)
+        triu = torch.triu_indices(dist.shape[0], dist.shape[0], offset=1)
+        pairwise = dist[triu[0], triu[1]]
+        expected = pairwise.median().item()
+
+        assert sigma == pytest.approx(expected, rel=1e-6)

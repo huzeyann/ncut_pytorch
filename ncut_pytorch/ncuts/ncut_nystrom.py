@@ -5,7 +5,7 @@ from typing import Callable, NamedTuple, Union
 import torch
 import numpy as np
 import torch.nn.functional as F
-from ncut_pytorch.utils.sigma import find_sigma_by_degree
+from ncut_pytorch.utils.sigma import find_sigma, _pop_deprecated_sigma_kwargs
 from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity
 from ncut_pytorch.utils.math import gram_schmidt, normalize_affinity, grad_safe_eig_solve, correct_rotation, svd_lowrank
 from ncut_pytorch.utils.sample import farthest_point_sampling
@@ -47,8 +47,8 @@ class NystromConfig:
 def ncut_fn(
         X: torch.Tensor,
         n_eig: int = 100,
-        quantile_sigma: float = 0.25,
-        quantile_sigma_repulsion: float = 0.20,
+        A_degree: float | None = None,
+        A_rep_degree: float = 0.3,
         sigma: float | None = None,
         repulsion_sigma: float | None = None,
         repulsion_weight: float | None = None,
@@ -66,8 +66,8 @@ def ncut_fn(
     Args:
         X (torch.Tensor): input features, shape (N, D)
         n_eig (int): number of eigenvectors
-        quantile_sigma (float): quantile of affinity sigma parameter, lower quantile_sigma results in sharper eigenvectors
-        quantile_sigma_repulsion (float): quantile of repulsion sigma parameter, lower quantile_sigma_repulsion results in sharper eigenvectors
+        A_degree (float): target mean affinity for sigma search, None uses median pairwise distance; lower A_degree results in sharper eigenvectors
+        A_rep_degree (float): target mean affinity for repulsion sigma parameter, lower results in sharper eigenvectors
         sigma (float): affinity parameter, override d_sigma if provided
         repulsion_sigma (float): (if use repulsion) repulsion sigma parameter, default None (no repulsion)
         repulsion_weight (float): (if use repulsion) repulsion weight, default 0.2
@@ -88,6 +88,12 @@ def ncut_fn(
         >>> eigvec, eigval = ncut_fn(features, n_eig=20)
         >>> print(eigvec.shape, eigval.shape)  # (10000, 20) (20,)
     """
+    _A_degree, _A_rep_degree = _pop_deprecated_sigma_kwargs(kwargs)
+    if _A_degree is not None:
+        A_degree = _A_degree
+    if _A_rep_degree is not None:
+        A_rep_degree = _A_rep_degree
+
     config = NystromConfig()
     config.update(kwargs)
     device = auto_device(X.device, device)
@@ -100,7 +106,7 @@ def ncut_fn(
         nystrom_indices = torch.arange(X.shape[0])
     nystrom_X = X[nystrom_indices].to(device)
 
-    sigma, repulsion_sigma = find_optimal_sigma(nystrom_X, quantile_sigma, quantile_sigma_repulsion, sigma, repulsion_sigma, affinity_fn)
+    sigma, repulsion_sigma = find_optimal_sigma(nystrom_X, A_degree, A_rep_degree, sigma, repulsion_sigma, affinity_fn)
 
     if repulsion_sigma and repulsion_weight:
         nystrom_eigvec, eigval = ncut_with_repulsion(
@@ -146,16 +152,16 @@ def ncut_fn(
 
 def find_optimal_sigma(
     X: torch.Tensor,
-    quantile_sigma: float = 0.25,
-    quantile_sigma_repulsion: float = 0.20,
+    A_degree: float | None = None,
+    A_rep_degree: float = 0.3,
     sigma: float | None = None,
     repulsion_sigma: float | None = None,
     affinity_fn: Union["rbf_affinity", "cosine_affinity"] = rbf_affinity,
 ):
     """Find optimal sigma for affinity matrix and repulsion matrix."""
     if affinity_fn == rbf_affinity:
-        sigma = sigma or find_sigma_by_degree(X, quantile_sigma, affinity_fn)
-        repulsion_sigma = repulsion_sigma or find_sigma_by_degree(X, quantile_sigma_repulsion, affinity_fn, init_sigma=sigma)
+        sigma = sigma or find_sigma(X, A_degree=A_degree)
+        repulsion_sigma = repulsion_sigma or find_sigma(X, A_degree=A_rep_degree)
     elif affinity_fn == cosine_affinity:
         sigma = sigma or 0.5
         repulsion_sigma = repulsion_sigma or 0.3
@@ -308,7 +314,7 @@ def nystrom_propagate(
         indices = farthest_point_sampling(nystrom_out, config.n_sample2, device=device)
         nystrom_X = nystrom_X[indices].to(device).contiguous()
         nystrom_out = nystrom_out[indices].to(device).contiguous()
-        sigma = find_sigma_by_degree(nystrom_X, affinity_fn=rbf_affinity, quantile_sigma=0.25)
+        sigma = find_sigma(nystrom_X, A_degree=0.25)
         sigma = sigma * extrapolation_factor
         D = rbf_affinity(nystrom_X, sigma=sigma).mean(1)
         nystrom_x_sq = nystrom_X.pow(2).sum(dim=1).unsqueeze(0)

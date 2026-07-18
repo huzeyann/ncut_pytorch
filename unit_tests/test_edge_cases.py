@@ -12,16 +12,16 @@ class TestEdgeCases:
         """Test with invalid sigma values."""
         # Check that Ncut raises an error with negative sigma
         with pytest.raises(Exception):
-            ncut = Ncut(n_eig=5, quantile_sigma=-0.1)
+            ncut = Ncut(n_eig=5, A_degree=-0.1)
             ncut.fit(small_feature_matrix)
-        
+
         # Check that ncut_fn raises an error with negative sigma
         with pytest.raises(Exception):
-            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, quantile_sigma=-0.1)
-        
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, A_degree=-0.1)
+
         # Check that ncut_fn raises an error with zero sigma
         with pytest.raises(Exception):
-            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, quantile_sigma=0.0)
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, A_degree=0.0)
 
     def test_invalid_device(self, small_feature_matrix):
         """Test with invalid device."""
@@ -75,12 +75,12 @@ class TestEdgeCases:
 
     def test_edge_case_parameters(self, small_feature_matrix):
         """Test with edge case parameters."""
-        # Test with very small quantile_sigma
-        ncut = Ncut(n_eig=5, quantile_sigma=1e-10)
+        # Test with very small A_degree
+        ncut = Ncut(n_eig=5, A_degree=1e-10)
         ncut.fit(small_feature_matrix)
-        
-        # Test with very large quantile_sigma
-        ncut = Ncut(n_eig=5, quantile_sigma=0.99)
+
+        # Test with very large A_degree
+        ncut = Ncut(n_eig=5, A_degree=0.99)
         ncut.fit(small_feature_matrix)
         
         # Test with n_eig=1
@@ -91,3 +91,15 @@ class TestEdgeCases:
         n_eig = min(small_feature_matrix.shape[0] - 1, 10)  # Use a smaller value for testing
         ncut = Ncut(n_eig=n_eig)
         ncut.fit(small_feature_matrix)
+
+    def test_deprecated_quantile_sigma_alias(self, small_feature_matrix):
+        """The deprecated quantile_sigma kwarg should map to A_degree with a warning."""
+        import warnings as _warnings
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore", DeprecationWarning)
+            ncut = Ncut(n_eig=5, quantile_sigma=0.1)
+            ncut.fit(small_feature_matrix)
+            assert ncut.A_degree == 0.1
+
+            eigvec, eigval = ncut_fn(small_feature_matrix, n_eig=5, quantile_sigma=0.1)
+            assert eigvec.shape == (small_feature_matrix.shape[0], 5)

@@ -17,7 +17,7 @@ from ncut_pytorch.utils.device import auto_device
 from ncut_pytorch import ncut_fn
 from ncut_pytorch.utils.math import normalize_affinity, rbf_affinity, cosine_affinity
 from ncut_pytorch.utils.grad import eigvec_outer_product
-from ncut_pytorch.utils.sigma import find_sigma_by_degree
+from ncut_pytorch.utils.sigma import find_sigma
 
 try:
     import pytorch_lightning as pl
@@ -219,7 +219,7 @@ class _TrainingModuleBase(LightningModuleBase):
 
 
 def get_eigvec_outer_product(features: torch.Tensor, n_eig_list: List[int]) -> torch.Tensor:
-    sigma = find_sigma_by_degree(features)
+    sigma = find_sigma(features)
     W = rbf_affinity(features, sigma=sigma)
     A = normalize_affinity(W)
     eigval_masks = torch.zeros(len(n_eig_list), A.shape[0], dtype=torch.bool)

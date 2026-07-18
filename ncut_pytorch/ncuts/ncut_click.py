@@ -5,7 +5,7 @@ from typing import Callable, Union
 import numpy as np
 import torch
 
-from ncut_pytorch.utils.sigma import find_sigma_by_degree
+from ncut_pytorch.utils.sigma import find_sigma, _pop_deprecated_sigma_kwargs
 from ncut_pytorch.utils.math import rbf_affinity, cosine_affinity, normalize_affinity
 from ncut_pytorch.utils.sample import farthest_point_sampling
 from ncut_pytorch.utils.device import auto_device
@@ -22,7 +22,7 @@ def ncut_click_prompt(
         click_weight: float = 0.5,
         bg_weight: float = 0.1,
         n_eig: int = 2,
-        quantile_sigma: float = 0.25,
+        A_degree: float | None = None,
         device: str = None,
         sigma: float = None,
         affinity_fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor] = rbf_affinity,
@@ -34,6 +34,10 @@ def ncut_click_prompt(
 
     config = NystromConfig()
     config.update(kwargs)
+
+    _A_degree, _ = _pop_deprecated_sigma_kwargs(kwargs)
+    if _A_degree is not None:
+        A_degree = _A_degree
 
     # use GPU if available
     device = auto_device(X.device, device)
@@ -56,7 +60,7 @@ def ncut_click_prompt(
     
     # find optimal sigma for affinity matrix
     if sigma is None and affinity_fn == rbf_affinity:
-        sigma = find_sigma_by_degree(nystrom_X, quantile_sigma, affinity_fn)
+        sigma = find_sigma(nystrom_X, A_degree=A_degree)
         # TODO: change to std()
     elif sigma is None and affinity_fn == cosine_affinity:
         sigma = 0.5

@@ -13,7 +13,7 @@ class TestNcut:
         """Test that the Ncut class initializes correctly."""
         ncut = Ncut(**ncut_params)
         assert ncut.n_eig == ncut_params['n_eig']
-        assert ncut.quantile_sigma == ncut_params['quantile_sigma']
+        assert ncut.A_degree == ncut_params['A_degree']
         assert ncut.device == ncut_params['device']
         assert ncut.exact_gradient == ncut_params['exact_gradient']
         assert ncut._nystrom_x is None

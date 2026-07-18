@@ -66,27 +66,27 @@ class TestBiasedNcut:
             fg_idx,
             n_eig=3,
             click_weight=0.5,
-            quantile_sigma=0.5
+            A_degree=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 3)
         assert eigvals.shape == (3,)
-        
+
         # Test with different click_weight
         eigvecs, eigvals = ncut_click_prompt(
             small_feature_matrix,
             fg_idx,
             n_eig=5,
             click_weight=0.8,
-            quantile_sigma=0.5
+            A_degree=0.5
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)
-        
+
         # Test with different degree
         eigvecs, eigvals = ncut_click_prompt(
             small_feature_matrix,
             fg_idx,
             n_eig=5,
             click_weight=0.5,
-            quantile_sigma=0.2
+            A_degree=0.2
         )
         assert eigvecs.shape == (small_feature_matrix.shape[0], 5)
